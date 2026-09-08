@@ -1,14 +1,15 @@
 import { cookies } from "next/headers";
-import { db, publicUser, sessionHash } from "./db";
+import { db, publicUser, sessionHash, initializeDatabase } from "./db";
 import type { User } from "./model";
 export async function currentUser(): Promise<User | null> {
+  await initializeDatabase();
   const token = (await cookies()).get("archive-session")?.value;
   if (!token) return null;
-  const row = db
+  const row = (await db
     .prepare(
       "SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE token=? AND expires>?",
     )
-    .get(sessionHash(token), Date.now());
+    .get(sessionHash(token), Date.now()));
   return row ? publicUser(row) : null;
 }
 export async function context() {

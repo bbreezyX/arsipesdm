@@ -12,9 +12,9 @@ export default async function Page({searchParams}: {searchParams: Promise<{secti
     return (
       <Workspace
         initialSection={initialSection}
-        initialTrips={getTrips(c.workspace)}
-        initialEmployees={getEmployees(c.workspace)}
-        departments={getDepartments()}
+        initialTrips={(await getTrips(c.workspace))}
+        initialEmployees={(await getEmployees(c.workspace))}
+        departments={(await getDepartments())}
         user={c.user}
         demo={c.workspace === "demo"}
       />

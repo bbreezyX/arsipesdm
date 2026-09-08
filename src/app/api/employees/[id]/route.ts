@@ -14,7 +14,7 @@ export async function PATCH(req: Request, {params}: RouteContext) {
       const parsed = employeeSchema.safeParse(body);
       if (!parsed.success) return Response.json({error: parsed.error.issues[0].message}, {status: 422});
     }
-    return Response.json(changeEmployee(c.workspace, id, body.version, body.action === "restore" ? "restore" : "edit", body));
+    return Response.json((await changeEmployee(c.workspace, id, body.version, body.action === "restore" ? "restore" : "edit", body)));
   } catch(e) { return apiError(e); }
 }
 export async function DELETE(req: Request, {params}: RouteContext) {
@@ -23,6 +23,6 @@ export async function DELETE(req: Request, {params}: RouteContext) {
     const c = await context();
     const {id} = await params;
     const body = await req.json();
-    return Response.json(changeEmployee(c.workspace, id, body.version, "delete"));
+    return Response.json((await changeEmployee(c.workspace, id, body.version, "delete")));
   } catch(e) { return apiError(e); }
 }

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const c = await context();
-    return Response.json(getTrips(c.workspace));
+    return Response.json((await getTrips(c.workspace)));
   } catch (e) {
     return apiError(e);
   }
@@ -20,9 +20,9 @@ export async function POST(req: Request) {
         { error: parsed.error.issues[0].message },
         { status: 422 },
       );
-    const trip = transaction(() =>
-      newTrip(parsed.data, c.workspace, c.user.name),
-    );
+    const trip = (await transaction(async () =>
+      (await newTrip(parsed.data, c.workspace, c.user.name)),
+    ));
     return Response.json(trip, { status: 201 });
   } catch (e) {
     return apiError(e);

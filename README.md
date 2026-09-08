@@ -9,7 +9,7 @@ Memerlukan **Node.js 24** (SQLite bawaan Node) dan npm.
 ```sh
 npm ci
 cp .env.example .env.local
-# Isi ADMIN_PASSWORD yang unik sebelum menjalankan aplikasi.
+# Isi DATABASE_URL dan ADMIN_PASSWORD yang unik sebelum menjalankan aplikasi.
 npm run dev
 ```
 
@@ -38,7 +38,25 @@ PDF/foto disimpan sebagai lampiran. Aplikasi belum membaca isi scan secara otoma
 
 ## Penyimpanan dan pencadangan
 
-Data disimpan di `data/archive.sqlite`; file digital di `data/attachments/`. Jalur dapat diganti dengan `DATA_DIR`. Data bertahan saat server dimulai ulang. Ruang contoh dan ruang kantor terpisah; unduhan lampiran memeriksa sesi dan ruang kerja.
+Data disimpan di **PostgreSQL** melalui `DATABASE_URL`. Arsip, pegawai, honorarium, akun, pengaturan, dan file digital (kolom `bytea`, maksimal 10 MB per file) berada di database yang sama. Transaksi menyimpan lampiran dan metadata secara atomik. Pool dibatasi 10 koneksi per proses; transaksi penulisan memakai advisory lock agar penomoran dan pemeriksaan versi konsisten antarreplika. Ruang contoh dan kantor tetap terpisah; unduhan lampiran memeriksa sesi dan ruang kerja.
+
+Di Railway, service `arsipesdm` memakai referensi `DATABASE_URL=${{Postgres.DATABASE_URL}}` melalui jaringan privat. PostgreSQL mempunyai volume persisten. `npm start` mendengarkan `0.0.0.0:$PORT`, dan `/api/health` memeriksa koneksi database. `railway.json` mengatur build, start, dan health check.
+
+### Migrasi dan backup
+
+Simpan salinan konsisten SQLite dengan SQLite backup API, direktori `attachments`, dan konfigurasi lokal sebelum migrasi. Semua backup berada di `backups/` yang diabaikan Git. Jalankan:
+
+```bash
+node --env-file=.env.postgres-migration --import tsx scripts/migrate-sqlite-to-postgres.ts backups/<backup>/archive.sqlite
+```
+
+Migrasi mempertahankan ID, nilai data, riwayat, dan hash kata sandi. Proses berada dalam satu transaksi dan menolak konflik dengan data tujuan. Menjalankan ulang hanya diterima bila seluruh data identik. Argumen ketiga opsional menunjuk backup awal untuk sinkronisasi akhir: perubahan dan penghapusan di sumber hanya diterapkan bila baris tujuan masih sama persis dengan backup awal. Sesi login lama tidak dipindahkan; pengguna masuk kembali. SQLite lama tetap disimpan sebagai backup, bukan fallback runtime.
+
+Backup JSON konsisten dapat dibuat dengan `node --env-file=.env.local scripts/backup-postgres.mjs backups/<nama-unik>.json`. File lampiran disertakan sebagai base64. Untuk format pemulihan standar, gunakan `pg_dump --format=custom` versi yang sama atau lebih baru dari server (saat migrasi: PostgreSQL 18). Simpan hasil di tempat aman di luar container aplikasi; backup mencakup lampiran. Pemulihan memakai `pg_restore` ke database kosong, lalu arahkan `DATABASE_URL` ke hasil pemulihan.
+
+### Pengujian PostgreSQL
+
+Set `TEST_DATABASE_URL` sebelum `npm test`. Pengujian database membuat schema `test_*` unik dan menghapusnya setelah selesai; tidak memakai tabel aplikasi. Jalankan `node scripts/check-init-concurrency.mjs` untuk menguji inisialisasi lima proses bersamaan. Pengujian HTTP `scripts/integration.mjs` harus diarahkan ke server uji dengan schema `test_*`, `DEMO_ENABLED=true`, serta akun bootstrap uji.
 
 Untuk backup konsisten: hentikan server, lalu salin **seluruh folder data**, termasuk SQLite, file WAL/SHM bila ada, dan attachments, ke folder backup bertanggal. Simpan `.env.local` secara aman terpisah. Untuk memulihkan, hentikan server, cadangkan kondisi saat ini, lalu kembalikan seluruh folder data dari satu backup yang sama. Ekspor Excel tidak menggantikan backup karena tidak menyertakan file lampiran atau akun.
 

@@ -1,3 +1,4 @@
+import { setupTestDatabase } from "./test-database";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -25,28 +26,29 @@ test("category-specific fields and invalid financial inputs are validated", () =
 });
 test("CRUD persists records with workspace isolation, conflict detection, deletion and restoration", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "honorarium-test-"));
+  const cleanupDatabase = await setupTestDatabase();
   process.env.DATA_DIR = directory;
   const {createHonorarium, getHonorariums, getHonorarium, changeHonorarium} = await import("./honorarium-db");
   const {db} = await import("./db");
   try {
-    const created = createHonorarium("test-office", sample());
-    assert.equal(getHonorariums("test-office").length, 1);
-    assert.equal(getHonorariums("other-office").length, 0);
-    assert.throws(() => getHonorarium("other-office", created.id), /tidak ditemukan/);
-    assert.throws(() => changeHonorarium("other-office", created.id, 1, "delete"), /tidak ditemukan/);
-    const edited = changeHonorarium("test-office", created.id, 1, "edit", {...sample(), months: 3});
+    const created = (await createHonorarium("test-office", sample()));
+    assert.equal((await getHonorariums("test-office")).length, 1);
+    assert.equal((await getHonorariums("other-office")).length, 0);
+    await assert.rejects(async () => (await getHonorarium("other-office", created.id)), /tidak ditemukan/);
+    await assert.rejects(async () => (await changeHonorarium("other-office", created.id, 1, "delete")), /tidak ditemukan/);
+    const edited = (await changeHonorarium("test-office", created.id, 1, "edit", {...sample(), months: 3}));
     assert.equal(edited.months, 3);
     assert.equal(edited.version, 2);
-    assert.throws(() => changeHonorarium("test-office", created.id, 1, "edit", sample()), /sudah diperbarui/);
-    assert.equal(getHonorarium("test-office", created.id).months, 3);
-    const deleted = changeHonorarium("test-office", created.id, 2, "delete");
+    await assert.rejects(async () => (await changeHonorarium("test-office", created.id, 1, "edit", sample())), /sudah diperbarui/);
+    assert.equal((await getHonorarium("test-office", created.id)).months, 3);
+    const deleted = (await changeHonorarium("test-office", created.id, 2, "delete"));
     assert.ok(deleted.deletedAt);
-    assert.throws(() => changeHonorarium("test-office", created.id, 3, "edit", sample()), /Pulihkan/);
-    const restored = changeHonorarium("test-office", created.id, 3, "restore");
+    await assert.rejects(async () => (await changeHonorarium("test-office", created.id, 3, "edit", sample())), /Pulihkan/);
+    const restored = (await changeHonorarium("test-office", created.id, 3, "restore"));
     assert.equal(restored.deletedAt, null);
     assert.equal(restored.months, 3);
     assert.equal(restored.version, 4);
-    assert.throws(() => changeHonorarium("test-office", created.id, 4, "edit", {...sample(), taxRate: 101}));
-    assert.equal(getHonorarium("test-office", created.id).version, 4);
-  } finally {db.close(); rmSync(directory, {recursive: true, force: true});}
+    await assert.rejects(async () => (await changeHonorarium("test-office", created.id, 4, "edit", {...sample(), taxRate: 101})));
+    assert.equal((await getHonorarium("test-office", created.id)).version, 4);
+  } finally {await db.close(); await cleanupDatabase(); rmSync(directory, {recursive: true, force: true});}
 });

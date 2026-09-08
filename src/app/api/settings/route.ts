@@ -15,12 +15,12 @@ export async function PATCH(req: Request) {
       )
     )
       throw new Error("Daftar bidang tidak valid.");
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
     ).run(
       "departments",
       JSON.stringify([...new Set(departments.map((d) => d.trim()))]),
-    );
+    ));
     return Response.json({ ok: true });
   } catch (e) {
     return apiError(e);

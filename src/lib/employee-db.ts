@@ -2,18 +2,17 @@ import { randomUUID } from "node:crypto";
 import { db, getTrips, transaction } from "./db";
 import { employeeIdentity, employeeMatches, employeeSchema, type Employee, type EmployeeInput } from "./employees";
 
-db.exec(`CREATE TABLE IF NOT EXISTS employees(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS employees_workspace ON employees(workspace);`);
-function read(workspace: string): Employee[] {
-  return (db.prepare("SELECT payload FROM employees WHERE workspace=?").all(workspace) as {payload: string}[]).map(r => JSON.parse(r.payload));
+
+async function read(workspace: string): Promise<Employee[]> {
+  return ((await db.prepare("SELECT payload FROM employees WHERE workspace=?").all(workspace)) as {payload: string}[]).map(r => JSON.parse(r.payload));
 }
-function write(workspace: string, employee: Employee) {
-  db.prepare("INSERT INTO employees VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE workspace=excluded.workspace").run(employee.id, workspace, JSON.stringify(employee));
+async function write(workspace: string, employee: Employee) {
+  (await db.prepare("INSERT INTO employees VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE employees.workspace=excluded.workspace").run(employee.id, workspace, JSON.stringify(employee)));
 }
 // Preserve historical identities, including deleted entries, so imports cannot resurrect them.
-function sync(workspace: string) {
-  const employees = read(workspace);
-  const trips = getTrips(workspace).filter(t => !t.deletedAt).sort((a,b) =>
+async function sync(workspace: string) {
+  const employees = (await read(workspace));
+  const trips = (await getTrips(workspace)).filter(t => !t.deletedAt).sort((a,b) =>
     b.startDate.localeCompare(a.startDate) || b.updatedAt.localeCompare(a.updatedAt),
   );
   // Backfill only pre-existing records without the field. An explicitly cleared
@@ -23,7 +22,7 @@ function sync(workspace: string) {
     const source = trips.find(t => t.lampiran6?.rank && t.participants.some(p => employeeMatches(employee, p)));
     employee.rank = source?.lampiran6?.rank ?? "";
     employee.version++;
-    write(workspace, employee);
+    (await write(workspace, employee));
   }
   const identities = new Set(employees.flatMap(p => p.identities));
   for (const trip of trips) {
@@ -31,33 +30,33 @@ function sync(workspace: string) {
       const identity = employeeIdentity(participant);
       if (identities.has(identity)) continue;
       const employee: Employee = {...participant, rank: trip.lampiran6?.rank ?? "", id: randomUUID(), version: 1, identities: [identity], deletedAt: null};
-      write(workspace, employee);
+      (await write(workspace, employee));
       employees.push(employee);
       identities.add(identity);
     }
   }
   return employees;
 }
-export function getEmployees(workspace: string) {
-  return transaction(() => sync(workspace)).sort((a,b) => a.name.localeCompare(b.name, "id"));
+export async function getEmployees(workspace: string) {
+  return (await transaction(async () => (await sync(workspace)))).sort((a,b) => a.name.localeCompare(b.name, "id"));
 }
 function assertUnique(employees: Employee[], input: EmployeeInput, id?: string) {
   if (employees.some(p => p.id !== id && p.identities.includes(employeeIdentity(input))))
     throw new Error("Pegawai dengan NIP atau identitas ini sudah tercatat, termasuk pada daftar terhapus. Edit atau pulihkan data tersebut.");
 }
-export function createEmployee(workspace: string, body: unknown) {
+export async function createEmployee(workspace: string, body: unknown) {
   const input = employeeSchema.parse(body);
-  return transaction(() => {
-    const employees = sync(workspace);
+  return (await transaction(async () => {
+    const employees = (await sync(workspace));
     assertUnique(employees, input);
     const employee: Employee = {...input, id: randomUUID(), version: 1, identities: [employeeIdentity(input)], deletedAt: null};
-    write(workspace, employee);
+    (await write(workspace, employee));
     return employee;
-  });
+  }));
 }
-export function changeEmployee(workspace: string, id: string, version: unknown, action: "edit" | "delete" | "restore", body?: unknown) {
-  return transaction(() => {
-    const employees = sync(workspace);
+export async function changeEmployee(workspace: string, id: string, version: unknown, action: "edit" | "delete" | "restore", body?: unknown) {
+  return (await transaction(async () => {
+    const employees = (await sync(workspace));
     const employee = employees.find(p => p.id === id);
     if (!employee) throw new Error("Data pegawai tidak ditemukan.");
     if (version !== employee.version) throw new Error("Data pegawai telah berubah. Muat ulang halaman sebelum mencoba kembali.");
@@ -71,7 +70,7 @@ export function changeEmployee(workspace: string, id: string, version: unknown, 
       employee.identities = [...new Set([...employee.identities, employeeIdentity(input)])];
     } else employee.deletedAt = action === "delete" ? new Date().toISOString() : null;
     employee.version++;
-    write(workspace, employee);
+    (await write(workspace, employee));
     return employee;
-  });
+  }));
 }

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   devIndicators: false,
-  serverExternalPackages: ["node:sqlite"],
+  serverExternalPackages: ["pg"],
   experimental: { proxyClientMaxBodySize: "22mb" },
   async headers() {
     return [

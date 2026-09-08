@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync, unlinkSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
+import { readFileSync } from "node:fs";
+import { Pool } from "pg";
+
 const origin = process.env.TEST_ORIGIN || "http://127.0.0.1:3107";
 const ids = [];
 const files = [];
@@ -283,24 +283,10 @@ try {
     `PASS: ${checks} API integration checks (CRUD, validation, duplicate import, shared costs, document upload, recoverable deletion, concurrency, login, workspace isolation).`,
   );
 } finally {
-  const db = new DatabaseSync(
-    path.join(process.env.DATA_DIR || "data", "archive.sqlite"),
-  );
-  for (const id of ids) {
-    const row = db
-      .prepare("SELECT payload FROM records WHERE id=? AND workspace=?")
-      .get(id, "demo");
-    if (row && JSON.parse(row.payload).title.startsWith("[TEST]"))
-      db.prepare("DELETE FROM records WHERE id=? AND workspace=?").run(
-        id,
-        "demo",
-      );
-  }
-  for (const id of files)
-    try {
-      unlinkSync(
-        path.join(process.env.DATA_DIR || "data", "attachments", "demo", id),
-      );
-    } catch {}
-  db.close();
+  if (!process.env.DATABASE_SCHEMA?.startsWith("test_")) throw new Error("Integration cleanup requires a disposable test schema.");
+  const db = new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${process.env.DATABASE_SCHEMA}` });
+  try {
+    for (const id of ids) await db.query("DELETE FROM records WHERE id=$1 AND workspace='demo' AND payload::jsonb->>'title' LIKE '[TEST]%'", [id]);
+    for (const id of files) await db.query("DELETE FROM attachments WHERE id=$1 AND workspace='demo'", [id]);
+  } finally { await db.end(); }
 }

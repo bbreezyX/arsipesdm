@@ -7,7 +7,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   try {
     const c = await context();
     const { id } = await params;
-    const trip = getTrip(id, c.workspace);
+    const trip = (await getTrip(id, c.workspace));
     if (!trip) throw new Error("NOT_FOUND");
     return Response.json(trip, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
@@ -22,16 +22,16 @@ export async function DELETE(req: Request, { params }: RouteContext) {
     const c = await context();
     const { id } = await params;
     const { version } = await req.json();
-    const result = transaction(() => {
-      const trip = getTrip(id, c.workspace);
+    const result = (await transaction(async () => {
+      const trip = (await getTrip(id, c.workspace));
       if (!trip) throw new Error("NOT_FOUND");
       if (version !== trip.version) throw new Error("CONFLICT");
       if (trip.deletedAt) return trip;
       trip.deletedAt = new Date().toISOString();
       addEvent(trip, "Dipindahkan ke sampah", c.user.name);
-      putTrip(trip, c.workspace);
+      (await putTrip(trip, c.workspace));
       return trip;
-    });
+    }));
     return Response.json(result);
   } catch (e) {
     return apiError(e);
@@ -47,14 +47,14 @@ export async function PATCH(
     const c = await context();
     const { id } = await params;
     const body = await req.json();
-    const result = transaction(() => {
-      const t = getTrip(id, c.workspace);
+    const result = (await transaction(async () => {
+      const t = (await getTrip(id, c.workspace));
       if (!t) throw new Error("NOT_FOUND");
       if (body.version !== t.version) throw new Error("CONFLICT");
       if (body.action === "trash" || body.action === "restore") {
         if (
           body.action === "restore" &&
-          getTrips(c.workspace).some(
+          (await getTrips(c.workspace)).some(
             (x) =>
               x.id !== id && !x.deletedAt && fingerprint(x) === fingerprint(t),
           )
@@ -78,7 +78,7 @@ export async function PATCH(
         if (wasComplete && !input.correctionReason.trim())
           throw new Error("Tuliskan alasan perubahan untuk riwayat arsip.");
         if (
-          getTrips(c.workspace).some(
+          (await getTrips(c.workspace)).some(
             (x) =>
               x.id !== id &&
               !x.deletedAt &&
@@ -98,9 +98,9 @@ export async function PATCH(
           input.correctionReason,
         );
       }
-      putTrip(t, c.workspace);
+      (await putTrip(t, c.workspace));
       return t;
-    });
+    }));
     return Response.json(result);
   } catch (e) {
     return apiError(e);

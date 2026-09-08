@@ -1,6 +1,3 @@
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import {
   randomUUID,
   randomBytes,
@@ -16,38 +13,8 @@ import {
   fingerprint,
 } from "./model";
 
-export const DATA_DIR =
-  process.env.DATA_DIR || path.join(process.cwd(), "data");
-mkdirSync(DATA_DIR, { recursive: true });
-const globalDb = globalThis as unknown as { archiveDb?: DatabaseSync };
-export const db =
-  globalDb.archiveDb ?? new DatabaseSync(path.join(DATA_DIR, "archive.sqlite"));
-globalDb.archiveDb = db;
-db.exec("PRAGMA busy_timeout=5000");
-// WAL setup can return SQLITE_BUSY immediately when fresh worker processes
-// initialize the same new database. Retry only transient lock errors.
-const initializeUntil = Date.now() + 15000;
-for (;;) {
-  try {
-    db.exec(`PRAGMA journal_mode=WAL;
-CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS records_workspace ON records(workspace);
-CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL);`);
-    break;
-  } catch (error) {
-    const code = (error as { errcode?: number }).errcode;
-    if (
-      code === undefined ||
-      ![5, 6].includes(code & 255) ||
-      Date.now() >= initializeUntil
-    )
-      throw error;
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
-  }
-}
+export { db, transaction } from "./postgres";
+import { db, transaction } from "./postgres";
 
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -71,49 +38,23 @@ export function publicUser(row: Record<string, unknown>): User {
 export function sessionHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
-transaction(() => {
-  if (
-    !db.prepare("SELECT id FROM users LIMIT 1").get() &&
-    process.env.ADMIN_PASSWORD &&
-    process.env.ADMIN_EMAIL
-  ) {
-    db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
-      randomUUID(),
-      "Administrator",
-      process.env.ADMIN_EMAIL.toLowerCase(),
-      hashPassword(process.env.ADMIN_PASSWORD),
-      "admin",
-    );
-  }
-});
-export function getTrips(workspace: string): Trip[] {
+export async function getTrips(workspace: string): Promise<Trip[]> {
   return (
-    db
+    (await db
       .prepare("SELECT payload FROM records WHERE workspace=?")
-      .all(workspace) as { payload: string }[]
+      .all(workspace)) as { payload: string }[]
   ).map((row) => JSON.parse(row.payload));
 }
-export function getTrip(id: string, workspace: string): Trip | null {
-  const row = db
+export async function getTrip(id: string, workspace: string): Promise<Trip | null> {
+  const row = (await db
     .prepare("SELECT payload FROM records WHERE id=? AND workspace=?")
-    .get(id, workspace) as { payload: string } | undefined;
+    .get(id, workspace)) as { payload: string } | undefined;
   return row ? JSON.parse(row.payload) : null;
 }
-export function putTrip(t: Trip, workspace: string) {
-  db.prepare(
-    "INSERT INTO records(id,workspace,payload) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE workspace=excluded.workspace",
-  ).run(t.id, workspace, JSON.stringify(t));
-}
-export function transaction<T>(fn: () => T): T {
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const r = fn();
-    db.exec("COMMIT");
-    return r;
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+export async function putTrip(t: Trip, workspace: string) {
+  (await db.prepare(
+    "INSERT INTO records(id,workspace,payload) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE records.workspace=excluded.workspace",
+  ).run(t.id, workspace, JSON.stringify(t)));
 }
 export function addEvent(t: Trip, action: string, actor: string, detail = "") {
   t.history.unshift({
@@ -126,13 +67,13 @@ export function addEvent(t: Trip, action: string, actor: string, detail = "") {
   t.updatedAt = new Date().toISOString();
   t.version++;
 }
-export function newTrip(
+export async function newTrip(
   input: TripInput,
   workspace: string,
   actor: string,
   source = "Input manual",
-): Trip {
-  const existing = getTrips(workspace);
+): Promise<Trip> {
+  const existing = (await getTrips(workspace));
   if (
     existing.some((t) => !t.deletedAt && fingerprint(t) === fingerprint(input))
   )
@@ -163,22 +104,43 @@ export function newTrip(
     source,
     deletedAt: null,
   };
-  putTrip(t, workspace);
+  (await putTrip(t, workspace));
   return t;
 }
-export function getDepartments() {
-  const row = db
+export async function getDepartments() {
+  const row = (await db
     .prepare("SELECT value FROM settings WHERE key=?")
-    .get("departments") as { value: string } | undefined;
+    .get("departments")) as { value: string } | undefined;
   return row ? (JSON.parse(row.value) as string[]) : departments;
 }
 
+let initialization: Promise<void> | undefined;
+export function initializeDatabase() {
+  return initialization ??= bootstrapDatabase().catch(error => { initialization = undefined; throw error; });
+}
+async function bootstrapDatabase() {
+(await transaction(async () => {
+  if (
+    !(await db.prepare("SELECT id FROM users LIMIT 1").get()) &&
+    process.env.ADMIN_PASSWORD &&
+    process.env.ADMIN_EMAIL
+  ) {
+    (await db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
+      randomUUID(),
+      "Administrator",
+      process.env.ADMIN_EMAIL.toLowerCase(),
+      hashPassword(process.env.ADMIN_PASSWORD),
+      "admin",
+    ));
+  }
+}));
+
 if (
   process.env.DEMO_ENABLED === "true" &&
-  !db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded")
+  !(await db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded"))
 ) {
-  transaction(() => {
-    if (db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded"))
+  (await transaction(async () => {
+    if ((await db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded")))
       return;
     const entries = [
       [
@@ -302,7 +264,7 @@ if (
         false,
       ],
     ] as const;
-    entries.forEach((e, i) => {
+    for (const [i, e] of entries.entries()) {
       const [
         title,
         destination,
@@ -315,7 +277,7 @@ if (
       ] = e;
       const end = new Date(startDate);
       end.setUTCDate(end.getUTCDate() + days - 1);
-      const t = newTrip(
+      const t = (await newTrip(
         {
           title,
           destination,
@@ -352,7 +314,7 @@ if (
         "demo",
         "Operator contoh",
         "Data contoh",
-      );
+      ));
       (complete
         ? ["spt", "sppd", "report", "receipt"]
         : ["spt", "sppd"]
@@ -367,8 +329,10 @@ if (
           createdAt: t.createdAt,
         }),
       );
-      putTrip(t, "demo");
-    });
-    db.prepare("INSERT INTO settings VALUES(?,?)").run("demo-seeded", "true");
-  });
+      (await putTrip(t, "demo"));
+    }
+    (await db.prepare("INSERT INTO settings VALUES(?,?)").run("demo-seeded", "true"));
+  }));
+}
+
 }

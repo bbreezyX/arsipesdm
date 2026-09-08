@@ -18,9 +18,9 @@ export async function POST(req: Request) {
           typeof r.source === "string" ? r.source.slice(0, 500) : "Impor Excel",
       };
     });
-    const result = transaction(() => {
+    const result = (await transaction(async () => {
       const fingerprints = new Set(
-        getTrips(c.workspace)
+        (await getTrips(c.workspace))
           .filter((t) => !t.deletedAt)
           .map(fingerprint),
       );
@@ -32,11 +32,11 @@ export async function POST(req: Request) {
           skipped++;
           continue;
         }
-        added.push(newTrip(row.trip, c.workspace, c.user.name, row.source));
+        added.push((await newTrip(row.trip, c.workspace, c.user.name, row.source)));
         fingerprints.add(key);
       }
       return { added, skipped };
-    });
+    }));
     return Response.json(result);
   } catch (e) {
     return apiError(e);

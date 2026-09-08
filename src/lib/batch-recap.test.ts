@@ -1,3 +1,4 @@
+import { setupTestDatabase } from "./test-database";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -115,6 +116,7 @@ test("batch validates every row, rejects repeated employees and malformed ledger
 
 test("atomic batch save, duplicates, retry, workspace isolation, grouping and export", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "rek-batch-test-"));
+  const cleanupDatabase = await setupTestDatabase();
   process.env.DATA_DIR = directory; process.env.DEMO_ENABLED = "false";
   delete process.env.ADMIN_EMAIL; delete process.env.ADMIN_PASSWORD;
   const { db, getTrips } = await import("./db");
@@ -125,26 +127,26 @@ test("atomic batch save, duplicates, retry, workspace isolation, grouping and ex
     trips[1] = setRecapAmount(trips[1], "lodgingCost", 250000);
     trips[0].account = "REKENING-UJI-A";
     trips[1].account = "REKENING-UJI-B";
-    const saved = saveRecapBatch(trips, "office", "Operator uji");
+    const saved = (await saveRecapBatch(trips, "office", "Operator uji"));
     assert.ok(saved.added);
     assert.equal(saved.added.length, 3);
     assert.equal(new Set(saved.added.map(trip => trip.code)).size, 3);
-    assert.equal(getTrips("demo").length, 0);
+    assert.equal((await getTrips("demo")).length, 0);
     assert.equal(saved.added[0].history[0].actor, "Operator uji");
-    assert.deepEqual(saveRecapBatch(trips, "office", "Operator uji"), { duplicate: 0 });
-    assert.equal(getTrips("office").length, 3);
-    for (const trip of getTrips("office")) {
+    assert.deepEqual((await saveRecapBatch(trips, "office", "Operator uji")), { duplicate: 0 });
+    assert.equal((await getTrips("office")).length, 3);
+    for (const trip of (await getTrips("office"))) {
       assert.equal(trip.account, trips.find(input => input.participants[0].id === trip.participants[0].id)!.account);
     }
     const extra = { ...trips[0], sptNo: "NEW-ST" };
-    assert.deepEqual(saveRecapBatch([extra, trips[1]], "office", "Operator uji"), { duplicate: 1 });
-    assert.equal(getTrips("office").length, 3, "one duplicate prevents all new writes");
-    assert.throws(() => saveRecapBatch([extra, extra], "office", "Operator uji"), /DUPLICATE/);
-    assert.equal(getTrips("office").length, 3, "failure after first insert must roll it back");
-    const next = saveRecapBatch([extra], "office", "Operator uji");
+    assert.deepEqual((await saveRecapBatch([extra, trips[1]], "office", "Operator uji")), { duplicate: 1 });
+    assert.equal((await getTrips("office")).length, 3, "one duplicate prevents all new writes");
+    await assert.rejects(async () => (await saveRecapBatch([extra, extra], "office", "Operator uji")), /DUPLICATE/);
+    assert.equal((await getTrips("office")).length, 3, "failure after first insert must roll it back");
+    const next = (await saveRecapBatch([extra], "office", "Operator uji"));
     assert.ok(next.added);
     assert.equal(next.added[0].code, "PD/2025/0004");
-    assert.equal(saveRecapBatch(trips, "demo", "Operator demo").added?.length, 3);
+    assert.equal((await saveRecapBatch(trips, "demo", "Operator demo")).added?.length, 3);
     const grouped = groupTaskLetters(saved.added);
     assert.equal(grouped.letters.length, 1);
     assert.equal(grouped.letters[0].peopleCount, 3);
@@ -157,6 +159,6 @@ test("atomic batch save, duplicates, retry, workspace isolation, grouping and ex
     assert.ok(output.includes("REKENING-UJI-A"));
     assert.ok(output.includes("REKENING-UJI-B"));
   } finally {
-    db.close(); rmSync(directory, { recursive: true, force: true });
+    await db.close(); await cleanupDatabase(); rmSync(directory, { recursive: true, force: true });
   }
 });

@@ -1,51 +1,34 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
-const directory = mkdtempSync(path.join(tmpdir(), "rek-init-"));
+import { Pool } from "pg";
+import { randomUUID } from "node:crypto";
+if (!process.env.TEST_DATABASE_URL) throw new Error("Set TEST_DATABASE_URL");
+const schema = `test_${randomUUID().replaceAll("-", "")}`;
+const admin = new Pool({connectionString: process.env.TEST_DATABASE_URL});
+await admin.query(`CREATE SCHEMA ${schema}`);
 const moduleUrl = new URL("../src/lib/db.ts", import.meta.url).href;
-const run = () =>
-  new Promise((resolve, reject) => {
-    const script = `const imported=await import(${JSON.stringify(moduleUrl)});const db=imported.db??imported.default.db;console.log(JSON.stringify({users:db.prepare('SELECT count(*) AS n FROM users').get().n,records:db.prepare('SELECT count(*) AS n FROM records').get().n}));db.close();`;
-    const child = spawn(
-      process.execPath,
-      ["--import", "tsx", "--input-type=module", "-e", script],
-      {
-        env: {
-          ...process.env,
-          DATA_DIR: directory,
-          DEMO_ENABLED: "true",
-          ADMIN_EMAIL: "test@example.local",
-          ADMIN_PASSWORD: "TestBootstrapPasswordOnly",
-        },
-      },
-    );
-    let output = "",
-      error = "";
-    child.stdout.on("data", (data) => (output += data));
-    child.stderr.on("data", (data) => (error += data));
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code) reject(new Error(error));
-      else {
-        try {
-          resolve(JSON.parse(output));
-        } catch (e) {
-          reject(e);
-        }
-      }
-    });
+const run = () => new Promise((resolve, reject) => {
+  const script = `const imported=await import(${JSON.stringify(moduleUrl)});const m=imported.default??imported;await m.initializeDatabase();console.log(JSON.stringify({users:Number((await m.db.prepare('SELECT count(*) AS n FROM users').get()).n),records:Number((await m.db.prepare('SELECT count(*) AS n FROM records').get()).n)}));await m.db.close();`;
+  const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script], {
+    env: {...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL, DATABASE_SCHEMA: schema, DEMO_ENABLED: "true", ADMIN_EMAIL: "test@example.local", ADMIN_PASSWORD: "TestBootstrapPasswordOnly"},
   });
+  let output = "", error = "";
+  child.stdout.on("data", data => output += data);
+  child.stderr.on("data", data => error += data);
+  child.on("error", reject);
+  child.on("close", code => {
+    if (code) reject(new Error(error));
+    else { try { resolve(JSON.parse(output)); } catch (e) { reject(e); } }
+  });
+});
 try {
-  const results = await Promise.allSettled(Array.from({ length: 5 }, run));
+  const results = await Promise.allSettled(Array.from({length: 5}, run));
   for (const result of results) {
     if (result.status === "rejected") throw result.reason;
-    assert.deepEqual(result.value, { users: 1, records: 12 });
+    assert.deepEqual(result.value, {users: 1, records: 12});
   }
-  console.log(
-    "PASS: five concurrent initializations; exactly one administrator and 12 demo archives.",
-  );
+  console.log("PASS: five concurrent PostgreSQL initializations; exactly one administrator and 12 demo archives.");
 } finally {
-  rmSync(directory, { recursive: true, force: true });
+  await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+  await admin.end();
 }

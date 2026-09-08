@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return Response.json({ error: issue.message, index: issue.path[1] }, { status: 422 });
     }
     // The duplicate check and every write share one lock and one rollback boundary.
-    const result = saveRecapBatch(parsed.data.trips, c.workspace, c.user.name);
+    const result = (await saveRecapBatch(parsed.data.trips, c.workspace, c.user.name));
     if ("duplicate" in result) return Response.json({
       error: `Rekap ${parsed.data.trips[result.duplicate!].participants[0].name} sudah ada. Tidak ada rekap baru yang disimpan. Hapus pilihan pegawai tersebut atau periksa daftar arsip.`,
       index: result.duplicate,

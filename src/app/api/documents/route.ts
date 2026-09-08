@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
-import path from "node:path";
 import { context, checkOrigin, apiError } from "@/lib/auth";
-import { getTrip, putTrip, transaction, addEvent, DATA_DIR } from "@/lib/db";
+import { getTrip, putTrip, transaction, addEvent, db } from "@/lib/db";
 import { docLabels, type DocumentItem } from "@/lib/model";
 export async function POST(req: Request) {
-  let stored: string | undefined;
+  let content: Buffer | undefined;
   try {
     checkOrigin(req);
     const c = await context();
@@ -47,10 +45,7 @@ export async function POST(req: Request) {
           .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
       if (!valid)
         throw new Error("Isi berkas harus berupa PDF, JPG, atau PNG.");
-      const dir = path.join(DATA_DIR, "attachments", c.workspace);
-      mkdirSync(dir, { recursive: true });
-      stored = path.join(dir, id);
-      writeFileSync(stored, buffer, { flag: "wx", mode: 0o600 });
+      content = buffer;
       doc = {
         id,
         type,
@@ -61,10 +56,11 @@ export async function POST(req: Request) {
         createdAt: new Date().toISOString(),
       };
     }
-    const result = transaction(() => {
-      const t = getTrip(tripId, c.workspace);
+    const result = (await transaction(async () => {
+      const t = (await getTrip(tripId, c.workspace));
       if (!t || t.deletedAt) throw new Error("NOT_FOUND");
       if (t.version !== version) throw new Error("CONFLICT");
+      if (content) await db.prepare("INSERT INTO attachments(workspace,id,content) VALUES(?,?,?)").run(c.workspace, id, content);
       t.documents.push(doc);
       addEvent(
         t,
@@ -72,15 +68,11 @@ export async function POST(req: Request) {
         c.user.name,
         docLabels[type] + ": " + (physical ? doc.location : doc.name),
       );
-      putTrip(t, c.workspace);
+      (await putTrip(t, c.workspace));
       return t;
-    });
+    }));
     return Response.json(result, { status: 201 });
   } catch (e) {
-    if (stored)
-      try {
-        unlinkSync(stored);
-      } catch {}
     return apiError(e);
   }
 }

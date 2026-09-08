@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { context, apiError } from "@/lib/auth";
-import { getTrips, DATA_DIR } from "@/lib/db";
+import { getTrips, db } from "@/lib/db";
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -10,21 +8,21 @@ export async function GET(
     const c = await context();
     const { id } = await params;
     if (!/^[\da-f-]{36}$/.test(id)) throw new Error("NOT_FOUND");
-    const doc = getTrips(c.workspace)
+    const doc = (await getTrips(c.workspace))
       .filter((t) => !t.deletedAt)
       .flatMap((t) => t.documents)
       .find((d) => d.id === id && d.kind === "file");
     if (!doc) throw new Error("NOT_FOUND");
-    const bytes = readFileSync(
-      path.join(DATA_DIR, "attachments", c.workspace, id),
-    );
+    const attachment = await db.prepare("SELECT content FROM attachments WHERE workspace=? AND id=?").get(c.workspace, id);
+    if (!attachment) throw new Error("NOT_FOUND");
+    const bytes = attachment.content as Buffer;
     const type =
       bytes.subarray(0, 5).toString() === "%PDF-"
         ? "application/pdf"
         : bytes[0] === 137
           ? "image/png"
           : "image/jpeg";
-    return new Response(bytes, {
+    return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": type,
         "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(doc.name)}`,

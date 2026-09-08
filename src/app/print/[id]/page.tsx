@@ -18,7 +18,7 @@ export default async function PrintPage({
 }) {
   const c = await context();
   const { id } = await params;
-  const t = getTrip(id, c.workspace);
+  const t = (await getTrip(id, c.workspace));
   if (!t || t.deletedAt) notFound();
   return (
     <main
