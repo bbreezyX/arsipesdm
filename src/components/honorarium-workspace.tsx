@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Copy, Eye, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Wallet } from "lucide-react";
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
@@ -38,13 +38,13 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
   }, [records, category, year, query, deleted]);
   const totals = visible.reduce((sum, record) => { const value = honorariumTotals(record); return {gross: sum.gross + value.gross, tax: sum.tax + value.tax, net: sum.net + value.net}; }, {gross: 0, tax: 0, net: 0});
   function reset() { setQuery(""); setCategory("all"); setYear("all"); }
-  function update(record: Honorarium) { setRecords(current => current.some(r => r.id === record.id) ? current.map(r => r.id === record.id ? record : r) : [record, ...current]); }
+  const update = useCallback((record: Honorarium) => { setRecords(current => current.some(r => r.id === record.id) ? current.map(r => r.id === record.id ? record : r) : [record, ...current]); }, []);
   async function reload() {
     setBusy(true); setError("");
     try { setRecords(await api<Honorarium[]>("/api/honorariums", {cache: "no-store"})); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  async function open(record: Honorarium, action: "detail" | "edit" | "delete" | "copy") {
+  const open = useCallback(async (record: Honorarium, action: "detail" | "edit" | "delete" | "copy") => {
     setBusy(true); setError("");
     try {
       const latest = await api<Honorarium>(`/api/honorariums/${record.id}`, {cache: "no-store"}); update(latest);
@@ -57,15 +57,15 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
           skName: latest.skName, department: latest.department, program: latest.program, activity: latest.activity, subActivity: latest.subActivity});
       }
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
-  }
-  async function change(record: Honorarium, restore: boolean) {
+  }, [update]);
+  const change = useCallback(async (record: Honorarium, restore: boolean) => {
     setBusy(true); setError("");
     try {
       update(await api<Honorarium>(`/api/honorariums/${record.id}`, {method: restore ? "PATCH" : "DELETE", headers: {"Content-Type": "application/json"}, body: JSON.stringify({version: record.version, ...(restore ? {action: "restore"} : {})})}));
       setRemoving(null); onToast(restore ? "Honorarium dipulihkan." : "Honorarium dipindahkan ke daftar Terhapus.");
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
-  }
-  function actions(record: Honorarium) {
+  }, [update, onToast]);
+  const actions = useCallback((record: Honorarium) => {
     return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" disabled={busy} aria-label={`Aksi honorarium ${record.recipient}`}><MoreHorizontal size={17} /></Button></DropdownMenuTrigger>
       <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => open(record, "detail")}><Eye size={15} />Lihat detail</DropdownMenuItem>
         {record.deletedAt ? <DropdownMenuItem onSelect={() => change(record, true)}><RotateCcw size={15} />Pulihkan honorarium</DropdownMenuItem> : <>
@@ -74,8 +74,8 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
           <DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => open(record, "delete")}><Trash2 size={15} />Hapus honorarium</DropdownMenuItem>
         </>}
       </DropdownMenuContent></DropdownMenu>;
-  }
-  const columns: ColumnDef<Honorarium>[] = [
+  }, [busy, open, change]);
+  const columns = useMemo<ColumnDef<Honorarium>[]>(() => [
     {id: "recipient", accessorKey: "recipient", header: "Penerima honor", size: 240, enableHiding: false,
       cell: ({row}) => <div className="employee-register-identity"><button disabled={busy} className="register-reference" onClick={() => open(row.original, "detail")}>{row.original.recipient}</button><small className="register-cell-note">{row.original.skPosition}</small></div>},
     {id: "skNumber", accessorKey: "skNumber", header: "Dasar SK", size: 235,
@@ -86,7 +86,7 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
     {id: "tax", accessorFn: r => honorariumTotals(r).tax, header: "Pajak", size: 135, cell: ({row}) => <span className="honorarium-number">{money(honorariumTotals(row.original).tax)}</span>},
     {id: "net", accessorFn: r => honorariumTotals(r).net, header: "Netto", size: 150, cell: ({row}) => <strong className="honorarium-number">{money(honorariumTotals(row.original).net)}</strong>},
     {id: "actions", header: "Aksi", size: 70, enableSorting: false, enableHiding: false, cell: ({row}) => actions(row.original)},
-  ];
+  ], [busy, open, actions]);
   const filtersActive = Boolean(query || category !== "all" || year !== "all");
   return <div className="honorarium-workspace">
     <section className="honorarium-summary" aria-label="Ringkasan honorarium sesuai filter"><div><span>{deleted ? "Rekap terhapus" : "Rekap sesuai filter"}</span><strong>{visible.length}<small> rekap</small></strong></div>

@@ -42,6 +42,7 @@ import {
   Check,
   Pencil,
   Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -467,7 +468,6 @@ export default function Workspace({
         <main className={`workspace-main ${section === "archives" ? "workspace-archives" : ""}`}>
           <div className="page-heading">
             <div>
-              <div className="page-eyebrow">Dinas ESDM Provinsi Jambi</div>
               <h1>{sectionNames[section]}</h1>
               <p>
                 {section === "archives"
@@ -1537,9 +1537,28 @@ function Settings({
 export function OfficeLogin() {
   return <Login forced standalone onClose={() => {}} />;
 }
-function Login({ forced, onClose, standalone = false }: { forced: boolean; onClose: () => void; standalone?: boolean }) {
+function OfficialLetterhead({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`auth-kop ${compact ? "compact" : ""}`}>
+      <span className="auth-crest">
+        <img
+          src="/logo-esdm-jambi.png"
+          alt="Lambang Provinsi Jambi"
+          width="371"
+          height="57"
+        />
+      </span>
+      <div className="auth-kop-name">
+        <span>Pemerintah Provinsi Jambi</span>
+        <strong>Dinas Energi dan Sumber Daya Mineral</strong>
+      </div>
+    </div>
+  );
+}
+function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -1557,59 +1576,93 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
       setBusy(false);
     }
   }
-  const Title = standalone ? "h1" : DialogTitle;
-  const Description = standalone ? "p" : DialogDescription;
-  const content = (
-    <>
-        <DialogHeader>
-          <div className="login-icon">
-            <LockKeyhole size={25} />
-          </div>
-          <Title className="text-lg font-semibold">Masuk ke arsip kantor</Title>
-          <Description className="text-sm text-muted-foreground">
-            Gunakan akun operator untuk mengelola arsip perjalanan dinas
-            Dinas ESDM Provinsi Jambi.
-          </Description>
-        </DialogHeader>
-        <form onSubmit={submit}>
-          <Field label="Email operator">
-            <input
-              type="email"
-              name="email"
-              placeholder="Email akun operator"
-              autoComplete="username"
-              required
-              autoFocus
-            />
-          </Field>
-          <Field label="Kata sandi">
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-            />
-          </Field>
-          <ErrorMessage message={error} />
-          <Button className="w-full" type="submit" disabled={busy}>
-            {busy ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <LockKeyhole size={15} />
-            )}
-            Masuk
-          </Button>
-          <p className="field-hint text-center">
-            Akun disediakan oleh administrator arsip kantor.
-          </p>
-        </form>
-    </>
+  return (
+    <form className="auth-form" onSubmit={submit}>
+      <Field label="Email operator">
+        <input
+          type="email"
+          name="email"
+          placeholder="nama@instansi.go.id"
+          autoComplete="username"
+          required
+          autoFocus
+        />
+      </Field>
+      <Field label="Kata sandi">
+        <span className="auth-password">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            autoComplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            aria-label={
+              showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"
+            }
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </span>
+      </Field>
+      <ErrorMessage message={error} />
+      <Button className="auth-submit w-full" type="submit" disabled={busy}>
+        {busy ? <LoaderCircle className="animate-spin" /> : null}
+        {busy ? "Memeriksa akun" : "Masuk"}
+      </Button>
+      <p className="auth-form-note">
+        Akun disediakan oleh administrator arsip kantor.
+      </p>
+    </form>
   );
+}
+function Login({ forced, onClose, standalone = false }: { forced: boolean; onClose: () => void; standalone?: boolean }) {
   if (standalone) {
     return (
-      <main className="office-login-page">
-        <section className="office-login-card login-dialog" aria-label="Autentikasi kantor">
-          {content}
+      <main className="auth-page">
+        <section className="auth-brand" aria-label="Sambutan">
+          <p className="auth-brand-tag">
+            <span>Arsip perjalanan dinas</span>
+          </p>
+          <div className="auth-brand-hero">
+            <h1>
+              Arsip rapi,
+              <br />
+              laporan siap.
+            </h1>
+            <p>
+              Surat tugas, rekap biaya, honorarium, dan dokumen perjalanan
+              dinas tersimpan dalam satu ruang arsip kantor.
+            </p>
+          </div>
+        </section>
+        <section className="auth-side" aria-labelledby="auth-title">
+          <div className="auth-brand-mark">
+            <span className="auth-crest">
+              <img
+                src="/logo-esdm-jambi.png"
+                alt="Lambang Provinsi Jambi"
+                width="371"
+                height="57"
+              />
+            </span>
+            <span className="auth-brand-label">
+              <strong>Dinas ESDM</strong>
+              <span>Provinsi Jambi</span>
+            </span>
+          </div>
+          <div className="auth-panel">
+            <h2 id="auth-title">Masuk</h2>
+            <p>Masukkan email dan kata sandi operator untuk membuka arsip kantor.</p>
+            <LoginForm />
+          </div>
+          <footer className="auth-foot">
+            <span>© {new Date().getFullYear()} Dinas ESDM Provinsi Jambi</span>
+            <span>Akses hanya untuk operator terdaftar</span>
+          </footer>
         </section>
       </main>
     );
@@ -1618,11 +1671,20 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !forced && !busy) onClose();
+        if (!open && !forced) onClose();
       }}
     >
       <DialogContent className="login-dialog" showCloseButton={!forced}>
-        {content}
+        <DialogHeader className="auth-dialog-head">
+          <OfficialLetterhead compact />
+          <DialogTitle className="text-lg font-semibold">
+            Masuk ke arsip kantor
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Gunakan akun operator yang disediakan administrator.
+          </DialogDescription>
+        </DialogHeader>
+        <LoginForm />
       </DialogContent>
     </Dialog>
   );
