@@ -265,7 +265,8 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
 function styleLampiranSheet(sheet: Worksheet) {
   const width = sheet.columnCount;
   const lastRow = sheet.rowCount;
-  const titleFonts = [font(14, { bold: true }), font(11, { bold: true }), font(10)];
+  const heading = { bold: true, color: palette.black };
+  const titleFonts = [font(14, heading), font(11, heading), font(10, { color: palette.black })];
   titleFonts.forEach((style, index) => {
     const row = sheet.getRow(index + 1);
     row.height = index === 0 ? 24 : 16;
@@ -349,6 +350,35 @@ export async function createTemplateWorkbook() {
 }
 
 const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+/** Official download names: uppercase Indonesian words, spaces, no characters Windows rejects. */
+export function exportFilename(...parts: Array<string | null | undefined>) {
+  const name = parts
+    .flatMap((part) => String(part ?? "").trim().split(/\s+/))
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleUpperCase("id-ID")
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${name}.xlsx`;
+}
+export const exportDateStamp = (date = new Date()) =>
+  new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+
+export function tripExportFilename(label: string, exportedAt = new Date()) {
+  const scope =
+    label === "contoh" ? "DATA CONTOH"
+    : label === "semua-tahun" ? "SEMUA TAHUN"
+    : /^\d{4}$/.test(label) ? `TAHUN ${label}`
+    : label;
+  return exportFilename("REKAPITULASI ARSIP PERJALANAN DINAS ESDM", scope, exportDateStamp(exportedAt));
+}
+
 export async function saveWorkbook(book: Workbook, filename: string) {
   const buffer = await book.xlsx.writeBuffer();
   const url = URL.createObjectURL(new Blob([buffer], { type: mime }));
@@ -361,12 +391,8 @@ export async function saveWorkbook(book: Workbook, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function exportTrips(trips: Trip[], label: string) {
-  const book = await createTripWorkbook(trips);
-  await saveWorkbook(
-    book,
-    `Rekap-perjalanan-${label}-${new Date().toISOString().slice(0, 10)}.xlsx`,
-  );
+  await saveWorkbook(await createTripWorkbook(trips), tripExportFilename(label));
 }
 export async function downloadTemplate() {
-  await saveWorkbook(await createTemplateWorkbook(), "Template-arsip-perjalanan-ESDM.xlsx");
+  await saveWorkbook(await createTemplateWorkbook(), exportFilename("TEMPLATE ARSIP PERJALANAN DINAS ESDM"));
 }

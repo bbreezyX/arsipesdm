@@ -70,7 +70,7 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
   const units = [...new Set(selected.map((t) => t.department))];
   const rows: unknown[][] = [
     [outside ? "REKAPITULASI BELANJA PERJALANAN DINAS LUAR PROVINSI JAMBI" : "REKAPITULASI BELANJA PERJALANAN DINAS LUAR DAERAH DALAM PROVINSI JAMBI"],
-    ["RAPAT RAPAT KOORDINASI DAN KONSULTASI SKPD"],
+    ["RAPAT KOORDINASI DAN KONSULTASI SKPD"],
     [
       `SKPD : Dinas ESDM${units.length === 1 ? ` ( ${units[0]} )` : " — bidang tercantum per baris"}`,
     ],

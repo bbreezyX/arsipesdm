@@ -1,5 +1,5 @@
 import { honorariumCategories, honorariumTotals, type Honorarium } from "./honorarium";
-import { addTable, saveWorkbook, type ExportOptions } from "./export";
+import { addTable, exportDateStamp, exportFilename, saveWorkbook, type ExportOptions } from "./export";
 import { loadExcelJs, type ColumnSpec, type GroupSpec } from "./excel-layout";
 
 export const honorariumTitle = (year: number | string) =>
@@ -95,11 +95,30 @@ export async function createHonorariumWorkbook(records: Honorarium[], options: H
   return book;
 }
 
+export function honorariumExportFilename(
+  filters: { year: string; category: string; deleted?: boolean },
+  exportedAt = new Date(),
+) {
+  const kind = filters.category in honorariumCategories
+    ? honorariumCategories[filters.category as keyof typeof honorariumCategories]
+    : null;
+  const year = /^\d{4}$/.test(filters.year) ? `TAHUN ANGGARAN ${filters.year}` : "SEMUA TAHUN";
+  return exportFilename(
+    kind ? "HONORARIUM" : "HONORARIUM PENANGGUNGJAWABAN PENGELOLA KEUANGAN",
+    kind ?? "SEMUA JENIS",
+    year,
+    filters.deleted ? "REKAP TERHAPUS" : null,
+    exportDateStamp(exportedAt),
+  );
+}
+
 export async function exportHonorariums(
   records: Honorarium[],
   filters: { year: string; category: string; deleted?: boolean },
 ) {
   const year = /^\d{4}$/.test(filters.year) ? filters.year : undefined;
-  const book = await createHonorariumWorkbook(records, { year });
-  await saveWorkbook(book, `Honorarium-${year ?? "semua-tahun"}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  await saveWorkbook(
+    await createHonorariumWorkbook(records, { year }),
+    honorariumExportFilename(filters),
+  );
 }

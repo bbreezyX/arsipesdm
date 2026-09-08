@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
 import type { WorkBook, WorkSheet } from "xlsx";
 import type { Workbook as ExcelWorkbook } from "exceljs";
-import { createTripWorkbook, createTemplateWorkbook } from "./export";
+import { createTripWorkbook, createTemplateWorkbook, tripExportFilename } from "./export";
 import { loadExcelJs } from "./excel-layout";
 import { type Trip, tripSchema } from "./model";
 import { convertRows, detectHeaderRow, isSummaryRow, suggestMapping } from "./import";
@@ -142,6 +142,21 @@ test("exported register opens with a centered title block, grouped headings and 
   const grid = XLSX.utils.sheet_to_json<unknown[]>(register, { header: 1, blankrows: true });
   assert.equal(detectHeaderRow(grid), 6);
   assert.equal(isSummaryRow(grid[8]), true);
+});
+test("trip export filenames are uppercase, scoped, and dated in Indonesian", () => {
+  const exportedAt = new Date("2026-09-08T03:00:00Z");
+  assert.equal(
+    tripExportFilename("2026", exportedAt),
+    "REKAPITULASI ARSIP PERJALANAN DINAS ESDM TAHUN 2026 8 SEPTEMBER 2026.xlsx",
+  );
+  assert.equal(
+    tripExportFilename("semua-tahun", exportedAt),
+    "REKAPITULASI ARSIP PERJALANAN DINAS ESDM SEMUA TAHUN 8 SEPTEMBER 2026.xlsx",
+  );
+  assert.equal(
+    tripExportFilename("contoh", exportedAt),
+    "REKAPITULASI ARSIP PERJALANAN DINAS ESDM DATA CONTOH 8 SEPTEMBER 2026.xlsx",
+  );
 });
 test("detectHeaderRow falls back to the first row and ignores title text", () => {
   assert.equal(detectHeaderRow([["Judul"], [], ["Uraian perjalanan", "Tujuan", "Pegawai"], ["x", "y", "z"]]), 3);

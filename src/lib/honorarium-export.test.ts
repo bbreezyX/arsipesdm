@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
 import type { Workbook as ExcelWorkbook } from "exceljs";
-import { createHonorariumWorkbook, honorariumTitle } from "./honorarium-export";
+import { createHonorariumWorkbook, honorariumExportFilename, honorariumTitle } from "./honorarium-export";
 import { newHonorarium, type Honorarium } from "./honorarium";
 
 function record(patch: Partial<Honorarium>): Honorarium {
@@ -67,4 +67,16 @@ test("empty export still carries the requested year in the title", async () => {
   const rows = grid(reopened.Sheets["Honorarium 2026"]);
   assert.equal(rows[2][0], "Honorarium Penanggungjawaban Pengelola Keuangan Tahun Anggaran 2026");
   assert.equal(rows[6][0], "Tidak ada rekap honorarium pada pilihan ini.");
+});
+
+test("honorarium export filenames are uppercase, scoped, and dated in Indonesian", () => {
+  const exportedAt = new Date("2026-09-08T03:00:00Z");
+  assert.equal(
+    honorariumExportFilename({ year: "2026", category: "all" }, exportedAt),
+    "HONORARIUM PENANGGUNGJAWABAN PENGELOLA KEUANGAN SEMUA JENIS TAHUN ANGGARAN 2026 8 SEPTEMBER 2026.xlsx",
+  );
+  assert.equal(
+    honorariumExportFilename({ year: "all", category: "finance", deleted: true }, exportedAt),
+    "HONORARIUM PENGELOLA KEUANGAN SEMUA TAHUN REKAP TERHAPUS 8 SEPTEMBER 2026.xlsx",
+  );
 });

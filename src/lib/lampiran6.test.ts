@@ -9,6 +9,7 @@ import {
   groundTransportSchema,
 } from "./lampiran6-schema";
 import { createTripWorkbook } from "./export";
+import { loadExcelJs } from "./excel-layout";
 import { totalCost, tripSchema, fingerprint, type Trip } from "./model";
 import { formatDestinations } from "./destinations";
 
@@ -242,6 +243,14 @@ test("source-shaped XLSX round trip preserves identifiers, per-person amounts, e
   trips[0].destinations = ["Kabupaten Bungo", "Kabupaten Tebo"];
   trips[0].destination = formatDestinations(trips[0].destinations);
   const book = await createTripWorkbook(trips);
+  const ExcelJS = await loadExcelJs();
+  const styled = new ExcelJS.Workbook();
+  await styled.xlsx.load(await book.xlsx.writeBuffer());
+  const dalam = styled.getWorksheet("Luar Daerah (Dalam Provinsi)")!;
+  assert.equal(dalam.getCell("A1").value, "REKAPITULASI BELANJA PERJALANAN DINAS LUAR DAERAH DALAM PROVINSI JAMBI");
+  assert.equal(dalam.getCell("A2").value, "RAPAT KOORDINASI DAN KONSULTASI SKPD");
+  assert.equal(dalam.getCell("A1").font?.color?.argb, "FF000000");
+  assert.equal(dalam.getCell("A2").font?.color?.argb, "FF000000");
   const reopened = XLSX.read(
     Buffer.from(await book.xlsx.writeBuffer()),
     { type: "buffer", cellDates: true },
