@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/source-sans-3";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Arsip Perjalanan | Dinas ESDM Jambi",
