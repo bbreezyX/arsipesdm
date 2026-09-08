@@ -62,10 +62,10 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
           {form.category === "finance" && textField("subActivity", "Nama subkegiatan", false, true)}
         </div></section>
         <section className="form-section"><h3><Users size={17} />Penerima honor</h3>
-          {employees.length > 0 && <Field label="Ambil dari daftar pegawai" hint="Opsional. Identitas tetap dapat disesuaikan untuk rekap ini."><CustomSelect value="" placeholder="Pilih pegawai…" onValueChange={id => {
+          {employees.length > 0 && <Field label="Ambil dari daftar pegawai" hint="Opsional. Identitas tetap dapat disesuaikan untuk rekap ini."><CustomSelect value="" onValueChange={id => {
             const person = employees.find(p => p.id === id);
             if (person) patch({recipient: person.name, position: person.position, recipientDepartment: person.department || form.recipientDepartment});
-          }}>{employees.map(person => <SelectOption key={person.id} value={person.id}>{person.name}{person.department ? ` — ${person.department}` : ""}</SelectOption>)}</CustomSelect></Field>}
+          }}><SelectOption value="" disabled>Pilih pegawai…</SelectOption>{employees.map(person => <SelectOption key={person.id} value={person.id}>{person.name}{person.department ? ` — ${person.department}` : ""}</SelectOption>)}</CustomSelect></Field>}
           <div className="form-grid">
             {textField("recipient", "Nama pejabat / penerima", true)}
             {textField("skPosition", "Jabatan dalam SK", true)}
