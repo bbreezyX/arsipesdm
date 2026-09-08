@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Copy, Eye, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Wallet } from "lucide-react";
+import { Copy, Eye, FileSpreadsheet, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Wallet } from "lucide-react";
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
+import { exportHonorariums } from "@/lib/honorarium-export";
 import { money } from "@/lib/model";
 import { api, Empty, ErrorMessage, Field } from "./fields";
 import DataRegister from "./data-register";
@@ -43,6 +44,11 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
     setBusy(true); setError("");
     try { setRecords(await api<Honorarium[]>("/api/honorariums", {cache: "no-store"})); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  async function exportRows() {
+    setBusy(true); setError("");
+    try { await exportHonorariums(visible, {year, category, deleted}); onToast(`${visible.length} rekap honorarium diekspor ke Excel.`); }
+    catch { setError("Ekspor belum berhasil. Silakan coba lagi."); } finally { setBusy(false); }
   }
   const open = useCallback(async (record: Honorarium, action: "detail" | "edit" | "delete" | "copy") => {
     setBusy(true); setError("");
@@ -92,7 +98,7 @@ export default function HonorariumWorkspace({initialRecords, employees, onToast}
     <section className="honorarium-summary" aria-label="Ringkasan honorarium sesuai filter"><div><span>{deleted ? "Rekap terhapus" : "Rekap sesuai filter"}</span><strong>{visible.length}<small> rekap</small></strong></div>
       <div><span>Total bruto</span><strong>{money(totals.gross)}</strong></div><div><span>Total pajak</span><strong>{money(totals.tax)}</strong></div><div><span>Total netto</span><strong>{money(totals.net)}</strong></div>
     </section>
-    <section className="archive-panel secondary-register-page honorarium-panel"><div className="register-heading"><div><h2>Daftar honorarium</h2><p>Kelola penerima, dasar SK, dan rincian honor sesuai Lampiran 3.</p></div><div className="honorarium-actions"><Button variant="outline" size="sm" disabled={busy} onClick={reload}>{busy ? <LoaderCircle className="animate-spin" size={15} /> : <RotateCcw size={15} />}Muat ulang</Button><Button size="sm" disabled={busy} onClick={() => {setError(""); setEditor(newHonorarium());}}><Plus size={15} />Tambah honorarium</Button></div></div>
+    <section className="archive-panel secondary-register-page honorarium-panel"><div className="register-heading"><div><h2>Daftar honorarium</h2><p>Kelola penerima, dasar SK, dan rincian honor sesuai Lampiran 3.</p></div><div className="honorarium-actions"><Button variant="outline" size="sm" disabled={busy} onClick={reload}>{busy ? <LoaderCircle className="animate-spin" size={15} /> : <RotateCcw size={15} />}Muat ulang</Button><Button variant="outline" size="sm" disabled={busy || !visible.length} onClick={exportRows}><FileSpreadsheet size={15} />Ekspor Excel</Button><Button size="sm" disabled={busy} onClick={() => {setError(""); setEditor(newHonorarium());}}><Plus size={15} />Tambah honorarium</Button></div></div>
       <div className="register-tabs" role="group" aria-label="Status honorarium"><button className={!deleted ? "active" : undefined} aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <span>{records.filter(r => !r.deletedAt).length}</span></button><button className={deleted ? "active" : undefined} aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <span>{records.filter(r => r.deletedAt).length}</span></button></div>
       <div className="register-filters honorarium-filters"><div className="register-search-field"><label htmlFor="honorarium-search">Cari honorarium</label><div className="search-control"><Search size={16} /><input id="honorarium-search" placeholder="Nama penerima, nomor SK, atau kegiatan…" value={query} onChange={e => setQuery(e.target.value)} /></div></div>
         <Field label="Jenis honorarium"><CustomSelect value={category} onValueChange={setCategory}><SelectOption value="all">Semua jenis</SelectOption>{Object.entries(honorariumCategories).map(([key, name]) => <SelectOption key={key} value={key}>{name}</SelectOption>)}</CustomSelect></Field>

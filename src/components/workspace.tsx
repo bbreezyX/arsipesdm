@@ -5,6 +5,9 @@ import { buildTripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
+import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-navigation";
+export type { Section } from "@/lib/workspace-navigation";
 import {
   Archive,
   BarChart3,
@@ -84,8 +87,7 @@ const TaskLetters = dynamic(() => import("./task-letters"));
 const TripForm = dynamic(() => import("./trip-form"));
 const TripDetail = dynamic(() => import("./trip-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
-export type Section =
-  "archives" | "taskLetters" | "reports" | "documents" | "people" | "settings" | "trash" | "honorarium";
+
 const sectionNames: Record<Section, string> = {
   archives: "Arsip perjalanan",
   honorarium: "Honorarium",
@@ -131,7 +133,8 @@ export default function Workspace({
   const [employees, setEmployees] = useState(initialEmployees);
   const [trips, setTrips] = useState(initialTrips);
   const [departments, setDepartments] = useState(initialDepartments);
-  const [section, setSection] = useState<Section>(initialSection);
+  const pathname = usePathname();
+  const section = sectionFromPath(pathname) ?? initialSection;
   const [filters, setFilters] = useState<Filters>({
     ...defaultFilters,
     year: initialTrips.length
@@ -211,8 +214,8 @@ export default function Workspace({
   };
   const go = (s: Section) => {
     if (s === "honorarium" && section !== "honorarium") { window.location.assign("/honorarium"); return; }
-    if (section === "honorarium" && s !== "honorarium") { window.location.assign(`/?section=${s}`); return; }
-    setSection(s);
+    if (section === "honorarium" && s !== "honorarium") { window.location.assign(sectionPaths[s]); return; }
+    if (s !== section) window.history.pushState(null, "", sectionPaths[s]);
     setNavOpen(false);
     setSelected(new Set());
   };

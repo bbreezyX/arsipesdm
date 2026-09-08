@@ -23,16 +23,16 @@ import {
 } from "./excel-layout";
 
 export type ExportOptions = { scope?: string; exportedAt?: Date };
-const exportedOn = (date: Date) =>
+export const exportedOn = (date: Date) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "Asia/Jakarta",
   }).format(date);
-const count = (n: number, unit: string) => `${n.toLocaleString("id-ID")} ${unit}`;
+export const count = (n: number, unit: string) => `${n.toLocaleString("id-ID")} ${unit}`;
 
-type TableSpec = {
+export type TableSpec = {
   name: string;
   title: string;
   scope: string;
@@ -46,19 +46,28 @@ type TableSpec = {
   empty: string;
 };
 
-function addTable(book: Workbook, spec: TableSpec): Worksheet {
+/** A row value is a literal, or a function of the sheet row that builds a formula with its cached result. */
+const resolveCell = (value: unknown, rowIndex: number): CellValue =>
+  (typeof value === "function" ? (value as (row: number) => unknown)(rowIndex) : value) as CellValue;
+const numeric = (value: CellValue): number =>
+  typeof value === "number" ? value
+  : value && typeof value === "object" && "result" in value && typeof value.result === "number" ? value.result
+  : 0;
+
+export function addTable(book: Workbook, spec: TableSpec): Worksheet {
   const sheet = book.addWorksheet(spec.name, { properties: { tabColor: { argb: palette.navy } } });
   const width = spec.columns.length;
   const firstHeader = addTitleBlock(sheet, width, { title: spec.title, scope: spec.scope, note: spec.note });
   const firstData = addTableHeader(sheet, firstHeader, spec.columns, spec.groups);
+  const totals = new Map<number, number>((spec.sums ?? []).map((column) => [column, 0]));
   spec.rows.forEach((values, index) => {
     const rowIndex = firstData + index;
     const row = sheet.getRow(rowIndex);
     values.forEach((value, column) => {
       if (value === null || value === undefined) return;
-      row.getCell(column + 1).value = (
-        typeof value === "function" ? (value as (row: number) => unknown)(rowIndex) : value
-      ) as CellValue;
+      const resolved = resolveCell(value, rowIndex);
+      row.getCell(column + 1).value = resolved;
+      if (totals.has(column + 1)) totals.set(column + 1, totals.get(column + 1)! + numeric(resolved));
     });
     styleDataRow(sheet, rowIndex, spec.columns);
   });
@@ -70,10 +79,7 @@ function addTable(book: Workbook, spec: TableSpec): Worksheet {
       lastData + 1,
       firstData,
       spec.columns,
-      spec.sums.map((column) => ({
-        column,
-        result: spec.rows.reduce((n, row) => n + (typeof row[column - 1] === "number" ? (row[column - 1] as number) : 0), 0),
-      })),
+      spec.sums.map((column) => ({ column, result: totals.get(column) ?? 0 })),
     );
   finishSheet(sheet, {
     headerRows: [firstHeader, firstData - 1],
@@ -293,7 +299,7 @@ function styleLampiranSheet(sheet: Worksheet) {
     row.height = 26;
     for (let c = 1; c <= width; c++) {
       const cell = row.getCell(c);
-      cell.font = font(9, { bold: true, color: palette.white });
+      cell.font = font(10, { bold: true, color: palette.white });
       cell.fill = solid(palette.navy);
       cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = thinBorder();
@@ -305,7 +311,7 @@ function styleLampiranSheet(sheet: Worksheet) {
     const row = sheet.getRow(r);
     for (let c = 1; c <= width; c++) {
       const cell = row.getCell(c);
-      cell.font = font(9);
+      cell.font = font(10);
       cell.border = thinBorder();
       const numeric = typeof cell.value === "number";
       cell.alignment = {
@@ -364,7 +370,7 @@ export async function createTemplateWorkbook() {
 }
 
 const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-async function saveWorkbook(book: Workbook, filename: string) {
+export async function saveWorkbook(book: Workbook, filename: string) {
   const buffer = await book.xlsx.writeBuffer();
   const url = URL.createObjectURL(new Blob([buffer], { type: mime }));
   const link = document.createElement("a");

@@ -24,6 +24,8 @@ export default async function PrintPage({
     <main
       style={{
         maxWidth: 850,
+        fontSize: "11pt",
+        lineHeight: 1.5,
         margin: "30px auto",
         padding: 32,
         background: "white",
@@ -45,13 +47,13 @@ export default async function PrintPage({
           paddingTop: 20,
         }}
       >
-        <h1 style={{ fontSize: 22 }}>Ringkasan arsip perjalanan dinas</h1>
+        <h1 style={{ fontSize: "16pt" }}>Ringkasan arsip perjalanan dinas</h1>
         <p style={{ marginTop: 8, color: "#778899" }}>
           {t.code}
           {c.workspace === "demo" ? " • DATA CONTOH — FIKTIF" : ""}
         </p>
       </div>
-      <h2 style={{ fontSize: 18, marginTop: 25 }}>{t.title}</h2>
+      <h2 style={{ fontSize: "14pt", marginTop: 25 }}>{t.title}</h2>
       <dl className="metadata-list" style={{ marginTop: 16 }}>
         {[
           ["Tujuan", t.destination],
@@ -122,7 +124,7 @@ export default async function PrintPage({
           <p>{t.notes}</p>
         </div>
       )}
-      <p style={{ fontSize: 10, color: "#8999aa", marginTop: 30 }}>
+      <p style={{ fontSize: "10pt", color: "#8999aa", marginTop: 30 }}>
         Ringkasan administrasi arsip • Sumber: {t.source} • Versi {t.version}.
         Dokumen ini tidak menggantikan SPT/SPPD asli.
       </p>

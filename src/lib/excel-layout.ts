@@ -76,7 +76,7 @@ export function addTitleBlock(
     [institution.department, font(12, { bold: true }), 18],
     [text.title, font(14, { bold: true }), 24],
     [text.scope, font(10), 15],
-    [text.note ?? "", font(9, { color: palette.secondary }), 14],
+    [text.note ?? "", font(10, { color: palette.secondary }), 14],
   ];
   lines.forEach(([value, style, height], index) => {
     const row = sheet.getRow(index + 1);
@@ -107,7 +107,7 @@ export function addTableHeader(
       sheet.mergeCells(row, column, row, column + group.span - 1);
       const cell = band.getCell(column);
       cell.value = group.title;
-      cell.font = font(9, { bold: true });
+      cell.font = font(10, { bold: true });
       cell.fill = solid(palette.gold);
       cell.alignment = { horizontal: "center", vertical: "middle" };
       for (let c = column; c < column + group.span; c++)
@@ -117,11 +117,11 @@ export function addTableHeader(
     row++;
   }
   const header = sheet.getRow(row);
-  header.height = 36; // room for three wrapped lines such as "Jumlah pegawai dalam rekap"
+  header.height = 42; // room for three wrapped lines such as "Jumlah pegawai dalam rekap"
   columns.forEach((column, index) => {
     const cell = header.getCell(index + 1);
     cell.value = column.header;
-    cell.font = font(9, { bold: true, color: palette.white });
+    cell.font = font(10, { bold: true, color: palette.white });
     cell.fill = solid(palette.navy);
     cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     cell.border = thinBorder();
@@ -144,8 +144,8 @@ export function styleDataRow(
   columns.forEach((column, index) => {
     const cell = row.getCell(index + 1);
     const kind = column.kind ?? "text";
-    // 9 pt, vertically centered, and wrapping only where the content needs it keeps rows compact.
-    cell.font = font(9);
+    // 10 pt, vertically centered, and wrapping only where the content needs it keeps rows compact.
+    cell.font = font(10);
     cell.border = thinBorder();
     if (numberFormat[kind]) cell.numFmt = numberFormat[kind]!;
     cell.alignment = {
