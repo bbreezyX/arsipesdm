@@ -21,6 +21,7 @@ export async function loadExcelJs(): Promise<ExcelJs> {
 export const palette = {
   ink: "FF172C44",
   navy: "FF234F73",
+  black: "FF000000",
   gold: "FFFBF1D6",
   line: "FFC5CDD8",
   canvas: "FFF6F7F9",
@@ -65,18 +66,13 @@ export function excelDate(iso: string): Date | null {
   return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
 }
 
-/** Centered title block: institution, report title, scope and a note, across the table width. */
-export function addTitleBlock(
-  sheet: Worksheet,
-  width: number,
-  text: { title: string; scope: string; note?: string },
-) {
+/** Centered title block: institution then report title, in black, across the table width. */
+export function addTitleBlock(sheet: Worksheet, width: number, title: string) {
+  const heading = { bold: true, color: palette.black };
   const lines: [string, Partial<Font>, number][] = [
-    [institution.government, font(10, { bold: true }), 15],
-    [institution.department, font(12, { bold: true }), 18],
-    [text.title, font(14, { bold: true }), 24],
-    [text.scope, font(10), 15],
-    [text.note ?? "", font(10, { color: palette.secondary }), 14],
+    [institution.government, font(10, heading), 15],
+    [institution.department, font(12, heading), 18],
+    [title, font(14, heading), 24],
   ];
   lines.forEach(([value, style, height], index) => {
     const row = sheet.getRow(index + 1);

@@ -22,21 +22,12 @@ import {
   type GroupSpec,
 } from "./excel-layout";
 
-export type ExportOptions = { scope?: string; exportedAt?: Date };
-export const exportedOn = (date: Date) =>
-  new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  }).format(date);
-export const count = (n: number, unit: string) => `${n.toLocaleString("id-ID")} ${unit}`;
+export type ExportOptions = { exportedAt?: Date };
 
+// The printed header stops at the title: institution lines, then the report title, then the table.
 export type TableSpec = {
   name: string;
   title: string;
-  scope: string;
-  note?: string;
   columns: ColumnSpec[];
   groups?: GroupSpec[];
   rows: unknown[][];
@@ -57,7 +48,7 @@ const numeric = (value: CellValue): number =>
 export function addTable(book: Workbook, spec: TableSpec): Worksheet {
   const sheet = book.addWorksheet(spec.name, { properties: { tabColor: { argb: palette.navy } } });
   const width = spec.columns.length;
-  const firstHeader = addTitleBlock(sheet, width, { title: spec.title, scope: spec.scope, note: spec.note });
+  const firstHeader = addTitleBlock(sheet, width, spec.title);
   const firstData = addTableHeader(sheet, firstHeader, spec.columns, spec.groups);
   const totals = new Map<number, number>((spec.sums ?? []).map((column) => [column, 0]));
   spec.rows.forEach((values, index) => {
@@ -139,14 +130,10 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
   book.creator = "Arsip Perjalanan";
   book.created = options.exportedAt ?? new Date();
   book.calcProperties.fullCalcOnLoad = true;
-  const scope = options.scope ?? "Semua tahun";
-  const stamp = `Diekspor pada ${exportedOn(book.created)} dari aplikasi Arsip Perjalanan.`;
 
   addTable(book, {
     name: "Perjalanan",
     title: "REKAPITULASI ARSIP PERJALANAN DINAS",
-    scope: `${scope} (${count(trips.length, "rekap")})`,
-    note: `${stamp} Biaya kosong berarti belum diketahui; 0 berarti nihil.`,
     columns: tripColumns,
     groups: tripGroups,
     rows: trips.map((t, index) => [
@@ -183,8 +170,6 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
   addTable(book, {
     name: "Rincian biaya",
     title: "RINCIAN BIAYA PERJALANAN DINAS",
-    scope: `${scope} (${count(costs.length, "komponen biaya")} dari ${count(trips.length, "rekap")})`,
-    note: `${stamp} Biaya bersama dicatat sekali untuk seluruh peserta.`,
     columns: [
       { header: "No", width: 5, kind: "center" },
       { header: "ID arsip", width: 16 },
@@ -212,8 +197,6 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
   addTable(book, {
     name: "Daftar dokumen",
     title: "DAFTAR DOKUMEN PENDUKUNG PERJALANAN DINAS",
-    scope: `${scope} (${count(documents.length, "dokumen")} dari ${count(trips.length, "rekap")})`,
-    note: `${stamp} Dokumen fisik disimpan di lokasi yang tercantum; dokumen digital tersimpan di aplikasi.`,
     columns: [
       { header: "No", width: 5, kind: "center" },
       { header: "ID arsip", width: 16 },
@@ -257,8 +240,6 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
       addTable(book, {
         name: "Catatan rekap",
         title: "CATATAN PEMERIKSAAN REKAP PERJALANAN DINAS",
-        scope: `${scope} (${count(reviews.length, "catatan")})`,
-        note: `${stamp} Catatan berasal dari pemeriksaan otomatis saat impor dan penyimpanan rekap.`,
         columns: [
           { header: "No", width: 5, kind: "center" },
           { header: "ID arsip", width: 16 },
@@ -382,12 +363,7 @@ export async function saveWorkbook(book: Workbook, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function exportTrips(trips: Trip[], label: string) {
-  const scope =
-    label === "contoh" ? "Data contoh"
-    : label === "semua-tahun" ? "Semua tahun"
-    : /^\d{4}$/.test(label) ? `Tahun ${label}`
-    : label;
-  const book = await createTripWorkbook(trips, { scope });
+  const book = await createTripWorkbook(trips);
   await saveWorkbook(
     book,
     `Rekap-perjalanan-${label}-${new Date().toISOString().slice(0, 10)}.xlsx`,

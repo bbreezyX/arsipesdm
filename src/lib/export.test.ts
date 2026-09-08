@@ -97,36 +97,37 @@ test("XLSX round trip preserves unknown costs, numeric zero and text references"
 });
 test("exported register opens with a centered title block, grouped headings and a subtotal row", async () => {
   const ExcelJS = await loadExcelJs();
-  const source = await createTripWorkbook([trip, zero], { scope: "Tahun 2024", exportedAt: new Date("2026-09-08T03:00:00Z") });
+  const source = await createTripWorkbook([trip, zero], { exportedAt: new Date("2026-09-08T03:00:00Z") });
   const book = new ExcelJS.Workbook();
   await book.xlsx.load(await source.xlsx.writeBuffer());
   const sheet = book.getWorksheet("Perjalanan")!;
-  const width = sheet.getRow(8).cellCount;
+  const width = sheet.getRow(6).cellCount;
   assert.equal(sheet.getCell("A1").value, "PEMERINTAH PROVINSI JAMBI");
+  assert.equal(sheet.getCell("A2").value, "DINAS ENERGI DAN SUMBER DAYA MINERAL");
   assert.equal(sheet.getCell("A3").value, "REKAPITULASI ARSIP PERJALANAN DINAS");
-  assert.equal(sheet.getCell("A4").value, "Tahun 2024 (2 rekap)");
-  assert.match(String(sheet.getCell("A5").value), /^Diekspor pada 8 September 2026/);
-  for (const row of [1, 2, 3, 4, 5]) {
+  assert.equal(sheet.getCell("A4").value, null, "no scope or export note below the title");
+  for (const row of [1, 2, 3]) {
     assert.equal(sheet.getCell(row, 1).alignment?.horizontal, "center", `row ${row} centered`);
+    assert.equal(sheet.getCell(row, 1).font?.color?.argb, "FF000000", `row ${row} title in black`);
     assert.equal(sheet.getCell(row, width).master.address, `A${row}`, `row ${row} merged across the table`);
   }
-  assert.equal(sheet.getCell("A7").value, "Identitas arsip");
-  assert.equal(sheet.getCell("A8").value, "No");
-  assert.equal(sheet.getCell("P8").value, "Total realisasi");
-  assert.equal(sheet.getCell("P8").fill?.type, "pattern");
-  assert.equal(sheet.getCell("P8").font?.bold, true);
-  assert.equal(sheet.getCell("K9").numFmt, "dd/mm/yyyy");
-  assert.equal(sheet.getCell("P10").numFmt, "#,##0");
-  assert.equal(sheet.getCell("A11").value, "Jumlah");
-  assert.equal(sheet.getCell("P11").formula, "SUBTOTAL(109,P9:P10)");
+  assert.equal(sheet.getCell("A5").value, "Identitas arsip");
+  assert.equal(sheet.getCell("A6").value, "No");
+  assert.equal(sheet.getCell("P6").value, "Total realisasi");
+  assert.equal(sheet.getCell("P6").fill?.type, "pattern");
+  assert.equal(sheet.getCell("P6").font?.bold, true);
+  assert.equal(sheet.getCell("K7").numFmt, "dd/mm/yyyy");
+  assert.equal(sheet.getCell("P8").numFmt, "#,##0");
+  assert.equal(sheet.getCell("A9").value, "Jumlah");
+  assert.equal(sheet.getCell("P9").formula, "SUBTOTAL(109,P7:P8)");
   assert.equal(sheet.views[0]?.state, "frozen");
-  assert.equal((sheet.views[0] as { ySplit?: number }).ySplit, 8);
-  assert.equal(sheet.pageSetup.printTitlesRow, "7:8");
+  assert.equal((sheet.views[0] as { ySplit?: number }).ySplit, 6);
+  assert.equal(sheet.pageSetup.printTitlesRow, "5:6");
   const register = (await reopen(source)).Sheets.Perjalanan;
-  assert.equal(register.P11.v, 0, "cached subtotal is written so readers without a calc engine see it");
+  assert.equal(register.P9.v, 0, "cached subtotal is written so readers without a calc engine see it");
   const grid = XLSX.utils.sheet_to_json<unknown[]>(register, { header: 1, blankrows: true });
-  assert.equal(detectHeaderRow(grid), 8);
-  assert.equal(isSummaryRow(grid[10]), true);
+  assert.equal(detectHeaderRow(grid), 6);
+  assert.equal(isSummaryRow(grid[8]), true);
 });
 test("detectHeaderRow falls back to the first row and ignores title text", () => {
   assert.equal(detectHeaderRow([["Judul"], [], ["Uraian perjalanan", "Tujuan", "Peserta"], ["x", "y", "z"]]), 3);

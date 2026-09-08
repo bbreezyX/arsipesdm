@@ -1,5 +1,5 @@
 import { honorariumCategories, honorariumTotals, type Honorarium } from "./honorarium";
-import { addTable, count, exportedOn, saveWorkbook, type ExportOptions } from "./export";
+import { addTable, saveWorkbook, type ExportOptions } from "./export";
 import { loadExcelJs, type ColumnSpec, type GroupSpec } from "./excel-layout";
 
 export const honorariumTitle = (year: number | string) =>
@@ -76,9 +76,6 @@ export async function createHonorariumWorkbook(records: Honorarium[], options: H
   book.creator = "Arsip Perjalanan";
   book.created = options.exportedAt ?? new Date();
   book.calcProperties.fullCalcOnLoad = true;
-  const scope = options.scope ?? "Semua jenis honorarium";
-  const stamp = `Diekspor pada ${exportedOn(book.created)} dari aplikasi Arsip Perjalanan.`;
-  const note = `${stamp} Bruto = honor per bulan × jumlah bulan; netto = bruto dikurangi pajak. Pagu kosong berarti tidak dicatat.`;
   const years = [...new Set(records.map((record) => record.year))].sort((a, b) => b - a);
   // One sheet per budget year keeps the title accurate even when several years are exported at once.
   const sheets: (number | string)[] = years.length ? years : [options.year ?? new Date().getFullYear()];
@@ -87,8 +84,6 @@ export async function createHonorariumWorkbook(records: Honorarium[], options: H
     addTable(book, {
       name: `Honorarium ${year}`,
       title: honorariumTitle(year),
-      scope: `${scope} (${count(rows.length, "rekap")})`,
-      note,
       columns: honorariumColumns,
       groups: honorariumGroups,
       rows: rows.map(honorariumRow),
@@ -105,12 +100,6 @@ export async function exportHonorariums(
   filters: { year: string; category: string; deleted?: boolean },
 ) {
   const year = /^\d{4}$/.test(filters.year) ? filters.year : undefined;
-  const category = filters.category in honorariumCategories
-    ? honorariumCategories[filters.category as keyof typeof honorariumCategories]
-    : "Semua jenis honorarium";
-  const book = await createHonorariumWorkbook(records, {
-    scope: filters.deleted ? `${category} · rekap terhapus` : category,
-    year,
-  });
+  const book = await createHonorariumWorkbook(records, { year });
   await saveWorkbook(book, `Honorarium-${year ?? "semua-tahun"}-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
