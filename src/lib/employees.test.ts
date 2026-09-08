@@ -1,0 +1,87 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { employeeIdentity, employeeMatches, employeeSchema } from "./employees";
+
+test("employee directory preserves archive snapshots and isolates workspaces", async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "rek-employees-"));
+  process.env.DATA_DIR = directory;
+  process.env.DEMO_ENABLED = "false";
+  delete process.env.ADMIN_EMAIL;
+  delete process.env.ADMIN_PASSWORD;
+  const { db, putTrip, getTrip } = await import("./db");
+  const {getEmployees, createEmployee, changeEmployee} = await import("./employee-db");
+  try {
+    const {tripSchema} = await import("./model");
+    const participant = {id:"participant", name:"Pegawai Awal", nip:"00123", position:"Analis", department:"Energi"};
+    const input = tripSchema.parse({title:"Perjalanan uji", destination:"Jambi", department:"Energi", startDate:"2025-01-01", endDate:"2025-01-02", participants:[participant], costs:[]});
+    const trip = {...input, id:"test-trip", code:"PD/2025/0001", version:1, createdAt:"2025-01-01", updatedAt:"2025-01-01", documents:[], history:[], source:"Test", deletedAt:null};
+    putTrip(trip, "office");
+    const snapshot = JSON.stringify(getTrip(trip.id, "office"));
+    const [seeded] = getEmployees("office");
+    assert.equal(seeded.nip, "00123");
+    assert.equal(getEmployees("office").length, 1);
+    assert.equal(getEmployees("demo").length, 0);
+    assert.throws(() => createEmployee("office", participant), /sudah tercatat/);
+    const edited = changeEmployee("office", seeded.id, seeded.version, "edit", {...participant, name:"Pegawai Diperbarui", nip:"00456", rank:"IV/a"});
+    assert.equal(edited.rank, "IV/a");
+    assert.ok(employeeMatches(edited, participant));
+    assert.ok(employeeMatches(edited, {...participant, nip:"00456"}));
+    assert.throws(() => changeEmployee("office", seeded.id, seeded.version, "delete"), /telah berubah/);
+    assert.throws(() => changeEmployee("demo", seeded.id, edited.version, "delete"), /tidak ditemukan/);
+    const deleted = changeEmployee("office", edited.id, edited.version, "delete");
+    assert.ok(deleted.deletedAt);
+    assert.equal(getEmployees("office").filter(p => !p.deletedAt).length, 0);
+    assert.equal(getEmployees("office").length, 1);
+    assert.throws(() => changeEmployee("office", deleted.id, deleted.version, "edit", participant), /Pulihkan/);
+    const restored = changeEmployee("office", deleted.id, deleted.version, "restore");
+    assert.equal(restored.deletedAt, null);
+    assert.equal(restored.rank, "IV/a");
+    assert.equal(JSON.stringify(getTrip(trip.id, "office")), snapshot);
+    const created = createEmployee("office", {name:"  Pegawai Baru  ", nip:"00001", rank:" III/a "});
+    assert.equal(created.name, "Pegawai Baru");
+    assert.equal(created.rank, "III/a");
+    assert.equal(getEmployees("office").find(p => p.id === created.id)?.rank, "III/a");
+    assert.equal(created.nip, "00001");
+    assert.equal(getEmployees("office").length, 2);
+    createEmployee("demo", {name:"Pegawai Baru", nip:"00001"});
+    assert.equal(getEmployees("demo").length, 1);
+    assert.throws(() => changeEmployee("office", restored.id, restored.version, "edit", {name:"Duplikat", nip:"00001"}), /sudah tercatat/);
+    const retained = changeEmployee("office", created.id, created.version, "edit", {name: created.name, nip: created.nip, position:"Analis"});
+    assert.equal(retained.rank, "III/a", "older clients omitting rank must preserve it");
+    const cleared = changeEmployee("office", retained.id, retained.version, "edit", {...retained, rank:""});
+    assert.equal(cleared.rank, "");
+    assert.equal(getEmployees("office").find(p => p.id === cleared.id)?.rank, "");
+
+    const {lampiran6Schema} = await import("./lampiran6-schema");
+    const sourceTrip = {...trip, id:"rank-source", lampiran6: lampiran6Schema.parse({rank:"III/b"})};
+    putTrip(sourceTrip, "legacy");
+    const legacyEmployee = {...participant, id:"legacy-employee", version:1, identities:[employeeIdentity(participant)], deletedAt:null};
+    db.prepare("INSERT INTO employees VALUES(?,?,?)").run(legacyEmployee.id, "legacy", JSON.stringify(legacyEmployee));
+    const [migrated] = getEmployees("legacy");
+    assert.equal(migrated.rank, "III/b");
+    assert.equal(migrated.version, 2);
+    assert.equal(getEmployees("legacy")[0].version, 2, "migration must be idempotent");
+    changeEmployee("legacy", migrated.id, migrated.version, "edit", {...migrated, rank:""});
+    assert.equal(getEmployees("legacy")[0].rank, "", "cleared rank must not be restored from an old archive");
+    assert.equal(getTrip(sourceTrip.id, "legacy")?.lampiran6?.rank, "III/b");
+    putTrip({...sourceTrip, id:"seed-rank"}, "new-workspace");
+    assert.equal(getEmployees("new-workspace")[0].rank, "III/b");
+
+  } finally {
+    db.close();
+    rmSync(directory, {recursive:true, force:true});
+  }
+});
+
+test("employee validation rejects blank names and preserves optional identity fields", () => {
+  assert.equal(employeeSchema.safeParse({name:"   "}).success, false);
+  assert.equal(employeeSchema.safeParse({name:"A", nip:123}).success, false);
+  assert.equal(employeeSchema.safeParse({name:"A", rank:123}).success, false);
+  assert.equal(employeeSchema.safeParse({name:"A", rank:"A".repeat(1001)}).success, false);
+  assert.equal(employeeSchema.parse({name:"A"}).rank, "");
+  assert.equal(employeeSchema.parse({name:"A", rank:"IX"}).rank, "IX", "allow other personnel formats");
+  assert.equal(employeeIdentity({name:"  NAMA Pegawai ", nip:""}), "name:nama pegawai");
+});

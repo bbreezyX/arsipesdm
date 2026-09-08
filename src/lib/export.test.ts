@@ -1,0 +1,162 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import * as XLSX from "xlsx";
+import type { WorkBook, WorkSheet } from "xlsx";
+import type { Workbook as ExcelWorkbook } from "exceljs";
+import { createTripWorkbook, createTemplateWorkbook } from "./export";
+import { loadExcelJs } from "./excel-layout";
+import { type Trip, tripSchema } from "./model";
+import { convertRows, detectHeaderRow, isSummaryRow, suggestMapping } from "./import";
+import { formatDestinations } from "./destinations";
+const trip: Trip = {
+  ...tripSchema.parse({
+    title: "Uji ekspor",
+    destination: "Kerinci",
+    department: "Energi",
+    startDate: "2024-01-02",
+    endDate: "2024-01-03",
+    sptNo: "0001/2024",
+    sppdNo: "",
+    participants: [
+      {
+        id: "a",
+        name: "Pegawai Uji",
+        nip: "00123",
+        position: "",
+        department: "Energi",
+      },
+    ],
+    costs: [],
+    paid: null,
+    requiredDocs: ["spt"],
+    notes: "",
+    activity: "",
+    account: "",
+    physicalLocation: "",
+    correctionReason: "",
+  }),
+  id: "export-test",
+  code: "PD/2024/0001",
+  version: 1,
+  createdAt: "2024-01-01",
+  updatedAt: "2024-01-01",
+  documents: [],
+  history: [],
+  source: "Uji",
+  deletedAt: null,
+};
+const zero: Trip = {
+  ...trip,
+  id: "zero",
+  code: "PD/2024/0002",
+  costs: [
+    {
+      id: "cost",
+      category: "Biaya lainnya",
+      label: "Nihil",
+      amount: 0,
+      participantId: "shared",
+    },
+  ],
+  paid: 0,
+};
+/** Read the workbook back the way the import dialog does: SheetJS, header row detected. */
+async function reopen(book: ExcelWorkbook): Promise<WorkBook> {
+  return XLSX.read(Buffer.from(await book.xlsx.writeBuffer()), { type: "buffer", cellDates: true });
+}
+function tableRows(sheet: WorkSheet) {
+  const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, blankrows: true });
+  const headerRow = detectHeaderRow(grid);
+  const headers = grid[headerRow - 1].map((x) => String(x ?? "").trim());
+  return grid
+    .slice(headerRow)
+    .filter((cells) => cells.some((x) => x !== null && x !== "") && !isSummaryRow(cells))
+    .map((cells) => Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? null])));
+}
+test("XLSX round trip preserves unknown costs, numeric zero and text references", async () => {
+  const reopened = await reopen(await createTripWorkbook([trip, zero]));
+  assert.deepEqual(reopened.SheetNames, [
+    "Perjalanan",
+    "Rincian biaya",
+    "Daftar dokumen",
+  ]);
+  const rows = tableRows(reopened.Sheets.Perjalanan);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]["Nomor SPT"], "0001/2024");
+  assert.equal(rows[0]["Total realisasi"], null);
+  assert.equal(rows[1]["Total realisasi"], 0);
+  assert.equal(rows[0].Kelengkapan, "Draft");
+  assert.equal(rows[1].Kelengkapan, "Lengkap");
+  assert.equal(rows[0]["Sudah dibayar"], null);
+  assert.equal(rows[1]["Sudah dibayar"], 0);
+  assert.equal(rows[0]["Lama (hari)"], 2);
+  assert.equal(
+    XLSX.utils.sheet_to_json<unknown[]>(reopened.Sheets["Rincian biaya"], { header: 1 }).flat().includes("Nihil"),
+    true,
+  );
+});
+test("exported register opens with a centered title block, grouped headings and a subtotal row", async () => {
+  const ExcelJS = await loadExcelJs();
+  const source = await createTripWorkbook([trip, zero], { scope: "Tahun 2024", exportedAt: new Date("2026-09-08T03:00:00Z") });
+  const book = new ExcelJS.Workbook();
+  await book.xlsx.load(await source.xlsx.writeBuffer());
+  const sheet = book.getWorksheet("Perjalanan")!;
+  const width = sheet.getRow(8).cellCount;
+  assert.equal(sheet.getCell("A1").value, "PEMERINTAH PROVINSI JAMBI");
+  assert.equal(sheet.getCell("A3").value, "REKAPITULASI ARSIP PERJALANAN DINAS");
+  assert.equal(sheet.getCell("A4").value, "Tahun 2024 (2 rekap)");
+  assert.match(String(sheet.getCell("A5").value), /^Diekspor pada 8 September 2026/);
+  for (const row of [1, 2, 3, 4, 5]) {
+    assert.equal(sheet.getCell(row, 1).alignment?.horizontal, "center", `row ${row} centered`);
+    assert.equal(sheet.getCell(row, width).master.address, `A${row}`, `row ${row} merged across the table`);
+  }
+  assert.equal(sheet.getCell("A7").value, "Identitas arsip");
+  assert.equal(sheet.getCell("A8").value, "No");
+  assert.equal(sheet.getCell("P8").value, "Total realisasi");
+  assert.equal(sheet.getCell("P8").fill?.type, "pattern");
+  assert.equal(sheet.getCell("P8").font?.bold, true);
+  assert.equal(sheet.getCell("K9").numFmt, "dd/mm/yyyy");
+  assert.equal(sheet.getCell("P10").numFmt, "#,##0");
+  assert.equal(sheet.getCell("A11").value, "Jumlah");
+  assert.equal(sheet.getCell("P11").formula, "SUBTOTAL(109,P9:P10)");
+  assert.equal(sheet.views[0]?.state, "frozen");
+  assert.equal((sheet.views[0] as { ySplit?: number }).ySplit, 8);
+  assert.equal(sheet.pageSetup.printTitlesRow, "7:8");
+  const register = (await reopen(source)).Sheets.Perjalanan;
+  assert.equal(register.P11.v, 0, "cached subtotal is written so readers without a calc engine see it");
+  const grid = XLSX.utils.sheet_to_json<unknown[]>(register, { header: 1, blankrows: true });
+  assert.equal(detectHeaderRow(grid), 8);
+  assert.equal(isSummaryRow(grid[10]), true);
+});
+test("detectHeaderRow falls back to the first row and ignores title text", () => {
+  assert.equal(detectHeaderRow([["Judul"], [], ["Uraian perjalanan", "Tujuan", "Peserta"], ["x", "y", "z"]]), 3);
+  assert.equal(detectHeaderRow([["a", "b"], ["c", "d"]]), 1);
+  assert.equal(detectHeaderRow([]), 1);
+  assert.equal(isSummaryRow([null, "", "Total biaya", 5]), true);
+  assert.equal(isSummaryRow(["Totalitas kerja", 5]), false);
+});
+test("download template contains all required headings and a separate guidance sheet", async () => {
+  const book = await createTemplateWorkbook();
+  const reopened = await reopen(book);
+  assert.deepEqual(reopened.SheetNames, ["Perjalanan", "Petunjuk"]);
+  const [headings] = XLSX.utils.sheet_to_json<string[]>(
+    reopened.Sheets.Perjalanan,
+    { header: 1 },
+  );
+  assert(headings.includes("Tanggal berangkat"));
+  assert(headings.includes("Peserta"));
+  assert(headings.includes("Total realisasi"));
+  assert.equal(detectHeaderRow([headings]), 1);
+});
+test("multiple destinations survive the general Excel export and import", async () => {
+  const destinations = ["Kabupaten Bungo", "Kantor di Tebo; ruang pertemuan"];
+  const multiple = {...trip, destinations, destination: formatDestinations(destinations)};
+  const reopened = await reopen(await createTripWorkbook([multiple]));
+  const rows = tableRows(reopened.Sheets.Perjalanan);
+  const imported = convertRows(rows, suggestMapping(Object.keys(rows[0])), "test.xlsx", "Perjalanan", 2);
+  assert.deepEqual(imported[0].errors, []);
+  assert.deepEqual(imported[0].trip?.destinations, destinations);
+  assert.equal(imported[0].trip?.destination, multiple.destination);
+  assert.equal(imported[0].trip?.startDate, "2024-01-02");
+  assert.equal(imported[0].trip?.endDate, "2024-01-03");
+});

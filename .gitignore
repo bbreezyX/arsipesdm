@@ -1,0 +1,10 @@
+node_modules/
+.next/
+data/*
+!data/.gitkeep
+.env*
+*.tsbuildinfo
+.local-access.txt
+!.env.example
+backups/
+.DS_Store

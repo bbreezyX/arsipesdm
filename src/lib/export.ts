@@ -1,0 +1,392 @@
+import type { CellValue, Workbook, Worksheet } from "exceljs";
+import type { Trip } from "./model";
+import { totalCost, isComplete, paymentLabel, docLabels, duration } from "./model";
+import { createLampiran6Sheet } from "./lampiran6-export";
+import { lampiranReview } from "./lampiran6-schema";
+import {
+  addEmptyNotice,
+  addTableHeader,
+  addTitleBlock,
+  addTotalRow,
+  appendSheetJsSheet,
+  excelDate,
+  finishSheet,
+  font,
+  institution,
+  loadExcelJs,
+  palette,
+  solid,
+  styleDataRow,
+  thinBorder,
+  type ColumnSpec,
+  type GroupSpec,
+} from "./excel-layout";
+
+export type ExportOptions = { scope?: string; exportedAt?: Date };
+const exportedOn = (date: Date) =>
+  new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+const count = (n: number, unit: string) => `${n.toLocaleString("id-ID")} ${unit}`;
+
+type TableSpec = {
+  name: string;
+  title: string;
+  scope: string;
+  note?: string;
+  columns: ColumnSpec[];
+  groups?: GroupSpec[];
+  rows: unknown[][];
+  sums?: number[]; // 1-based column indexes to total
+  frozenColumns?: number;
+  fitToWidth?: boolean;
+  empty: string;
+};
+
+function addTable(book: Workbook, spec: TableSpec): Worksheet {
+  const sheet = book.addWorksheet(spec.name, { properties: { tabColor: { argb: palette.navy } } });
+  const width = spec.columns.length;
+  const firstHeader = addTitleBlock(sheet, width, { title: spec.title, scope: spec.scope, note: spec.note });
+  const firstData = addTableHeader(sheet, firstHeader, spec.columns, spec.groups);
+  spec.rows.forEach((values, index) => {
+    const rowIndex = firstData + index;
+    const row = sheet.getRow(rowIndex);
+    values.forEach((value, column) => {
+      if (value === null || value === undefined) return;
+      row.getCell(column + 1).value = (
+        typeof value === "function" ? (value as (row: number) => unknown)(rowIndex) : value
+      ) as CellValue;
+    });
+    styleDataRow(sheet, rowIndex, spec.columns);
+  });
+  const lastData = firstData + spec.rows.length - 1;
+  if (!spec.rows.length) addEmptyNotice(sheet, firstData, width, spec.empty);
+  else if (spec.sums?.length)
+    addTotalRow(
+      sheet,
+      lastData + 1,
+      firstData,
+      spec.columns,
+      spec.sums.map((column) => ({
+        column,
+        result: spec.rows.reduce((n, row) => n + (typeof row[column - 1] === "number" ? (row[column - 1] as number) : 0), 0),
+      })),
+    );
+  finishSheet(sheet, {
+    headerRows: [firstHeader, firstData - 1],
+    lastDataRow: lastData,
+    width,
+    frozenColumns: spec.frozenColumns,
+    fitToWidth: spec.fitToWidth,
+  });
+  return sheet;
+}
+
+// Only the purpose, the per-line destinations and the participant list wrap; other text stays on one line.
+const tripColumns: ColumnSpec[] = [
+  { header: "No", width: 5, kind: "center" },
+  { header: "ID arsip", width: 15 },
+  { header: "Uraian perjalanan", width: 50, kind: "wrap" },
+  { header: "Nomor SPT", width: 20 },
+  { header: "Nomor SPPD", width: 20 },
+  { header: "Bidang", width: 22 },
+  { header: "Tujuan", width: 26 },
+  { header: "Rincian tujuan (satu per baris)", width: 26, kind: "wrap" },
+  { header: "Cakupan perjalanan", width: 19 },
+  { header: "Provinsi tujuan", width: 15 },
+  { header: "Tanggal berangkat", width: 12, kind: "date" },
+  { header: "Tanggal pulang", width: 12, kind: "date" },
+  { header: "Lama (hari)", width: 7, kind: "int" },
+  { header: "Peserta", width: 42, kind: "wrap" },
+  { header: "Jumlah pegawai dalam rekap", width: 10, kind: "int" },
+  { header: "Total realisasi", width: 16, kind: "money" },
+  { header: "Sudah dibayar", width: 16, kind: "money" },
+  { header: "Status pembayaran", width: 17, kind: "center" },
+  { header: "Kelengkapan", width: 12, kind: "center" },
+  { header: "Kegiatan / subkegiatan", width: 30 },
+  { header: "Kode rekening", width: 16 },
+  { header: "Lokasi berkas fisik", width: 22 },
+  { header: "Catatan", width: 40 },
+];
+const tripGroups: GroupSpec[] = [
+  { title: "Identitas arsip", span: 6 },
+  { title: "Perjalanan", span: 7 },
+  { title: "Peserta", span: 2 },
+  { title: "Biaya (Rp)", span: 4 },
+  { title: "Anggaran", span: 2 },
+  { title: "Berkas dan catatan", span: 2 },
+];
+const scopeLabel = (t: Trip) =>
+  t.lampiran6 ? (t.lampiran6.format === "luar-provinsi" ? "Luar Provinsi Jambi" : "Dalam Provinsi Jambi") : "";
+const provinceLabel = (t: Trip) =>
+  t.lampiran6 ? (t.lampiran6.format === "luar-provinsi" ? t.lampiran6.destinationProvince : "Jambi") : "";
+const participantName = (t: Trip, id: string) =>
+  id === "shared" ? "Biaya bersama" : (t.participants.find((p) => p.id === id)?.name ?? "");
+
+export async function createTripWorkbook(trips: Trip[], options: ExportOptions = {}) {
+  const ExcelJS = await loadExcelJs();
+  const XLSX = await import("xlsx");
+  const book = new ExcelJS.Workbook();
+  book.creator = "Arsip Perjalanan";
+  book.created = options.exportedAt ?? new Date();
+  book.calcProperties.fullCalcOnLoad = true;
+  const scope = options.scope ?? "Semua tahun";
+  const stamp = `Diekspor pada ${exportedOn(book.created)} dari aplikasi Arsip Perjalanan.`;
+
+  addTable(book, {
+    name: "Perjalanan",
+    title: "REKAPITULASI ARSIP PERJALANAN DINAS",
+    scope: `${scope} (${count(trips.length, "rekap")})`,
+    note: `${stamp} Biaya kosong berarti belum diketahui; 0 berarti nihil.`,
+    columns: tripColumns,
+    groups: tripGroups,
+    rows: trips.map((t, index) => [
+      index + 1,
+      t.code,
+      t.title,
+      t.sptNo,
+      t.sppdNo,
+      t.department,
+      t.destination,
+      t.destinations?.join("\n") ?? "",
+      scopeLabel(t),
+      provinceLabel(t),
+      excelDate(t.startDate),
+      excelDate(t.endDate),
+      (row: number) => ({ formula: `L${row}-K${row}+1`, result: duration(t) }),
+      t.participants.map((p) => p.name).join("; "),
+      t.participants.length,
+      totalCost(t),
+      t.paid,
+      paymentLabel(t),
+      isComplete(t) ? "Lengkap" : "Draft",
+      t.activity,
+      t.account,
+      t.physicalLocation,
+      t.notes,
+    ]),
+    sums: [15, 16, 17],
+    frozenColumns: 2,
+    empty: "Tidak ada rekap perjalanan pada pilihan ini.",
+  });
+
+  const costs = trips.flatMap((t) => t.costs.map((c) => ({ trip: t, cost: c })));
+  addTable(book, {
+    name: "Rincian biaya",
+    title: "RINCIAN BIAYA PERJALANAN DINAS",
+    scope: `${scope} (${count(costs.length, "komponen biaya")} dari ${count(trips.length, "rekap")})`,
+    note: `${stamp} Biaya bersama dicatat sekali untuk seluruh peserta.`,
+    columns: [
+      { header: "No", width: 5, kind: "center" },
+      { header: "ID arsip", width: 16 },
+      { header: "Uraian perjalanan", width: 50, kind: "wrap" },
+      { header: "Peserta", width: 30 },
+      { header: "Kategori", width: 16 },
+      { header: "Keterangan", width: 40 },
+      { header: "Jumlah (Rp)", width: 16, kind: "money" },
+    ],
+    rows: costs.map(({ trip, cost }, index) => [
+      index + 1,
+      trip.code,
+      trip.title,
+      participantName(trip, cost.participantId),
+      cost.category,
+      cost.label,
+      cost.amount,
+    ]),
+    sums: [7],
+    frozenColumns: 2,
+    empty: "Belum ada rincian biaya yang dicatat.",
+  });
+
+  const documents = trips.flatMap((t) => t.documents.map((d) => ({ trip: t, doc: d })));
+  addTable(book, {
+    name: "Daftar dokumen",
+    title: "DAFTAR DOKUMEN PENDUKUNG PERJALANAN DINAS",
+    scope: `${scope} (${count(documents.length, "dokumen")} dari ${count(trips.length, "rekap")})`,
+    note: `${stamp} Dokumen fisik disimpan di lokasi yang tercantum; dokumen digital tersimpan di aplikasi.`,
+    columns: [
+      { header: "No", width: 5, kind: "center" },
+      { header: "ID arsip", width: 16 },
+      { header: "Uraian perjalanan", width: 50, kind: "wrap" },
+      { header: "Jenis", width: 24 },
+      { header: "Bentuk", width: 10, kind: "center" },
+      { header: "Nama berkas", width: 40 },
+      { header: "Lokasi fisik", width: 30 },
+    ],
+    rows: documents.map(({ trip, doc }, index) => [
+      index + 1,
+      trip.code,
+      trip.title,
+      docLabels[doc.type],
+      doc.kind === "file" ? "Digital" : "Fisik",
+      doc.name,
+      doc.location,
+    ]),
+    frozenColumns: 2,
+    empty: "Belum ada dokumen pendukung yang dicatat.",
+  });
+
+  if (trips.some((t) => t.lampiran6)) {
+    for (const format of ["dalam-provinsi", "luar-provinsi"] as const) {
+      if (!trips.some((t) => t.lampiran6?.format === format)) continue;
+      const sheet = appendSheetJsSheet(
+        book,
+        createLampiran6Sheet(trips, XLSX, format),
+        format === "luar-provinsi" ? "Luar Daerah (Luar Provinsi)" : "Luar Daerah (Dalam Provinsi)",
+        XLSX,
+      );
+      styleLampiranSheet(sheet);
+    }
+    const reviews = trips.flatMap((t) =>
+      t.lampiran6
+        ? [...new Set([...t.lampiran6.sourceIssues, ...lampiranReview(t.lampiran6, t.startDate, t.endDate)])]
+            .map((note) => ({ trip: t, note }))
+        : [],
+    );
+    if (reviews.length)
+      addTable(book, {
+        name: "Catatan rekap",
+        title: "CATATAN PEMERIKSAAN REKAP PERJALANAN DINAS",
+        scope: `${scope} (${count(reviews.length, "catatan")})`,
+        note: `${stamp} Catatan berasal dari pemeriksaan otomatis saat impor dan penyimpanan rekap.`,
+        columns: [
+          { header: "No", width: 5, kind: "center" },
+          { header: "ID arsip", width: 16 },
+          { header: "Pegawai", width: 30 },
+          { header: "Uraian perjalanan", width: 40, kind: "wrap" },
+          { header: "Catatan pemeriksaan", width: 70, kind: "wrap" },
+          { header: "Sumber", width: 30 },
+        ],
+        rows: reviews.map(({ trip, note }, index) => [
+          index + 1,
+          trip.code,
+          trip.participants[0].name,
+          trip.title,
+          note,
+          trip.source,
+        ]),
+        frozenColumns: 2,
+        empty: "Tidak ada catatan pemeriksaan.",
+      });
+  }
+  return book;
+}
+
+/** The source-shaped sheet keeps every cell address; only presentation changes. */
+function styleLampiranSheet(sheet: Worksheet) {
+  const width = sheet.columnCount;
+  const lastRow = sheet.rowCount;
+  const titleFonts = [font(14, { bold: true }), font(11, { bold: true }), font(10)];
+  titleFonts.forEach((style, index) => {
+    const row = sheet.getRow(index + 1);
+    row.height = index === 0 ? 24 : 16;
+    const cell = row.getCell(1);
+    cell.font = style;
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+  });
+  for (let r = 4; r <= 6; r++) {
+    const row = sheet.getRow(r);
+    row.height = 26;
+    for (let c = 1; c <= width; c++) {
+      const cell = row.getCell(c);
+      cell.font = font(9, { bold: true, color: palette.white });
+      cell.fill = solid(palette.navy);
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = thinBorder();
+    }
+  }
+  sheet.getRow(7).height = 6;
+  sheet.getRow(8).height = 6;
+  for (let r = 9; r <= lastRow; r++) {
+    const row = sheet.getRow(r);
+    for (let c = 1; c <= width; c++) {
+      const cell = row.getCell(c);
+      cell.font = font(9);
+      cell.border = thinBorder();
+      const numeric = typeof cell.value === "number";
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: numeric ? "right" : cell.value instanceof Date ? "center" : "left",
+        wrapText: c === 12 || c === 28 || c === 64,
+      };
+    }
+  }
+  sheet.views = [{ state: "frozen", xSplit: 2, ySplit: 6, showGridLines: false }];
+  sheet.pageSetup = {
+    orientation: "landscape",
+    paperSize: 9,
+    printTitlesRow: "4:6",
+    printTitlesColumn: "A:B",
+    margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+  };
+  sheet.headerFooter.oddFooter = `&L&"Arial"&8${institution.footer}&R&"Arial"&8Halaman &P dari &N`;
+  sheet.properties.tabColor = { argb: "FFE8B748" };
+}
+
+export async function createTemplateWorkbook() {
+  const ExcelJS = await loadExcelJs();
+  const { importFields } = await import("./import");
+  const book = new ExcelJS.Workbook();
+  book.creator = "Arsip Perjalanan";
+  const sheet = book.addWorksheet("Perjalanan", { properties: { tabColor: { argb: palette.navy } } });
+  const columns: ColumnSpec[] = importFields.map(([key, label]) => ({
+    header: label,
+    width: key === "title" ? 45 : key === "participants" ? 40 : 25,
+  }));
+  addTableHeader(sheet, 1, columns);
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+  const notes = book.addWorksheet("Petunjuk");
+  notes.getColumn(1).width = 115;
+  const help = [
+    "Panduan pengisian",
+    "Satu baris untuk satu perjalanan. Isi peserta dengan pemisah titik koma (;).",
+    "Wajib: uraian perjalanan, tujuan, tanggal berangkat, tanggal pulang, bidang, peserta.",
+    "Tanggal: gunakan sel tanggal Excel atau DD/MM/YYYY atau YYYY-MM-DD.",
+    "Untuk beberapa tujuan, isi Rincian tujuan satu lokasi per baris dalam sel. Kolom Tujuan berisi lokasi yang sama dengan pemisah titik koma (;).",
+    "Biaya: angka rupiah bulat, tanpa rumus. Kosong berarti belum diketahui; 0 berarti nihil.",
+    "Total realisasi adalah total satu perjalanan, sudah termasuk semua peserta dan biaya bersama.",
+    "Nomor surat dan NIP harus berformat teks agar nol di depan tidak hilang.",
+    "Dokumen pendukung dan lokasi berkas fisik opsional; status rekap tidak bergantung pada lampiran.",
+    "Impor tidak menandai pembayaran lunas secara otomatis.",
+    "Impor ulang perjalanan identik dilewati; variasi ejaan perlu diperiksa operator.",
+  ];
+  help.forEach((line, index) => {
+    const cell = notes.getCell(index + 1, 1);
+    cell.value = line;
+    cell.font = index === 0 ? font(12, { bold: true }) : font(10);
+    cell.alignment = { vertical: "top", wrapText: true };
+  });
+  return book;
+}
+
+const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+async function saveWorkbook(book: Workbook, filename: string) {
+  const buffer = await book.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export async function exportTrips(trips: Trip[], label: string) {
+  const scope =
+    label === "contoh" ? "Data contoh"
+    : label === "semua-tahun" ? "Semua tahun"
+    : /^\d{4}$/.test(label) ? `Tahun ${label}`
+    : label;
+  const book = await createTripWorkbook(trips, { scope });
+  await saveWorkbook(
+    book,
+    `Rekap-perjalanan-${label}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+  );
+}
+export async function downloadTemplate() {
+  await saveWorkbook(await createTemplateWorkbook(), "Template-arsip-perjalanan-ESDM.xlsx");
+}
