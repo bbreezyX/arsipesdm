@@ -474,7 +474,7 @@ export default function TripDetail({
               <Trash2 /> Hapus arsip
             </Button>
             <Button variant="outline" asChild>
-              <a href={`/print/${trip.id}`} target="_blank" rel="noreferrer">
+              <a href={`/cetak/${trip.id}`} target="_blank" rel="noreferrer">
                 <Printer /> Cetak ringkasan
               </a>
             </Button>

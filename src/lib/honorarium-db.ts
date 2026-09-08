@@ -4,16 +4,16 @@ import { honorariumSchema, type Honorarium } from "./honorarium";
 
 
 export async function getHonorariums(workspace: string): Promise<Honorarium[]> {
-  return ((await db.prepare("SELECT payload FROM honorariums WHERE workspace=?").all(workspace)) as {payload: string}[])
+  return ((await db.prepare("SELECT payload FROM honorarium WHERE workspace=?").all(workspace)) as {payload: string}[])
     .map(row => JSON.parse(row.payload) as Honorarium).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 export async function getHonorarium(workspace: string, id: string): Promise<Honorarium> {
-  const row = (await db.prepare("SELECT payload FROM honorariums WHERE workspace=? AND id=?").get(workspace, id)) as {payload: string} | undefined;
+  const row = (await db.prepare("SELECT payload FROM honorarium WHERE workspace=? AND id=?").get(workspace, id)) as {payload: string} | undefined;
   if (!row) throw new Error("Honorarium tidak ditemukan.");
   return JSON.parse(row.payload);
 }
 async function write(workspace: string, record: Honorarium) {
-  (await db.prepare("INSERT INTO honorariums VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE honorariums.workspace=excluded.workspace")
+  (await db.prepare("INSERT INTO honorarium VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE honorarium.workspace=excluded.workspace")
     .run(record.id, workspace, JSON.stringify(record)));
 }
 export async function createHonorarium(workspace: string, body: unknown): Promise<Honorarium> {

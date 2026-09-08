@@ -8,8 +8,12 @@ const client = await pool.connect();
 try {
   await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const tables = {};
-  for (const table of ["records", "users", "settings", "employees", "honorariums", "sessions", "attempts", "attachments"]) {
-    const projection = table === "attachments" ? "workspace,id,encode(content,'base64') AS content_base64" : "*";
+  const names = {records: "arsip_perjalanan", users: "pengguna", settings: "pengaturan", employees: "pegawai", honorariums: "honorarium", sessions: "sesi_login", attempts: "percobaan_login", attachments: "lampiran"};
+  for (const [legacy, current] of Object.entries(names)) {
+    const {rows: [found]} = await client.query("SELECT to_regclass($1) AS legacy, to_regclass($2) AS current", [legacy, current]);
+    if (found.legacy && found.current) throw new Error(`Nama tabel bertabrakan: ${legacy} / ${current}`);
+    const table = found.current ? current : legacy;
+    const projection = current === "lampiran" ? "workspace,id,encode(content,'base64') AS content_base64" : "*";
     tables[table] = (await client.query(`SELECT ${projection} FROM ${table}`)).rows;
   }
   await client.query("COMMIT");

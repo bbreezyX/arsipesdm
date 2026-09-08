@@ -1,11 +1,11 @@
 export const sectionPaths = {
-  archives: "/",
-  taskLetters: "/task-letters",
-  reports: "/reports",
-  documents: "/documents",
-  people: "/people",
-  settings: "/settings",
-  trash: "/trash",
+  archives: "/arsip-perjalanan",
+  taskLetters: "/surat-tugas",
+  reports: "/rekap-laporan",
+  documents: "/dokumen",
+  people: "/pegawai",
+  settings: "/pengaturan",
+  trash: "/sampah",
   honorarium: "/honorarium",
 } as const;
 
@@ -17,4 +17,13 @@ export function isSection(value: string): value is Section {
 
 export function sectionFromPath(pathname: string): Section | undefined {
   return (Object.keys(sectionPaths) as Section[]).find(section => sectionPaths[section] === pathname);
+}
+
+const legacyPaths: Record<string, Section> = {
+  "/": "archives", "/task-letters": "taskLetters", "/reports": "reports",
+  "/documents": "documents", "/people": "people", "/settings": "settings", "/trash": "trash",
+};
+
+export function legacySectionFromPath(pathname: string): Section | undefined {
+  return Object.hasOwn(legacyPaths, pathname) ? legacyPaths[pathname] : undefined;
 }

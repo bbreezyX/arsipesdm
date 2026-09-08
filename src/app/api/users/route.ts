@@ -6,7 +6,7 @@ export async function GET() {
     const c = await context();
     if (c.user.role !== "admin") throw new Error("FORBIDDEN");
     return Response.json(
-      (await db.prepare("SELECT id,name,email,role FROM users").all()).map(publicUser),
+      (await db.prepare("SELECT id,name,email,role FROM pengguna").all()).map(publicUser),
     );
   } catch (e) {
     return apiError(e);
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         "Isi nama, email valid, dan kata sandi minimal 12 karakter.",
       );
     if (
-      (await db.prepare("SELECT id FROM users WHERE email=?").get(email.toLowerCase()))
+      (await db.prepare("SELECT id FROM pengguna WHERE email=?").get(email.toLowerCase()))
     )
       throw new Error("Email sudah digunakan.");
     const user = {
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       email: email.toLowerCase(),
       role: "operator",
     };
-    (await db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
+    (await db.prepare("INSERT INTO pengguna VALUES(?,?,?,?,?)").run(
       user.id,
       user.name,
       user.email,

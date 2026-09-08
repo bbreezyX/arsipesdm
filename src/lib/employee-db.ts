@@ -4,10 +4,10 @@ import { employeeIdentity, employeeMatches, employeeSchema, type Employee, type 
 
 
 async function read(workspace: string): Promise<Employee[]> {
-  return ((await db.prepare("SELECT payload FROM employees WHERE workspace=?").all(workspace)) as {payload: string}[]).map(r => JSON.parse(r.payload));
+  return ((await db.prepare("SELECT payload FROM pegawai WHERE workspace=?").all(workspace)) as {payload: string}[]).map(r => JSON.parse(r.payload));
 }
 async function write(workspace: string, employee: Employee) {
-  (await db.prepare("INSERT INTO employees VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE employees.workspace=excluded.workspace").run(employee.id, workspace, JSON.stringify(employee)));
+  (await db.prepare("INSERT INTO pegawai VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE pegawai.workspace=excluded.workspace").run(employee.id, workspace, JSON.stringify(employee)));
 }
 // Preserve historical identities, including deleted entries, so imports cannot resurrect them.
 async function sync(workspace: string) {

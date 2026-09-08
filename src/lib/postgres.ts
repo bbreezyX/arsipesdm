@@ -1,8 +1,9 @@
+import { renameLegacyTables } from "./table-names";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Pool, type PoolClient } from "pg";
 
 // One pool per server process; lazy connections keep builds independent of the database.
-const globalDb = globalThis as unknown as { archivePool?: Pool; archiveSchema?: Promise<void> };
+const globalDb = globalThis as unknown as { archivePool?: Pool; archiveSchemaIndonesia?: Promise<void> };
 const schema = process.env.DATABASE_SCHEMA || "public";
 if (!/^[a-z][a-z0-9_]*$/.test(schema)) throw new Error("Invalid DATABASE_SCHEMA");
 function pool() {
@@ -17,24 +18,25 @@ function pool() {
 }
 const transactions = new AsyncLocalStorage<PoolClient>();
 export const schemaSQL = `
-CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS records_workspace ON records(workspace);
-CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires BIGINT NOT NULL);
-CREATE INDEX IF NOT EXISTS sessions_expires ON sessions(expires);
-CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires BIGINT NOT NULL);
-CREATE TABLE IF NOT EXISTS employees(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS employees_workspace ON employees(workspace);
-CREATE TABLE IF NOT EXISTS honorariums(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS honorariums_workspace ON honorariums(workspace);
-CREATE TABLE IF NOT EXISTS attachments(id TEXT NOT NULL,workspace TEXT NOT NULL,content BYTEA NOT NULL,PRIMARY KEY(workspace,id));
+CREATE TABLE IF NOT EXISTS arsip_perjalanan(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS arsip_perjalanan_workspace ON arsip_perjalanan(workspace);
+CREATE TABLE IF NOT EXISTS pengguna(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sesi_login(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS sesi_login_expires ON sesi_login(expires);
+CREATE TABLE IF NOT EXISTS pengaturan(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS percobaan_login(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS pegawai(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS pegawai_workspace ON pegawai(workspace);
+CREATE TABLE IF NOT EXISTS honorarium(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS honorarium_workspace ON honorarium(workspace);
+CREATE TABLE IF NOT EXISTS lampiran(id TEXT NOT NULL,workspace TEXT NOT NULL,content BYTEA NOT NULL,PRIMARY KEY(workspace,id));
 `;
 async function initializeSchema() {
   const client = await pool().connect();
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`arsipesdm:schema:${schema}`]);
+    await renameLegacyTables(client);
     await client.query(schemaSQL);
     await client.query("COMMIT");
   } catch (error) {
@@ -43,8 +45,8 @@ async function initializeSchema() {
   } finally { client.release(); }
 }
 async function ready() {
-  await (globalDb.archiveSchema ??= initializeSchema().catch(error => {
-    globalDb.archiveSchema = undefined;
+  await (globalDb.archiveSchemaIndonesia ??= initializeSchema().catch(error => {
+    globalDb.archiveSchemaIndonesia = undefined;
     throw error;
   }));
 }
@@ -67,7 +69,7 @@ export const db = {
   async close() {
     await globalDb.archivePool?.end();
     globalDb.archivePool = undefined;
-    globalDb.archiveSchema = undefined;
+    globalDb.archiveSchemaIndonesia = undefined;
   },
 };
 export async function transaction<T>(fn: () => T | Promise<T>): Promise<T> {

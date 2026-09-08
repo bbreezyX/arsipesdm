@@ -41,19 +41,19 @@ export function sessionHash(token: string) {
 export async function getTrips(workspace: string): Promise<Trip[]> {
   return (
     (await db
-      .prepare("SELECT payload FROM records WHERE workspace=?")
+      .prepare("SELECT payload FROM arsip_perjalanan WHERE workspace=?")
       .all(workspace)) as { payload: string }[]
   ).map((row) => JSON.parse(row.payload));
 }
 export async function getTrip(id: string, workspace: string): Promise<Trip | null> {
   const row = (await db
-    .prepare("SELECT payload FROM records WHERE id=? AND workspace=?")
+    .prepare("SELECT payload FROM arsip_perjalanan WHERE id=? AND workspace=?")
     .get(id, workspace)) as { payload: string } | undefined;
   return row ? JSON.parse(row.payload) : null;
 }
 export async function putTrip(t: Trip, workspace: string) {
   (await db.prepare(
-    "INSERT INTO records(id,workspace,payload) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE records.workspace=excluded.workspace",
+    "INSERT INTO arsip_perjalanan(id,workspace,payload) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload WHERE arsip_perjalanan.workspace=excluded.workspace",
   ).run(t.id, workspace, JSON.stringify(t)));
 }
 export function addEvent(t: Trip, action: string, actor: string, detail = "") {
@@ -109,7 +109,7 @@ export async function newTrip(
 }
 export async function getDepartments() {
   const row = (await db
-    .prepare("SELECT value FROM settings WHERE key=?")
+    .prepare("SELECT value FROM pengaturan WHERE key=?")
     .get("departments")) as { value: string } | undefined;
   return row ? (JSON.parse(row.value) as string[]) : departments;
 }
@@ -121,11 +121,11 @@ export function initializeDatabase() {
 async function bootstrapDatabase() {
 (await transaction(async () => {
   if (
-    !(await db.prepare("SELECT id FROM users LIMIT 1").get()) &&
+    !(await db.prepare("SELECT id FROM pengguna LIMIT 1").get()) &&
     process.env.ADMIN_PASSWORD &&
     process.env.ADMIN_EMAIL
   ) {
-    (await db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
+    (await db.prepare("INSERT INTO pengguna VALUES(?,?,?,?,?)").run(
       randomUUID(),
       "Administrator",
       process.env.ADMIN_EMAIL.toLowerCase(),
@@ -137,10 +137,10 @@ async function bootstrapDatabase() {
 
 if (
   process.env.DEMO_ENABLED === "true" &&
-  !(await db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded"))
+  !(await db.prepare("SELECT value FROM pengaturan WHERE key=?").get("demo-seeded"))
 ) {
   (await transaction(async () => {
-    if ((await db.prepare("SELECT value FROM settings WHERE key=?").get("demo-seeded")))
+    if ((await db.prepare("SELECT value FROM pengaturan WHERE key=?").get("demo-seeded")))
       return;
     const entries = [
       [
@@ -331,7 +331,7 @@ if (
       );
       (await putTrip(t, "demo"));
     }
-    (await db.prepare("INSERT INTO settings VALUES(?,?)").run("demo-seeded", "true"));
+    (await db.prepare("INSERT INTO pengaturan VALUES(?,?)").run("demo-seeded", "true"));
   }));
 }
 

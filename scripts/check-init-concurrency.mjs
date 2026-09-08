@@ -8,7 +8,7 @@ const admin = new Pool({connectionString: process.env.TEST_DATABASE_URL});
 await admin.query(`CREATE SCHEMA ${schema}`);
 const moduleUrl = new URL("../src/lib/db.ts", import.meta.url).href;
 const run = () => new Promise((resolve, reject) => {
-  const script = `const imported=await import(${JSON.stringify(moduleUrl)});const m=imported.default??imported;await m.initializeDatabase();console.log(JSON.stringify({users:Number((await m.db.prepare('SELECT count(*) AS n FROM users').get()).n),records:Number((await m.db.prepare('SELECT count(*) AS n FROM records').get()).n)}));await m.db.close();`;
+  const script = `const imported=await import(${JSON.stringify(moduleUrl)});const m=imported.default??imported;await m.initializeDatabase();console.log(JSON.stringify({users:Number((await m.db.prepare('SELECT count(*) AS n FROM pengguna').get()).n),records:Number((await m.db.prepare('SELECT count(*) AS n FROM arsip_perjalanan').get()).n)}));await m.db.close();`;
   const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script], {
     env: {...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL, DATABASE_SCHEMA: schema, DEMO_ENABLED: "true", ADMIN_EMAIL: "test@example.local", ADMIN_PASSWORD: "TestBootstrapPasswordOnly"},
   });

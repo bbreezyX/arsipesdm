@@ -13,7 +13,7 @@ export async function GET(
       .flatMap((t) => t.documents)
       .find((d) => d.id === id && d.kind === "file");
     if (!doc) throw new Error("NOT_FOUND");
-    const attachment = await db.prepare("SELECT content FROM attachments WHERE workspace=? AND id=?").get(c.workspace, id);
+    const attachment = await db.prepare("SELECT content FROM lampiran WHERE workspace=? AND id=?").get(c.workspace, id);
     if (!attachment) throw new Error("NOT_FOUND");
     const bytes = attachment.content as Buffer;
     const type =

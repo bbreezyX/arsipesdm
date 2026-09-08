@@ -16,28 +16,28 @@ export async function POST(req: Request) {
       throw new Error("Email atau kata sandi tidak valid.");
     const key = email.trim().toLowerCase();
     const attempt = (await db
-      .prepare("SELECT * FROM attempts WHERE key=?")
+      .prepare("SELECT * FROM percobaan_login WHERE key=?")
       .get(key)) as { count: number; expires: number } | undefined;
     if (attempt && attempt.expires > Date.now() && attempt.count >= 6)
       return Response.json(
         { error: "Terlalu banyak percobaan. Coba lagi dalam 10 menit." },
         { status: 429 },
       );
-    const row = (await db.prepare("SELECT * FROM users WHERE email=?").get(key)) as
+    const row = (await db.prepare("SELECT * FROM pengguna WHERE email=?").get(key)) as
       Record<string, unknown> | undefined;
     if (!row || !verifyPassword(password, String(row.password))) {
       (await db.prepare(
-        "INSERT INTO attempts VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN attempts.expires>? THEN attempts.count+1 ELSE 1 END,expires=excluded.expires",
+        "INSERT INTO percobaan_login VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN percobaan_login.expires>? THEN percobaan_login.count+1 ELSE 1 END,expires=excluded.expires",
       ).run(key, 1, Date.now() + 600000, Date.now()));
       return Response.json(
         { error: "Email atau kata sandi belum sesuai." },
         { status: 401 },
       );
     }
-    (await db.prepare("DELETE FROM attempts WHERE key=?").run(key));
-    (await db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now()));
+    (await db.prepare("DELETE FROM percobaan_login WHERE key=?").run(key));
+    (await db.prepare("DELETE FROM sesi_login WHERE expires<?").run(Date.now()));
     const token = randomBytes(32).toString("hex");
-    (await db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
+    (await db.prepare("INSERT INTO sesi_login VALUES(?,?,?)").run(
       sessionHash(token),
       String(row.id),
       Date.now() + 86400000,
@@ -60,7 +60,7 @@ export async function DELETE(req: Request) {
     const jar = await cookies();
     const token = jar.get("archive-session")?.value;
     if (token)
-      (await db.prepare("DELETE FROM sessions WHERE token=?").run(sessionHash(token)));
+      (await db.prepare("DELETE FROM sesi_login WHERE token=?").run(sessionHash(token)));
     jar.delete("archive-session");
     return Response.json({ ok: true });
   } catch (e) {

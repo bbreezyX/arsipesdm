@@ -416,7 +416,7 @@ export default function Workspace({
                 <DropdownMenuItem
                   onSelect={async () => {
                     await api("/api/session", { method: "DELETE" });
-                    window.location.assign("/");
+                    window.location.assign(sectionPaths.archives);
                   }}
                 >
                   <LogOut size={15} /> Keluar
@@ -1573,7 +1573,7 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      window.location.assign("/");
+      window.location.reload();
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);

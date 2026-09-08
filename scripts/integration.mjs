@@ -286,7 +286,7 @@ try {
   if (!process.env.DATABASE_SCHEMA?.startsWith("test_")) throw new Error("Integration cleanup requires a disposable test schema.");
   const db = new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${process.env.DATABASE_SCHEMA}` });
   try {
-    for (const id of ids) await db.query("DELETE FROM records WHERE id=$1 AND workspace='demo' AND payload::jsonb->>'title' LIKE '[TEST]%'", [id]);
-    for (const id of files) await db.query("DELETE FROM attachments WHERE id=$1 AND workspace='demo'", [id]);
+    for (const id of ids) await db.query("DELETE FROM arsip_perjalanan WHERE id=$1 AND workspace='demo' AND payload::jsonb->>'title' LIKE '[TEST]%'", [id]);
+    for (const id of files) await db.query("DELETE FROM lampiran WHERE id=$1 AND workspace='demo'", [id]);
   } finally { await db.end(); }
 }

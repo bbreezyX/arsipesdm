@@ -61,7 +61,7 @@ test("employee directory preserves archive snapshots and isolates workspaces", a
     const sourceTrip = {...trip, id:"rank-source", lampiran6: lampiran6Schema.parse({rank:"III/b"})};
     (await putTrip(sourceTrip, "legacy"));
     const legacyEmployee = {...participant, id:"legacy-employee", version:1, identities:[employeeIdentity(participant)], deletedAt:null};
-    (await db.prepare("INSERT INTO employees VALUES(?,?,?)").run(legacyEmployee.id, "legacy", JSON.stringify(legacyEmployee)));
+    (await db.prepare("INSERT INTO pegawai VALUES(?,?,?)").run(legacyEmployee.id, "legacy", JSON.stringify(legacyEmployee)));
     const [migrated] = (await getEmployees("legacy"));
     assert.equal(migrated.rank, "III/b");
     assert.equal(migrated.version, 2);

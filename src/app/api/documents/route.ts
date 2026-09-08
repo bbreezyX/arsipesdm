@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       const t = (await getTrip(tripId, c.workspace));
       if (!t || t.deletedAt) throw new Error("NOT_FOUND");
       if (t.version !== version) throw new Error("CONFLICT");
-      if (content) await db.prepare("INSERT INTO attachments(workspace,id,content) VALUES(?,?,?)").run(c.workspace, id, content);
+      if (content) await db.prepare("INSERT INTO lampiran(workspace,id,content) VALUES(?,?,?)").run(c.workspace, id, content);
       t.documents.push(doc);
       addEvent(
         t,

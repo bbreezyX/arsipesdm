@@ -7,7 +7,7 @@ export async function currentUser(): Promise<User | null> {
   if (!token) return null;
   const row = (await db
     .prepare(
-      "SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE token=? AND expires>?",
+      "SELECT pengguna.* FROM sesi_login JOIN pengguna ON pengguna.id=sesi_login.user_id WHERE token=? AND expires>?",
     )
     .get(sessionHash(token), Date.now()));
   return row ? publicUser(row) : null;
