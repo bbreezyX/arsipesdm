@@ -113,7 +113,7 @@ export function addTableHeader(
     row++;
   }
   const header = sheet.getRow(row);
-  header.height = 42; // room for three wrapped lines such as "Jumlah pegawai dalam rekap"
+  header.height = 42; // room for three wrapped lines such as "Rincian tujuan (satu per baris)"
   columns.forEach((column, index) => {
     const cell = header.getCell(index + 1);
     cell.value = column.header;

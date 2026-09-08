@@ -379,7 +379,7 @@ export default function ImportDialog({
                         <span>{rows.length} baris ditemukan</span>
                       </div>
                       <p className="section-note">
-                        Satu baris untuk satu perjalanan. Pisahkan nama peserta
+                        Satu baris untuk satu perjalanan. Pisahkan nama pegawai
                         dengan titik koma (;).
                       </p>
                       <div className="column-mapping">

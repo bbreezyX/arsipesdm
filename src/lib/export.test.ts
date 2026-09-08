@@ -90,10 +90,23 @@ test("XLSX round trip preserves unknown costs, numeric zero and text references"
   assert.equal(rows[0]["Sudah dibayar"], null);
   assert.equal(rows[1]["Sudah dibayar"], 0);
   assert.equal(rows[0]["Lama (hari)"], 2);
-  assert.equal(
-    XLSX.utils.sheet_to_json<unknown[]>(reopened.Sheets["Rincian biaya"], { header: 1 }).flat().includes("Nihil"),
-    true,
-  );
+  const costGrid = XLSX.utils.sheet_to_json<unknown[]>(reopened.Sheets["Rincian biaya"], { header: 1 });
+  assert.equal(costGrid.flat().includes("Nihil"), true);
+  assert.equal(costGrid.flat().includes("Pegawai"), true);
+  assert.equal(costGrid.flat().includes("Peserta"), false);
+});
+test("no exported trip sheet labels people as peserta", async () => {
+  const reopened = await reopen(await createTripWorkbook([trip, zero]));
+  for (const name of reopened.SheetNames) {
+    const labels = XLSX.utils
+      .sheet_to_json<unknown[]>(reopened.Sheets[name], { header: 1, defval: null })
+      .flat()
+      .filter((cell): cell is string => typeof cell === "string");
+    assert.equal(labels.includes("Peserta"), false, `${name} still uses Peserta`);
+    assert.equal(labels.includes("Jumlah pegawai dalam rekap"), false, `${name} still has the count column`);
+  }
+  assert.ok("Pegawai" in tableRows(reopened.Sheets.Perjalanan)[0]);
+  assert.ok("Pegawai" in tableRows(reopened.Sheets["Rincian biaya"])[0]);
 });
 test("exported register opens with a centered title block, grouped headings and a subtotal row", async () => {
   const ExcelJS = await loadExcelJs();
@@ -113,24 +126,25 @@ test("exported register opens with a centered title block, grouped headings and 
   }
   assert.equal(sheet.getCell("A5").value, "Identitas arsip");
   assert.equal(sheet.getCell("A6").value, "No");
-  assert.equal(sheet.getCell("P6").value, "Total realisasi");
-  assert.equal(sheet.getCell("P6").fill?.type, "pattern");
-  assert.equal(sheet.getCell("P6").font?.bold, true);
+  assert.equal(sheet.getCell("N6").value, "Pegawai");
+  assert.equal(sheet.getCell("O6").value, "Total realisasi");
+  assert.equal(sheet.getCell("O6").fill?.type, "pattern");
+  assert.equal(sheet.getCell("O6").font?.bold, true);
   assert.equal(sheet.getCell("K7").numFmt, "dd/mm/yyyy");
-  assert.equal(sheet.getCell("P8").numFmt, "#,##0");
+  assert.equal(sheet.getCell("O8").numFmt, "#,##0");
   assert.equal(sheet.getCell("A9").value, "Jumlah");
-  assert.equal(sheet.getCell("P9").formula, "SUBTOTAL(109,P7:P8)");
+  assert.equal(sheet.getCell("O9").formula, "SUBTOTAL(109,O7:O8)");
   assert.equal(sheet.views[0]?.state, "frozen");
   assert.equal((sheet.views[0] as { ySplit?: number }).ySplit, 6);
   assert.equal(sheet.pageSetup.printTitlesRow, "5:6");
   const register = (await reopen(source)).Sheets.Perjalanan;
-  assert.equal(register.P9.v, 0, "cached subtotal is written so readers without a calc engine see it");
+  assert.equal(register.O9.v, 0, "cached subtotal is written so readers without a calc engine see it");
   const grid = XLSX.utils.sheet_to_json<unknown[]>(register, { header: 1, blankrows: true });
   assert.equal(detectHeaderRow(grid), 6);
   assert.equal(isSummaryRow(grid[8]), true);
 });
 test("detectHeaderRow falls back to the first row and ignores title text", () => {
-  assert.equal(detectHeaderRow([["Judul"], [], ["Uraian perjalanan", "Tujuan", "Peserta"], ["x", "y", "z"]]), 3);
+  assert.equal(detectHeaderRow([["Judul"], [], ["Uraian perjalanan", "Tujuan", "Pegawai"], ["x", "y", "z"]]), 3);
   assert.equal(detectHeaderRow([["a", "b"], ["c", "d"]]), 1);
   assert.equal(detectHeaderRow([]), 1);
   assert.equal(isSummaryRow([null, "", "Total biaya", 5]), true);
@@ -145,7 +159,8 @@ test("download template contains all required headings and a separate guidance s
     { header: 1 },
   );
   assert(headings.includes("Tanggal berangkat"));
-  assert(headings.includes("Peserta"));
+  assert(headings.includes("Pegawai"));
+  assert.equal(headings.includes("Peserta"), false);
   assert(headings.includes("Total realisasi"));
   assert.equal(detectHeaderRow([headings]), 1);
 });

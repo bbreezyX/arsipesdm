@@ -8,7 +8,7 @@ export const importFields = [
   ["startDate", "Tanggal berangkat", true],
   ["endDate", "Tanggal pulang", true],
   ["department", "Bidang", true],
-  ["participants", "Peserta", true],
+  ["participants", "Pegawai", true],
   ["total", "Total realisasi", false],
   ["paid", "Sudah dibayar", false],
   ["activity", "Kegiatan / subkegiatan", false],
