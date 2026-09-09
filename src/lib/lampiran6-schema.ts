@@ -161,7 +161,7 @@ export function lampiranReview(
   const sum = costs.length
     ? costs.reduce((total, c) => total + c.amount, 0)
     : null;
-  const rp = (v: number) => "Rp " + v.toLocaleString("id-ID");
+  const rp = (v: number) => "Rp\u00a0" + v.toLocaleString("id-ID");
   if (data.recordedTotal !== null && sum !== null && data.recordedTotal !== sum)
     issues.push(
       `Total rincian sumber ${rp(data.recordedTotal)} berbeda dari jumlah komponen ${rp(sum)}.`,
