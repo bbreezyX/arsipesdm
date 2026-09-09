@@ -1895,8 +1895,7 @@
   border-top: 1px solid var(--ledger-line-soft);
 }
 .form-dialog .advanced-fields > summary,
-.lampiran-dialog .advanced-fields > summary,
-.lampiran-dialog .flight-fields > summary {
+.lampiran-dialog .advanced-fields > summary {
   padding: 14px 0;
   color: var(--ledger-action);
   font-weight: 500;
@@ -2095,6 +2094,34 @@
 }
 .form-dialog .evidence-block > .form-grid {
   padding: 18px;
+}
+/* Folded flight tickets follow the same ledger card as the other evidence blocks. */
+.form-dialog .flight-ticket,
+.lampiran-dialog .flight-ticket {
+  margin-top: 16px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.form-dialog .flight-ticket > summary,
+.lampiran-dialog .flight-ticket > summary {
+  padding: 12px 14px 12px 18px;
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.form-dialog .flight-ticket-body,
+.lampiran-dialog .flight-ticket-body {
+  padding: 18px;
+  border-top: 1px solid var(--ledger-line-soft);
+}
+.form-dialog .flight-ticket[data-recap-tone="filled"] > summary,
+.lampiran-dialog .flight-ticket[data-recap-tone="filled"] > summary {
+  background: var(--ledger-success-soft);
+}
+.form-dialog .flight-ticket[data-recap-tone="details"] > summary,
+.lampiran-dialog .flight-ticket[data-recap-tone="details"] > summary {
+  background: var(--ledger-action-soft);
 }
 .recap-evidence-status[data-recap-tone="details"] .evidence-block,
 .recap-evidence-status[data-recap-tone="filled"] .evidence-block {

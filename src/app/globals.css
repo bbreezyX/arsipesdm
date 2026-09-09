@@ -3892,18 +3892,54 @@ table td {
   font-weight: 600;
   color: #456078;
 }
-.flight-fields {
-  padding: 17px 0;
-  border-bottom: 1px solid var(--line);
+/* Outbound and return tickets stay folded until the operator opens them. */
+.flight-ticket {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  margin-top: 12px;
 }
-.flight-fields > summary {
+.flight-ticket > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
   font-size: var(--type-data);
   font-weight: 600;
   color: #456078;
   cursor: pointer;
+  list-style: none;
 }
-.flight-fields[open] > summary {
-  margin-bottom: 18px;
+.flight-ticket > summary::-webkit-details-marker {
+  display: none;
+}
+.flight-ticket > summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.flight-ticket[open] > summary::before {
+  transform: rotate(45deg);
+}
+.flight-ticket > summary > span:first-of-type {
+  margin-right: auto;
+}
+.flight-ticket-body {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.flight-ticket[data-recap-tone="details"] {
+  border-color: #d7e4ee;
+  background: #f8fbfd;
+}
+.flight-ticket[data-recap-tone="filled"] {
+  border-color: #d5e5da;
+  background: #f8fcf9;
 }
 .additional-costs {
   margin: 22px 0 14px;
@@ -4197,23 +4233,13 @@ table td {
   margin-top: 20px;
   border-top: 1px solid var(--line);
 }
-.lampiran-dialog .advanced-fields > summary,
-.lampiran-dialog .flight-fields > summary {
+.lampiran-dialog .advanced-fields > summary {
   padding: 14px 0;
   font-size: var(--type-data);
   color: var(--primary);
   cursor: pointer;
 }
 .lampiran-dialog .advanced-fields[open] > summary {
-  margin-bottom: 4px;
-}
-.lampiran-dialog .flight-fields {
-  padding: 0;
-}
-.lampiran-dialog .flight-fields[open] {
-  padding-bottom: 20px;
-}
-.lampiran-dialog .flight-fields[open] > summary {
   margin-bottom: 4px;
 }
 .lampiran-dialog .document-options {
