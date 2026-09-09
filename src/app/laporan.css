@@ -1,0 +1,428 @@
+/*
+  Rekap & laporan: buku laporan realisasi di atas lapisan register (arsip.css).
+  Memakai tab tahun, lembar putih, pita ringkasan, dan penanda emas yang sama.
+  Yang khas di halaman ini: grafik dua belas bulan yang sekaligus menjadi
+  penyaring, dan dua rincian (bidang, bulan) yang saling menunjuk pilihan aktif.
+*/
+.laporan-page {
+  min-width: 0;
+}
+.laporan-sheet {
+  border-top-left-radius: 0;
+}
+
+/* ----- Baris lingkup: bidang dan bulan yang sedang dilaporkan ----- */
+.laporan-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding: 14px 24px;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.laporan-scope-label {
+  margin-right: 6px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  white-space: nowrap;
+}
+.laporan-scope .custom-select.laporan-select {
+  width: auto;
+  min-width: 160px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 32px 0 12px;
+  border-radius: 9px;
+  border-color: #cfd8e2;
+  background: var(--ledger-surface);
+  font-size: var(--type-data);
+  font-weight: 500;
+  color: var(--ledger-text);
+}
+.laporan-scope .custom-select.laporan-select[data-active="true"] {
+  border-color: var(--ledger-navy);
+  background: var(--ledger-action-soft);
+  color: var(--ledger-ink);
+  font-weight: 600;
+}
+.laporan-scope .ledger-reset[data-slot="button"] {
+  height: 36px;
+}
+.laporan-scope-note {
+  margin-left: auto;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  white-space: nowrap;
+}
+
+/* ----- Kepala tiap bagian ----- */
+.laporan-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 22px 24px 14px;
+}
+.laporan-section-head h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--ledger-ink);
+  white-space: nowrap;
+}
+.laporan-section-head p {
+  margin: 0;
+  font-size: var(--type-meta);
+  line-height: 1.5;
+  color: var(--ledger-muted);
+}
+
+/* ----- Grafik dua belas bulan ----- */
+.laporan-months {
+  border-bottom: 1px solid var(--ledger-line);
+}
+.laporan-chart {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 24px 20px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.laporan-month {
+  position: relative;
+  display: grid;
+  grid-template-rows: 18px 132px auto auto;
+  justify-items: center;
+  align-items: end;
+  gap: 2px;
+  min-width: 52px;
+  padding: 6px 4px 10px;
+  border-radius: 10px;
+  color: var(--ledger-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.laporan-month-value {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.laporan-month-track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 44px;
+  height: 100%;
+}
+/* Satu garis dasar menerus di bawah kedua belas batang. */
+.laporan-chart::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 164px;
+  height: 1px;
+  background: var(--ledger-line);
+  pointer-events: none;
+}
+.laporan-month-bar {
+  display: block;
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--ledger-navy);
+  transform-origin: bottom center;
+  animation: laporan-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transition: background 0.15s;
+}
+.laporan-month strong {
+  margin-top: 6px;
+  font-size: var(--type-data);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ledger-ink);
+}
+.laporan-month small {
+  font-size: var(--type-micro);
+  line-height: 1.3;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.laporan-month:disabled {
+  cursor: default;
+}
+.laporan-month:disabled strong {
+  color: #aab6c3;
+  font-weight: 500;
+}
+.laporan-month:disabled small {
+  color: #aab6c3;
+}
+.laporan-month:not(:disabled):hover {
+  background: var(--ledger-tint);
+}
+/* Saat satu bulan dipilih, bulan lain mundur menjadi pembanding. */
+.laporan-chart:has([aria-pressed="true"]) .laporan-month[aria-pressed="false"] .laporan-month-bar {
+  background: #c5d0dc;
+}
+.laporan-chart:has([aria-pressed="true"]) .laporan-month[aria-pressed="false"] .laporan-month-value {
+  color: var(--ledger-muted);
+  font-weight: 500;
+}
+.laporan-month[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  box-shadow: inset 0 0 0 1px var(--ledger-line);
+}
+.laporan-month[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--ledger-gold);
+}
+.laporan-month:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+  z-index: 1;
+}
+@keyframes laporan-rise {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* ----- Rincian per bidang dan per bulan ----- */
+.laporan-register + .laporan-register {
+  border-top: 1px solid var(--ledger-line);
+}
+.laporan-table {
+  min-width: 760px;
+  font-size: var(--type-data);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.laporan-table th,
+.laporan-table td {
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.laporan-table thead th {
+  height: 42px;
+  padding: 0 14px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: inset 0 -1px var(--ledger-line);
+  border-bottom: 0;
+}
+.laporan-table th:last-child,
+.laporan-table td:last-child {
+  padding-right: 24px;
+}
+.laporan-table tbody th,
+.laporan-table tbody td {
+  padding: 13px 14px;
+  vertical-align: middle;
+  line-height: 1.45;
+  color: var(--ledger-text);
+  transition: background 0.12s;
+}
+.laporan-table tbody th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.laporan-table .is-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.laporan-table .is-money {
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  font-size: 1rem;
+  letter-spacing: -0.005em;
+  color: var(--ledger-ink);
+}
+.laporan-table td small {
+  display: block;
+  font-size: var(--type-micro);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.laporan-table td small.is-warning {
+  color: var(--ledger-amber);
+}
+.laporan-table tbody tr[data-active] th,
+.laporan-table tbody tr[data-active] td {
+  background: #fbf6e8;
+}
+.laporan-table tbody tr[data-active] th {
+  box-shadow: inset 3px 0 var(--ledger-gold);
+}
+.laporan-table .laporan-empty-months td {
+  padding: 11px 24px 12px;
+  color: var(--ledger-muted);
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+.laporan-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0;
+  padding: 4px 0;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ledger-ink);
+  text-align: left;
+  text-decoration: underline transparent;
+  text-underline-offset: 4px;
+  transition: color 0.12s, text-decoration-color 0.12s;
+}
+.laporan-pick:hover {
+  color: var(--ledger-action);
+  text-decoration-color: currentColor;
+}
+.laporan-pick:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 0;
+}
+.laporan-share-head {
+  min-width: 200px;
+}
+.laporan-share {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+}
+.laporan-share-track {
+  display: block;
+  height: 8px;
+  border-radius: 5px;
+  background: var(--ledger-line-soft);
+  overflow: hidden;
+}
+.laporan-share-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--ledger-navy);
+  transform-origin: left center;
+  animation: ledger-fill 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.laporan-share b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ledger-text);
+}
+
+/* Kolom pertama sejajar dengan judul bagian; ditulis setelah aturan padding baris. */
+.laporan-table thead th:first-child,
+.laporan-table tbody th,
+.laporan-table tfoot th {
+  padding-left: 24px;
+}
+
+/* Baris jumlah: kaki laporan, seperti daftar pembayaran yang dicetak. */
+.laporan-table .laporan-foot th,
+.laporan-table .laporan-foot td {
+  padding: 13px 14px;
+  background: var(--ledger-navy);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.005em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-bottom: 0;
+  border-top: 1px solid var(--ledger-navy-deep);
+}
+.laporan-table .laporan-foot th {
+  padding-left: 24px;
+}
+.laporan-table .laporan-foot .is-money {
+  color: var(--ledger-gold);
+}
+.laporan-foot-label {
+  font-size: var(--type-data);
+  font-weight: 500;
+  font-stretch: 100%;
+  letter-spacing: 0;
+  color: #c9d4e2;
+}
+.laporan-foot-label strong {
+  font-weight: 600;
+  color: #fff;
+}
+.laporan-sheet .empty-state {
+  padding: 56px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .laporan-month-bar,
+  .laporan-share-track > span {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .laporan-scope-note {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .laporan-chart {
+    grid-template-columns: repeat(12, minmax(56px, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .laporan-scope {
+    padding: 12px 16px;
+  }
+  .laporan-scope .custom-select.laporan-select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .laporan-section-head {
+    padding: 18px 16px 12px;
+  }
+  .laporan-chart {
+    padding: 4px 16px 16px;
+  }
+  .laporan-month {
+    grid-template-rows: 18px 96px auto auto;
+  }
+  .laporan-chart::before {
+    left: 16px;
+    right: 16px;
+    top: 126px;
+  }
+  .laporan-table thead th:first-child,
+  .laporan-table tbody th,
+  .laporan-table tfoot th,
+  .laporan-table .laporan-foot th {
+    padding-left: 16px;
+  }
+  .laporan-table th:last-child,
+  .laporan-table td:last-child {
+    padding-right: 16px;
+  }
+}

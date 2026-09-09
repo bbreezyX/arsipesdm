@@ -25,7 +25,6 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -34,7 +33,6 @@ import {
   Columns3,
   Rows3,
   MapPin,
-  FileText,
 } from "lucide-react";
 import type { ArchiveGroup } from "@/lib/archive-groups";
 import { dateText, isComplete, money, totalCost, type Trip } from "@/lib/model";
@@ -61,7 +59,7 @@ import {
 } from "./ui/dropdown-menu";
 
 const columnLabels: Record<string, string> = {
-  reference: "Surat Tugas & perjalanan",
+  reference: "Surat Tugas dan perjalanan",
   dates: "Pelaksanaan",
   people: "Pegawai",
   total: "Realisasi",
@@ -69,18 +67,38 @@ const columnLabels: Record<string, string> = {
 };
 const reference = (group: ArchiveGroup) => group.number || group.trips[0].code;
 
+const days = (start: string, end: string) =>
+  Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
+
+/** "12 Mar – 14 Mar 2024" when both dates share a year; full dates otherwise. */
+function dateRange(start: string, end: string) {
+  if (start === end) return dateText(start);
+  const sameYear = start.slice(0, 4) === end.slice(0, 4);
+  const first = sameYear ? dateText(start, { day: "numeric", month: "short" }) : dateText(start);
+  return `${first} – ${dateText(end)}`;
+}
+
 export default function ArchiveGroups({
   groups,
   selected,
   onSelectionChange,
   renderActions,
   emptyState,
+  status,
+  tools,
+  filters,
 }: {
   groups: ArchiveGroup[];
   selected: Set<string>;
   onSelectionChange: Dispatch<SetStateAction<Set<string>>>;
   renderActions: (trip: Trip) => ReactNode;
   emptyState: ReactNode;
+  /** Completeness switch, rendered beside the register title. */
+  status?: ReactNode;
+  /** Register-level actions such as export. */
+  tools?: ReactNode;
+  /** Search and filter controls, rendered in the filter row. */
+  filters?: ReactNode;
 }) {
   const registerRef = useRef<HTMLDivElement>(null);
   const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
@@ -98,7 +116,7 @@ export default function ArchiveGroups({
     () => [
       {
         id: "select",
-        size: 46,
+        size: 48,
         enableHiding: false,
         enableSorting: false,
         header: ({ table }) => (
@@ -128,17 +146,17 @@ export default function ArchiveGroups({
         header: columnLabels.reference,
         enableHiding: false,
         cell: ({ row }) => (
-          <div className="register-identity">
+          <div className="ledger-identity">
             <button
-              className="register-reference"
+              className="ledger-ref"
               onClick={() => row.toggleExpanded()}
               aria-expanded={row.getIsExpanded()}
               aria-controls={`detail-${encodeURIComponent(row.id)}`}
             >
               {reference(row.original)}
             </button>
-            <p className="register-description">{row.original.titles[0]}</p>
-            <div className="register-destination">
+            <p className="ledger-title">{row.original.titles[0]}</p>
+            <div className="ledger-place">
               <MapPin size={13} aria-hidden="true" />
               <span>{row.original.destinations.join(", ")}</span>
             </div>
@@ -147,31 +165,25 @@ export default function ArchiveGroups({
       },
       {
         id: "dates",
-        size: 145,
+        size: 170,
         sortDescFirst: true,
         accessorFn: (group) => group.startDate,
         header: columnLabels.dates,
         cell: ({ row: { original: group } }) => (
-          <div className="register-dates">
-            <time dateTime={group.startDate}>{dateText(group.startDate)}</time>
-            {group.endDate !== group.startDate && (
-              <span>
-                s.d.{" "}
-                <time dateTime={group.endDate}>{dateText(group.endDate)}</time>
-              </span>
-            )}
-            {group.endDate === group.startDate && <span>1 hari</span>}
+          <div className="ledger-dates">
+            <time dateTime={group.startDate}>{dateRange(group.startDate, group.endDate)}</time>
+            <span>{days(group.startDate, group.endDate)} hari</span>
           </div>
         ),
       },
       {
         id: "people",
-        size: 158,
+        size: 170,
         accessorFn: (group) => group.participants.length,
         header: columnLabels.people,
         cell: ({ row }) => (
           <button
-            className="register-people"
+            className="ledger-people"
             onClick={() => row.toggleExpanded()}
             aria-expanded={row.getIsExpanded()}
             aria-controls={`detail-${encodeURIComponent(row.id)}`}
@@ -179,54 +191,43 @@ export default function ArchiveGroups({
             <strong>{row.original.participants.length} pegawai</strong>
             <span>{row.original.participants[0]?.name || "Belum dicatat"}</span>
             {row.original.participants.length > 1 && (
-              <small>
-                +{row.original.participants.length - 1} pegawai lainnya
-              </small>
+              <small>dan {row.original.participants.length - 1} lainnya</small>
             )}
           </button>
         ),
       },
       {
         id: "total",
-        size: 148,
+        size: 160,
         accessorFn: (group) => group.total ?? undefined,
         header: columnLabels.total,
         sortUndefined: "last",
-        cell: ({ row }) => (
-          <div className="register-amount">
-            <GroupAmount group={row.original} />
-          </div>
-        ),
+        cell: ({ row }) => <GroupAmount group={row.original} />,
       },
       {
         id: "status",
-        size: 116,
+        size: 132,
         accessorFn: (group) => (group.complete ? 1 : 0),
         header: columnLabels.status,
-        cell: ({ row }) => (
-          <div className="register-status">
-            <GroupStatus group={row.original} />
-          </div>
-        ),
+        cell: ({ row }) => <GroupStatus group={row.original} />,
       },
       {
         id: "actions",
-        size: 63,
-        header: "Rincian",
+        size: 56,
+        header: "",
         enableHiding: false,
         enableSorting: false,
         cell: ({ row }) => (
           <Button
             variant="ghost"
             size="icon-sm"
+            className="ledger-expand"
             aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} rincian ${reference(row.original)}`}
             aria-expanded={row.getIsExpanded()}
             aria-controls={`detail-${encodeURIComponent(row.id)}`}
             onClick={() => row.toggleExpanded()}
           >
-            <ChevronDown
-              className={row.getIsExpanded() ? "rotate-180" : undefined}
-            />
+            <ChevronDown />
           </Button>
         ),
       },
@@ -291,45 +292,32 @@ export default function ArchiveGroups({
       registerRef.current?.scrollIntoView({ block: "start" });
     }
   };
+  const selectAllPage = (
+    <Checkbox
+      aria-label="Pilih semua pada halaman ini"
+      checked={
+        table.getIsAllPageRowsSelected() ||
+        (table.getIsSomePageRowsSelected() && "indeterminate")
+      }
+      onCheckedChange={(checked) =>
+        table.toggleAllPageRowsSelected(checked === true)
+      }
+    />
+  );
 
   return (
-    <div className="archive-register" data-density={density} ref={registerRef}>
-      <div className="register-view-toolbar">
-        <div className="register-result-caption">
-          <FileText size={15} aria-hidden="true" />
-          <span>
-            <strong>{groups.length}</strong> perjalanan ditemukan
-          </span>
-          {hasHorizontalScroll && <span className="register-scroll-hint">Geser untuk kolom lainnya →</span>}
+    <div className="ledger-register" data-density={density} ref={registerRef}>
+      <div className="ledger-register-head">
+        <div className="ledger-register-title">
+          <h2>Register perjalanan</h2>
+          <span>{groups.length} perjalanan</span>
         </div>
-        <div className="register-view-actions">
-          <CustomSelect
-            aria-label="Urutkan perjalanan"
-            className="register-sort-select"
-            value={sortValue}
-            onValueChange={(value) => {
-              const [id, direction] = value.split(":");
-              table.setSorting([{ id, desc: direction === "desc" }]);
-            }}
-          >
-            <SelectOption value="dates:desc">Tanggal terbaru</SelectOption>
-            <SelectOption value="dates:asc">Tanggal terlama</SelectOption>
-            <SelectOption value="reference:asc">Nomor surat A–Z</SelectOption>
-            <SelectOption value="reference:desc">Nomor surat Z–A</SelectOption>
-            <SelectOption value="total:desc">Realisasi terbesar</SelectOption>
-            <SelectOption value="total:asc">Realisasi terkecil</SelectOption>
-            <SelectOption value="people:desc">Pegawai terbanyak</SelectOption>
-            <SelectOption value="people:asc">Pegawai tersedikit</SelectOption>
-            <SelectOption value="status:asc">Draft lebih dulu</SelectOption>
-            <SelectOption value="status:desc">Lengkap lebih dulu</SelectOption>
-          </CustomSelect>
+        {status}
+        <div className="ledger-register-tools">
+          {tools}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="register-desktop-control"
-              >
+              <Button variant="outline" size="sm" className="ledger-tool ledger-desktop">
                 <Columns3 /> Kolom
               </Button>
             </DropdownMenuTrigger>
@@ -358,7 +346,7 @@ export default function ArchiveGroups({
               <Button
                 variant="outline"
                 size="sm"
-                className="register-desktop-control"
+                className="ledger-tool ledger-desktop"
                 aria-label="Kepadatan tabel"
               >
                 <Rows3 />
@@ -383,11 +371,39 @@ export default function ArchiveGroups({
           </DropdownMenu>
         </div>
       </div>
+      <div className="ledger-filters">
+        {filters}
+        <div className="ledger-filters-end">
+          <CustomSelect
+            aria-label="Urutkan perjalanan"
+            className="ledger-select ledger-sort-select"
+            value={sortValue}
+            onValueChange={(value) => {
+              const [id, direction] = value.split(":");
+              table.setSorting([{ id, desc: direction === "desc" }]);
+            }}
+          >
+            <SelectOption value="dates:desc">Tanggal terbaru</SelectOption>
+            <SelectOption value="dates:asc">Tanggal terlama</SelectOption>
+            <SelectOption value="reference:asc">Nomor surat A–Z</SelectOption>
+            <SelectOption value="reference:desc">Nomor surat Z–A</SelectOption>
+            <SelectOption value="total:desc">Realisasi terbesar</SelectOption>
+            <SelectOption value="total:asc">Realisasi terkecil</SelectOption>
+            <SelectOption value="people:desc">Pegawai terbanyak</SelectOption>
+            <SelectOption value="people:asc">Pegawai tersedikit</SelectOption>
+            <SelectOption value="status:asc">Draft lebih dulu</SelectOption>
+            <SelectOption value="status:desc">Lengkap lebih dulu</SelectOption>
+          </CustomSelect>
+          {hasHorizontalScroll && (
+            <span className="ledger-scroll-hint">Geser tabel untuk kolom lainnya</span>
+          )}
+        </div>
+      </div>
       {groups.length ? (
         <>
-          <div className="register-desktop-table">
+          <div className="ledger-table-wrap">
             <Table
-              className="register-table"
+              className="ledger-table"
               style={{ minWidth: table.getTotalSize() }}
               aria-label="Daftar arsip perjalanan"
             >
@@ -410,7 +426,7 @@ export default function ArchiveGroups({
                       >
                         {header.isPlaceholder ? null : header.column.getCanSort() ? (
                           <button
-                            className="register-sort-button"
+                            className="ledger-sort"
                             onClick={header.column.getToggleSortingHandler()}
                             aria-label={`Urutkan ${columnLabels[header.column.id]}`}
                           >
@@ -454,7 +470,7 @@ export default function ArchiveGroups({
                       ))}
                     </TableRow>
                     {row.getIsExpanded() && (
-                      <TableRow className="register-detail-row">
+                      <TableRow className="ledger-detail-row">
                         <TableCell colSpan={row.getVisibleCells().length}>
                           <div id={`detail-${encodeURIComponent(row.id)}`}>
                             <GroupDetails
@@ -470,26 +486,19 @@ export default function ArchiveGroups({
               </TableBody>
             </Table>
           </div>
-          <div className="register-mobile-list">
-            <label className="register-mobile-select-all">
-              <Checkbox
-                checked={
-                  table.getIsAllPageRowsSelected() ||
-                  (table.getIsSomePageRowsSelected() && "indeterminate")
-                }
-                onCheckedChange={(checked) =>
-                  table.toggleAllPageRowsSelected(checked === true)
-                }
-              />
-              Pilih halaman ini
+          <div className="ledger-mobile">
+            <label className="ledger-mobile-all">
+              {selectAllPage}
+              Pilih semua di halaman ini
             </label>
             {rows.map((row) => (
               <article
-                className="register-mobile-item"
+                className="ledger-card"
                 key={row.id}
                 data-selected={row.getIsSelected()}
+                data-expanded={row.getIsExpanded()}
               >
-                <div className="register-mobile-top">
+                <div className="ledger-card-top">
                   <Checkbox
                     checked={row.getIsSelected()}
                     onCheckedChange={(checked) =>
@@ -497,26 +506,27 @@ export default function ArchiveGroups({
                     }
                     aria-label={`Pilih ${reference(row.original)}`}
                   />
-                  <strong>{reference(row.original)}</strong>
+                  <button
+                    className="ledger-ref"
+                    onClick={() => row.toggleExpanded()}
+                    aria-expanded={row.getIsExpanded()}
+                    aria-controls={`mobile-detail-${encodeURIComponent(row.id)}`}
+                  >
+                    {reference(row.original)}
+                  </button>
                   <GroupStatus group={row.original} compact />
                 </div>
-                <p className="register-description">{row.original.titles[0]}</p>
-                <div className="register-destination">
-                  <MapPin size={13} />
+                <p className="ledger-title">{row.original.titles[0]}</p>
+                <div className="ledger-place">
+                  <MapPin size={13} aria-hidden="true" />
                   <span>{row.original.destinations.join(", ")}</span>
                 </div>
-                <div className="register-mobile-meta">
-                  <span>
-                    {dateText(row.original.startDate)}
-                    {row.original.endDate !== row.original.startDate &&
-                      ` – ${dateText(row.original.endDate)}`}
-                  </span>
+                <div className="ledger-card-meta">
+                  <span>{dateRange(row.original.startDate, row.original.endDate)}</span>
                   <span>{row.original.participants.length} pegawai</span>
                 </div>
-                <div className="register-mobile-bottom">
-                  <div className="register-amount">
-                    <GroupAmount group={row.original} />
-                  </div>
+                <div className="ledger-card-bottom">
+                  <GroupAmount group={row.original} />
                   <Button
                     variant="outline"
                     size="sm"
@@ -525,7 +535,7 @@ export default function ArchiveGroups({
                     aria-controls={`mobile-detail-${encodeURIComponent(row.id)}`}
                     onClick={() => row.toggleExpanded()}
                   >
-                    {row.getIsExpanded() ? "Tutup" : "Rincian"}
+                    {row.getIsExpanded() ? "Tutup rincian" : "Lihat rincian"}
                     <ChevronDown
                       className={row.getIsExpanded() ? "rotate-180" : undefined}
                     />
@@ -533,7 +543,7 @@ export default function ArchiveGroups({
                 </div>
                 {row.getIsExpanded() && (
                   <div
-                    className="register-mobile-detail"
+                    className="ledger-card-detail"
                     id={`mobile-detail-${encodeURIComponent(row.id)}`}
                   >
                     <GroupDetails
@@ -549,7 +559,7 @@ export default function ArchiveGroups({
       ) : (
         emptyState
       )}
-      <div className="register-pagination">
+      <div className="ledger-pagination">
         <p role="status">
           Menampilkan{" "}
           <strong>
@@ -558,7 +568,7 @@ export default function ArchiveGroups({
           </strong>{" "}
           dari <strong>{groups.length}</strong> perjalanan
         </p>
-        <div className="register-page-size">
+        <div className="ledger-page-size">
           <label htmlFor="archive-page-size">Baris per halaman</label>
           <CustomSelect
             id="archive-page-size"
@@ -620,19 +630,19 @@ export default function ArchiveGroups({
 
 function GroupAmount({ group }: { group: ArchiveGroup }) {
   return (
-    <>
+    <div className="ledger-amount">
       {group.total === null ? (
-        <span className="unknown-cost">Belum dicatat</span>
+        <span className="is-unknown">Belum dicatat</span>
       ) : (
         money(group.total)
       )}
       {group.unknownCount > 0 && (
-        <small className="archive-group-cost-note">
-          {group.total !== null ? "Total sementara · " : ""}
-          {group.unknownCount} rekap belum diisi
+        <small>
+          {group.total !== null ? "Sementara, " : ""}
+          {group.unknownCount} rekap belum bernominal
         </small>
       )}
-    </>
+    </div>
   );
 }
 
@@ -644,19 +654,16 @@ function GroupStatus({
   compact?: boolean;
 }) {
   return (
-    <>
-      <span
-        className={`status-badge ${group.complete ? "complete" : "incomplete"}`}
-      >
-        {group.complete ? <Check size={12} /> : <span className="status-dot" />}
+    <div>
+      <span className={`ledger-state ${group.complete ? "complete" : ""}`}>
         {group.complete ? "Lengkap" : "Draft"}
       </span>
       {!compact && (
-        <small className="document-count">
-          {group.completeCount}/{group.trips.length} rekap lengkap
+        <small className="ledger-state-note">
+          {group.completeCount} dari {group.trips.length} rekap lengkap
         </small>
       )}
-    </>
+    </div>
   );
 }
 
@@ -669,63 +676,60 @@ function GroupDetails({
 }) {
   return (
     <section
-      className="archive-group-details"
+      className="ledger-detail"
       aria-label={`Rekap ${group.number || group.trips[0].code}`}
     >
-      <div className="register-detail-purpose">
+      <div className="ledger-detail-purpose">
         <span>Uraian perjalanan</span>
         {group.titles.map((title, index) => (
           <p key={index}>{title}</p>
         ))}
       </div>
-      <div className="archive-group-detail-heading">
-        <strong>Rincian pegawai</strong>
-        <span>
-          {group.trips.length} rekap · {group.participants.length} pegawai
-        </span>
-      </div>
-      <div className="archive-group-members">
+      <div className="ledger-members">
+        <div className="ledger-members-head">
+          <strong>Rekap per pegawai</strong>
+          <span>
+            {group.trips.length} rekap, {group.participants.length} pegawai
+          </span>
+        </div>
         {group.trips.map((trip) => (
-          <div className="archive-group-member" key={trip.id}>
-            <div>
+          <div className="ledger-member" key={trip.id}>
+            <div className="ledger-member-who">
               <strong>
                 {trip.participants.map((person) => person.name).join(", ")}
               </strong>
-              <small>SPPD: {trip.sppdNo || "—"}</small>
-              <small>
-                {trip.code} · {trip.department}
-              </small>
-              {group.titles.length > 1 && <small>{trip.title}</small>}
-              <small>
-                {trip.destination} · {dateText(trip.startDate)} –{" "}
-                {dateText(trip.endDate)}
-              </small>
+              <span>SPPD {trip.sppdNo || "belum dicatat"}</span>
+              <span>
+                {trip.code}, {trip.department}
+              </span>
+              {group.titles.length > 1 && <span>{trip.title}</span>}
+              <span>
+                {trip.destination}, {dateRange(trip.startDate, trip.endDate)}
+              </span>
               {trip.participants.length > 1 && (
-                <small>Arsip gabungan · biaya dihitung satu kali</small>
+                <span>Arsip gabungan, biaya dihitung satu kali</span>
               )}
             </div>
-            <div className="archive-group-member-cost">
+            <div className="ledger-member-cost">
               <strong>{money(totalCost(trip))}</strong>
-              <span
-                className={`status-badge ${isComplete(trip) ? "complete" : "incomplete"}`}
-              >
+              <span className={`ledger-state ${isComplete(trip) ? "complete" : ""}`}>
                 {isComplete(trip) ? "Lengkap" : "Draft"}
               </span>
               <small>
                 {trip.documents.length
                   ? `${trip.documents.length} lampiran`
-                  : "Dokumen opsional"}
+                  : "Belum ada lampiran"}
               </small>
             </div>
             {renderActions(trip)}
           </div>
         ))}
-      </div>
-      <div className="archive-group-detail-total">
-        <span>
-          {group.unknownCount ? "Total sementara" : "Total realisasi"}
-        </span>
-        <strong>{money(group.total)}</strong>
+        <div className="ledger-members-total">
+          <span>
+            {group.unknownCount ? "Total sementara" : "Total realisasi"}
+          </span>
+          <strong>{money(group.total)}</strong>
+        </div>
       </div>
     </section>
   );

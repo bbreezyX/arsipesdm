@@ -39,12 +39,21 @@ export default async function PrintPage({
       <div className="print-controls" style={{ marginBottom: 25 }}>
         <PrintButton />
       </div>
-      <img
-        src="/logo-esdm-jambi.png"
-        alt="Dinas ESDM Provinsi Jambi"
-        width={371}
-        height={57}
-      />
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <img
+          src="/logo-jambi.svg"
+          alt="Lambang Provinsi Jambi"
+          width={100}
+          height={104}
+          style={{ width: 56, height: "auto" }}
+        />
+        <div style={{ lineHeight: 1.3 }}>
+          <div style={{ fontSize: "13pt", fontWeight: 700 }}>
+            Dinas Energi dan Sumber Daya Mineral
+          </div>
+          <div style={{ fontSize: "11pt", color: "#526478" }}>Provinsi Jambi</div>
+        </div>
+      </div>
       <div
         style={{
           borderTop: "2px solid #273c52",

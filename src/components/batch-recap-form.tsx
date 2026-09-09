@@ -15,7 +15,6 @@ import EmployeeCostWorkspace from "./employee-cost-workspace";
 import { ErrorMessage } from "./fields";
 import Lampiran6Form from "./lampiran6-form";
 import JourneyEmployeeWorkspace, { type JourneyIssue } from "./journey-employee-workspace";
-import { RecapStatusLegend } from "./recap-status";
 import RecapEntryMode from "./recap-entry-mode";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
@@ -42,6 +41,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
   const [editing, setEditing] = useState<string>();
   const [editingStep, setEditingStep] = useState<"journey" | "costs">("costs");
   const [activeCostKey, setActiveCostKey] = useState<string>();
+  const [journeyHeaderSlot, setJourneyHeaderSlot] = useState<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const selected = state.rows.filter(row => row.selected);
   const shared = state.shared;
@@ -141,6 +141,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
         <div className="dialog-kicker"><FileSpreadsheet size={16} /> Rekap perjalanan dinas</div>
         <DialogTitle>Tambah rekap pegawai</DialogTitle>
         <DialogDescription>Isi perjalanan sekali, lalu lengkapi SPPD dan biaya setiap pegawai.</DialogDescription>
+        {step === 0 && <div className="journey-header-slot" ref={setJourneyHeaderSlot} />}
       </DialogHeader>
       {step === 0 && <fieldset className="batch-mode-fieldset" disabled={busy}>
         <RecapEntryMode value="multiple" onChange={value => { if (value === "single") onSingle(state); }} />
@@ -151,13 +152,13 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
             {steps.map((label, index) => <TabsTrigger key={label} value={String(index)} disabled={busy}>{label}</TabsTrigger>)}
           </TabsList>
         </Tabs>
-        {step < 2 && <RecapStatusLegend />}
         <div className="form-body lampiran-form-body batch-form-body">
           <h2 ref={heading} tabIndex={-1} className="sr-only">{steps[step]}</h2>
           <fieldset disabled={busy} className="batch-fields">
             {step === 0 && <JourneyEmployeeWorkspace
               shared={shared} rows={state.rows} people={knownPeople} suggestions={suggestions}
               onJourneyChange={patchShared} onSelect={selectPeople} issue={journeyIssue}
+              headerSlot={journeyHeaderSlot}
             />}
             {step === 1 && <EmployeeCostWorkspace
               suggestions={suggestions}

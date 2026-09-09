@@ -1,6 +1,6 @@
 "use client";
-import { Combobox } from "./ui/combobox";
 import { NavbarClock } from "./navbar-clock";
+import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -20,7 +20,6 @@ import {
   Upload,
   Download,
   ChevronRight,
-  CalendarDays,
   MoreHorizontal,
   ArrowUpRight,
   CheckCircle2,
@@ -70,20 +69,19 @@ import {
     defaultFilters,
   filterTrips,
   totalCost,
-  money,
   dateText,
   isComplete,
   paymentLabel,
-  docLabels,
 } from "@/lib/model";
-import { employeeMatches, employeeRankOptions, type Employee, type EmployeeInput } from "@/lib/employees";
+import type { Employee } from "@/lib/employees";
 import ArchiveGroups from "./archive-groups";
-import EmployeeRegister from "./employee-register";
+const Pegawai = dynamic(() => import("./pegawai"));
 import type { Honorarium } from "@/lib/honorarium";
 const HonorariumWorkspace = dynamic(() => import("./honorarium-workspace"));
-import { groupArchives, filterArchiveGroups, archiveGroupsForYear, archivesForExport } from "@/lib/archive-groups";
+import { groupArchives, filterArchiveGroups, archiveGroupsForYear, archivesForExport, type ArchiveGroup } from "@/lib/archive-groups";
 import { exportTrips, downloadTemplate } from "@/lib/export";
 const TaskLetters = dynamic(() => import("./task-letters"));
+const Laporan = dynamic(() => import("./laporan"));
 const TripForm = dynamic(() => import("./trip-form"));
 const TripDetail = dynamic(() => import("./trip-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
@@ -195,6 +193,7 @@ export default function Workspace({
   const archiveGroups = useMemo(() => groupArchives(active), [active]);
   const filteredGroups = useMemo(() => filterArchiveGroups(archiveGroups, filters), [archiveGroups, filters]);
   const yearGroups = useMemo(() => archiveGroupsForYear(archiveGroups, filters.year), [archiveGroups, filters.year]);
+  const yearCounts = useMemo(() => new Map(years.map(year => [year, archiveGroupsForYear(archiveGroups, year).length])), [archiveGroups, years]);
   const archiveExportRows = useMemo(() => archivesForExport(filteredGroups), [filteredGroups]);
   const selectedGroups = filteredGroups.filter(group => selected.has(group.key));
   const statusGroups = useMemo(() => filterArchiveGroups(archiveGroups, { ...filters, status: "all" }), [archiveGroups, filters]);
@@ -321,10 +320,10 @@ export default function Workspace({
         <div className="official-brand">
           <span className="official-brand-mark">
             <img
-              src="/logo-esdm-jambi.png"
+              src="/logo-jambi.svg"
               alt="Lambang Provinsi Jambi"
-              width="371"
-              height="57"
+              width="100"
+              height="104"
             />
           </span>
           <div className="official-brand-name">
@@ -356,16 +355,6 @@ export default function Workspace({
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <div className="archive-tip">
-          <div className="tip-icon">
-            <FolderOpen size={19} />
-          </div>
-          <strong>Arsip lama, lebih tertata.</strong>
-          <p>Satukan rekap Excel dan berkas perjalanan dalam satu tempat.</p>
-          <button onClick={() => setHelp(true)}>
-            Panduan singkat <ArrowUpRight size={14} />
-          </button>
-        </div>
         <div className="bottom-nav">
           <button
             className={`nav-item ${section === "trash" ? "active" : ""}`}
@@ -437,7 +426,7 @@ export default function Workspace({
               <Menu size={19} />
             </button>
             <span className="compact-brand">
-              <img src="/logo-esdm-jambi.png" alt="Dinas ESDM Jambi" />
+              <img src="/logo-jambi.svg" alt="Dinas ESDM Jambi" />
             </span>
             <span className="crumb-home">Ruang kerja</span>
             <ChevronRight size={14} />
@@ -468,30 +457,21 @@ export default function Workspace({
             </div>
           </div>
         </header>
-        <main className={`workspace-main ${section === "archives" ? "workspace-archives" : ""}`}>
-          <div className="page-heading">
-            <div>
-              <h1>{sectionNames[section]}</h1>
-              <p>
-                {section === "archives"
-                  ? "Kelola Surat Tugas, rekap pegawai, dan dokumen pertanggungjawaban perjalanan dinas."
-                  : section === "taskLetters"
-                    ? "Lihat surat tugas, pegawai yang ditugaskan, dan total biaya perjalanannya."
-                  : section === "honorarium"
-                    ? "Rekap honor penerima, dasar SK, dan potongan pajak dalam satu tempat."
-                  : section === "reports"
-                    ? "Lihat kembali perjalanan dan realisasi biaya dari tahun ke tahun."
-                    : section === "documents"
-                      ? "Temukan lampiran digital dan lokasi berkas fisik perjalanan."
-                      : section === "people"
-                        ? "Kelola data pegawai dan telusuri riwayat perjalanannya."
-                        : section === "trash"
-                          ? "Arsip yang dihapus tetap tersedia untuk dipulihkan."
-                          : "Kelola bidang dan akses operator arsip kantor."}
-              </p>
-            </div>
-            {section === "archives" ? (
-              <div className="page-actions">
+        <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : ""}`}>
+          {section === "taskLetters" ? (
+            <header className="ledger-head">
+              <div>
+                <h1>Surat Tugas</h1>
+                <p>Register surat tugas yang tersusun per nomor surat, dengan pegawai yang ditugaskan dan realisasi biaya setiap perjalanannya.</p>
+              </div>
+            </header>
+          ) : section === "archives" ? (
+            <header className="ledger-head">
+              <div>
+                <h1>Arsip perjalanan</h1>
+                <p>Register perjalanan dinas yang sudah dilaksanakan, dikelompokkan per Surat Tugas beserta rekap dan dokumen setiap pegawai.</p>
+              </div>
+              <div className="ledger-head-actions">
                 <Button variant="outline" onClick={() => setImporting(true)}>
                   <Upload /> Impor Excel
                 </Button>
@@ -499,251 +479,163 @@ export default function Workspace({
                   <Plus /> Tambah arsip
                 </Button>
               </div>
-            ) : section === "reports" ? (
-              <Button
-                onClick={() => exportRows()}
-                disabled={busy || !filtered.length}
-              >
-                {busy ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <Download />
-                )}
-                Ekspor laporan
-              </Button>
-            ) : null}
+            </header>
+          ) : section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
+          <div className="page-heading">
+            <div>
+              <h1>{sectionNames[section]}</h1>
+              <p>
+                {section === "trash"
+                          ? "Arsip yang dihapus tetap tersedia untuk dipulihkan."
+                          : "Kelola bidang dan akses operator arsip kantor."}
+              </p>
+            </div>
           </div>
-          {["archives", "reports"].includes(section) && (
-            <>
-              <div className="period-toolbar">
-                <div>
-                  <CalendarDays size={16} />
-                  <label htmlFor="year-filter">Tahun arsip</label>
-                  <CustomSelect
-                    id="year-filter"
-                    value={filters.year}
-                    onValueChange={(value) => patchFilters({ year: value })}
-                  >
-                    <SelectOption value="all">Semua tahun</SelectOption>
-                    {years.map((y) => (
-                      <SelectOption key={y}>{y}</SelectOption>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <span>Berdasarkan tanggal perjalanan</span>
-              </div>
-              <div className="metrics-strip">
-                <div className="metric">
-                  <div className="metric-label">
-                    <Archive size={15} /> {section === "archives" ? "Perjalanan dinas" : "Total rekap"}
-                  </div>
-                  <div className="metric-number">
-                    {section === "archives" ? yearGroups.length : yearTrips.length}
-                    <span>{section === "archives" ? "perjalanan" : "rekap"}</span>
-                  </div>
-                  <small>
-                    {filters.year === "all"
-                      ? "Seluruh tahun dalam arsip"
-                      : `Dilaksanakan tahun ${filters.year}`}
-                  </small>
-                </div>
-                <div className="metric">
-                  <div className="metric-label">
-                    <Wallet size={15} /> Total realisasi
-                  </div>
-                  <div className="metric-number money-number">
-                    <span className="currency">Rp</span>
-                    {total.toLocaleString("id-ID")}
-                  </div>
-                  <small>
-                    {unknown
-                      ? `${unknown} rekap belum memiliki nominal`
-                      : "Dari biaya yang tercatat"}
-                  </small>
-                </div>
-                <div className="metric">
-                  <div className="metric-label">
-                    <Users size={15} /> Pegawai tercatat
-                  </div>
-                  <div className="metric-number">
-                    {
-                      new Set(
-                        yearTrips.flatMap((t) =>
-                          t.participants.map(
-                            (p) => p.nip || p.name.toLowerCase(),
-                          ),
-                        ),
-                      ).size
-                    }
-                    <span>pegawai</span>
-                  </div>
-                  <small>Dari seluruh bidang</small>
-                </div>
-                <div className="metric">
-                  <div className="metric-label">
-                    <CheckCircle2 size={15} /> Rekap lengkap
-                  </div>
-                  <div className="metric-number">
-                    {yearTrips.filter(isComplete).length}
-                    <span>dari {yearTrips.length}</span>
-                  </div>
-                  <div className="mini-progress">
-                    <span
-                      style={{
-                        width: `${yearTrips.length ? (yearTrips.filter(isComplete).length / yearTrips.length) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </>
           )}
           {section === "archives" && (
-            <section className="archive-panel">
-              <div className="register-heading">
-                <div>
-                  <h2>
-                    Register perjalanan dinas{" "}
-                    <span className="count-badge">{filteredGroups.length}</span>
-                  </h2>
-                  <p>Dikelompokkan per Surat Tugas. Buka rincian untuk melihat uraian lengkap dan rekap setiap pegawai.</p>
-                </div>
-                <div className="register-tools">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy || !filteredGroups.length}
-                    onClick={() => exportRows()}
+            <>
+              <nav className="ledger-years" aria-label="Tahun pelaksanaan">
+                {years.map((year) => (
+                  <button
+                    key={year}
+                    className="ledger-year"
+                    aria-pressed={filters.year === year}
+                    onClick={() => patchFilters({ year })}
                   >
-                    {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
-                  </Button>
-                </div>
-              </div>
-              <div
-                className="register-tabs"
-                role="group"
-                aria-label="Filter kelengkapan"
-              >
+                    <strong>{year}</strong>
+                    <span>{yearCounts.get(year) ?? 0} perjalanan</span>
+                  </button>
+                ))}
                 <button
-                  aria-pressed={filters.status === "all"}
-                  className={filters.status === "all" ? "active" : ""}
-                  onClick={() => patchFilters({ status: "all" })}
+                  className="ledger-year ledger-year-all"
+                  aria-pressed={filters.year === "all"}
+                  onClick={() => patchFilters({ year: "all" })}
                 >
-                  Semua <span>{statusGroups.length}</span>
+                  <strong>Semua</strong>
+                  <span>{archiveGroups.length} perjalanan</span>
                 </button>
-                <button
-                  aria-pressed={filters.status === "incomplete"}
-                  className={filters.status === "incomplete" ? "active" : ""}
-                  onClick={() => patchFilters({ status: "incomplete" })}
-                >
-                  <span className="tab-dot amber" />
-                  Draft{" "}
-                  <span>{statusGroups.filter(group => !group.complete).length}</span>
-                </button>
-                <button
-                  aria-pressed={filters.status === "complete"}
-                  className={filters.status === "complete" ? "active" : ""}
-                  onClick={() => patchFilters({ status: "complete" })}
-                >
-                  Lengkap <span>{statusGroups.filter(group => group.complete).length}</span>
-                </button>
-              </div>
-              <div className="register-filters">
-                <div className="register-search-field">
-                  <label htmlFor="archive-search">Cari arsip</label>
-                  <div className="search-control">
-                    <Search size={17} aria-hidden="true" />
-                    <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
-                      placeholder="Nomor surat, tujuan, atau nama pegawai…" value={filters.search}
-                      onChange={event => patchFilters({ search: event.target.value })} />
-                    {filters.search ? <button onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd>/</kbd>}
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="archive-department">Bidang</label>
-                  <CustomSelect id="archive-department" value={filters.department} onValueChange={value => patchFilters({ department: value })}>
-                    <SelectOption value="all">Semua bidang</SelectOption>
-                    {allDepartments.map(department => <SelectOption key={department}>{department}</SelectOption>)}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label htmlFor="archive-month">Bulan perjalanan</label>
-                  <CustomSelect id="archive-month" value={filters.month} onValueChange={value => patchFilters({ month: value })}>
-                    <SelectOption value="all">Semua bulan</SelectOption>
-                    {monthNames.map((month, index) => <SelectOption key={month} value={String(index + 1).padStart(2, "0")}>{month}</SelectOption>)}
-                  </CustomSelect>
-                </div>
-                {filterCount > 0 && <Button className="register-reset" variant="ghost" size="sm" onClick={() => patchFilters({ ...defaultFilters, year: filters.year })}>
-                  <RotateCcw /> Hapus filter <span>({filterCount})</span>
-                </Button>}
-              </div>
+              </nav>
+              <section className="ledger-sheet">
+                <YearSummary
+                  year={filters.year}
+                  groups={yearGroups}
+                  trips={yearTrips}
+                  total={total}
+                  unknown={unknown}
+                />
+                <ArchiveGroups
+                  groups={filteredGroups}
+                  selected={selected}
+                  onSelectionChange={setSelected}
+                  renderActions={trip => <ArchiveActions trip={trip} onAction={action => openArchive(trip.id, action)} />}
+                  status={
+                    <div className="ledger-status" role="group" aria-label="Filter kelengkapan">
+                      <button aria-pressed={filters.status === "all"} onClick={() => patchFilters({ status: "all" })}>
+                        Semua <b>{statusGroups.length}</b>
+                      </button>
+                      <button aria-pressed={filters.status === "incomplete"} onClick={() => patchFilters({ status: "incomplete" })}>
+                        <i aria-hidden="true" /> Draft <b>{statusGroups.filter(group => !group.complete).length}</b>
+                      </button>
+                      <button aria-pressed={filters.status === "complete"} onClick={() => patchFilters({ status: "complete" })}>
+                        <i className="complete" aria-hidden="true" /> Lengkap <b>{statusGroups.filter(group => group.complete).length}</b>
+                      </button>
+                    </div>
+                  }
+                  tools={
+                    <Button variant="outline" size="sm" className="ledger-tool" disabled={busy || !filteredGroups.length} onClick={() => exportRows()}>
+                      {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
+                    </Button>
+                  }
+                  filters={
+                    <>
+                      <div className="ledger-search">
+                        <Search size={17} aria-hidden="true" />
+                        <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
+                          placeholder="Cari nomor surat, tujuan, atau nama pegawai" value={filters.search}
+                          onChange={event => patchFilters({ search: event.target.value })} />
+                        {filters.search ? <button onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+                      </div>
+                      <div className="ledger-filter-group">
+                      <CustomSelect aria-label="Bidang" className="ledger-select" data-active={filters.department !== "all"}
+                        value={filters.department} onValueChange={value => patchFilters({ department: value })}>
+                        <SelectOption value="all">Semua bidang</SelectOption>
+                        {allDepartments.map(department => <SelectOption key={department}>{department}</SelectOption>)}
+                      </CustomSelect>
+                      <CustomSelect aria-label="Bulan perjalanan" className="ledger-select" data-active={filters.month !== "all"}
+                        value={filters.month} onValueChange={value => patchFilters({ month: value })}>
+                        <SelectOption value="all">Semua bulan</SelectOption>
+                        {monthNames.map((month, index) => <SelectOption key={month} value={String(index + 1).padStart(2, "0")}>{month}</SelectOption>)}
+                      </CustomSelect>
+                      {filterCount > 0 && <Button className="ledger-reset" variant="ghost" size="sm" onClick={() => patchFilters({ ...defaultFilters, year: filters.year })}>
+                        <RotateCcw /> Hapus filter ({filterCount})
+                      </Button>}
+                      </div>
+                    </>
+                  }
+                  emptyState={
+                    <Empty
+                      icon={<FolderOpen size={30} />}
+                      heading={active.length ? "Tidak ada perjalanan yang cocok" : "Mulai rapikan arsip perjalanan"}
+                      description={active.length
+                        ? "Coba kata kunci lain, pilih tahun berbeda, atau hapus filter yang aktif."
+                        : "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu."}
+                      action={active.length ? (
+                        <Button variant="outline" onClick={() => patchFilters(defaultFilters)}>
+                          Tampilkan semua perjalanan
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => setImporting(true)}>
+                            <Upload /> Impor Excel
+                          </Button>
+                          <Button onClick={() => setEditor("new")}>
+                            <Plus /> Tambah arsip
+                          </Button>
+                        </div>
+                      )}
+                    />
+                  }
+                />
+              </section>
               {selectedGroups.length > 0 && (
-                <div className="selection-bar register-selection">
+                <div className="ledger-dock" role="region" aria-label="Arsip yang dipilih">
                   <span role="status">
-                    <CheckCircle2 size={15} /> {selectedGroups.length} perjalanan dipilih · {selectedGroups.reduce((sum, group) => sum + group.trips.length, 0)} rekap
+                    <CheckCircle2 size={17} aria-hidden="true" />
+                    <strong>{selectedGroups.length}</strong> perjalanan dipilih, {selectedGroups.reduce((sum, group) => sum + group.trips.length, 0)} rekap
                   </span>
                   {selectedGroups.length < filteredGroups.length && <button onClick={() => setSelected(new Set(filteredGroups.map(group => group.key)))}>
-                    Pilih semua {filteredGroups.length} hasil
+                    Pilih semua {filteredGroups.length}
                   </button>}
-                  <button
-                    onClick={() =>
-                      exportRows(archivesForExport(filteredGroups, selected))
-                    }
-                    disabled={busy}
-                  >
+                  <button className="is-primary" onClick={() => exportRows(archivesForExport(filteredGroups, selected))} disabled={busy}>
                     {busy ? <LoaderCircle size={14} className="animate-spin" /> : <Download size={14} />} Ekspor pilihan
                   </button>
                   <button onClick={() => setSelected(new Set())}>
-                    Batal pilih
+                    Batal
                   </button>
                 </div>
               )}
-              <ArchiveGroups
-                groups={filteredGroups}
-                selected={selected}
-                onSelectionChange={setSelected}
-                renderActions={trip => <ArchiveActions trip={trip} onAction={action => openArchive(trip.id, action)} />}
-                emptyState={
-                  <Empty
-                    icon={<FolderOpen size={30} />}
-                    heading={active.length ? "Tidak ada perjalanan yang cocok" : "Mulai rapikan arsip perjalanan"}
-                    description={active.length
-                      ? "Coba kata kunci lain atau longgarkan filter pencarian."
-                      : "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu."}
-                    action={active.length ? (
-                      <Button variant="outline" onClick={() => patchFilters(defaultFilters)}>
-                        Reset semua filter
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => setImporting(true)}>
-                          <Upload /> Impor Excel
-                        </Button>
-                        <Button onClick={() => setEditor("new")}>
-                          <Plus /> Tambah arsip
-                        </Button>
-                      </div>
-                    )}
-                  />
-                }
-              />
-            </section>
+            </>
           )}
           {section === "taskLetters" && <TaskLetters trips={active} onOpen={(id) => openArchive(id)} />}
           {section === "honorarium" && <HonorariumWorkspace initialRecords={initialHonorariums} employees={people} onToast={setToast} />}
           {section === "reports" && (
-            <Reports
-              trips={filtered}
+            <Laporan
+              trips={active}
+              groups={archiveGroups}
+              years={years}
+              yearCounts={yearCounts}
               departments={allDepartments}
               filters={filters}
               onFilter={patchFilters}
+              busy={busy}
+              onExport={rows => exportRows(rows)}
             />
           )}
           {section === "documents" && (
-            <Documents trips={active} onOpen={(id) => openArchive(id)} />
+            <Dokumen trips={active} onChange={update} notify={setToast} onOpen={(id) => openArchive(id)} />
           )}
           {section === "people" && (
-            <People
+            <Pegawai
               trips={active}
               people={employees}
               departments={allDepartments}
@@ -979,362 +871,49 @@ export default function Workspace({
   );
 }
 
-function Reports({
-  trips,
-  departments,
-  filters,
-  onFilter,
-}: {
-  trips: Trip[];
-  departments: string[];
-  filters: Filters;
-  onFilter: (f: Partial<Filters>) => void;
+function YearSummary({ year, groups, trips, total, unknown }: {
+  year: string; groups: ArchiveGroup[]; trips: Trip[]; total: number; unknown: number;
 }) {
-  const groups = departments
-    .map((d) => {
-      const items = trips.filter((t) => t.department === d);
-      return {
-        name: d,
-        count: items.length,
-        total: items.reduce((s, t) => s + (totalCost(t) ?? 0), 0),
-        complete: items.filter(isComplete).length,
-        unknown: items.filter((t) => totalCost(t) === null).length,
-      };
-    })
-    .filter((g) => g.count);
-  const max = Math.max(1, ...groups.map((g) => g.total));
+  const complete = groups.filter(group => group.complete).length;
+  const draft = groups.length - complete;
+  const people = new Set(trips.flatMap(t => t.participants.map(p => p.nip || p.name.toLowerCase()))).size;
+  const known = trips.length - unknown;
+  const scope = year === "all" ? "seluruh tahun" : `tahun ${year}`;
+  const ratio = groups.length ? complete / groups.length : 0;
   return (
-    <>
-      <div className="report-filters">
-        <Field label="Bidang">
-          <CustomSelect
-            value={filters.department}
-            onValueChange={(value) => onFilter({ department: value })}
-          >
-            <SelectOption value="all">Semua bidang</SelectOption>
-            {departments.map((d) => (
-              <SelectOption key={d}>{d}</SelectOption>
-            ))}
-          </CustomSelect>
-        </Field>
-        <Field label="Bulan">
-          <CustomSelect
-            value={filters.month}
-            onValueChange={(value) => onFilter({ month: value })}
-          >
-            <SelectOption value="all">Semua bulan</SelectOption>
-            {monthNames.map((m, i) => (
-              <SelectOption value={String(i + 1).padStart(2, "0")} key={m}>
-                {m}
-              </SelectOption>
-            ))}
-          </CustomSelect>
-        </Field>
-        {(filters.search || filters.status !== "all") && (
-          <Button
-            variant="outline"
-            onClick={() => onFilter({ search: "", status: "all" })}
-          >
-            Hapus filter daftar arsip
-          </Button>
-        )}
-      </div>
-      <section className="archive-panel report-panel">
-        <div className="register-heading">
-          <div>
-            <h2>Realisasi per bidang</h2>
-            <p>Total biaya perjalanan yang tercatat dalam periode terpilih.</p>
-          </div>
-          <span className="report-unit">Dalam rupiah</span>
-        </div>
-        {groups.length ? (
-          <div className="report-bars">
-            {groups.map((g) => (
-              <div className="report-row" key={g.name}>
-                <div>
-                  <strong>{g.name}</strong>
-                  <small>
-                    {g.count} rekap · {g.complete} arsip lengkap
-                    {g.unknown ? ` · ${g.unknown} biaya belum dicatat` : ""}
-                  </small>
-                </div>
-                <div className="report-track">
-                  <span style={{ width: `${(g.total / max) * 100}%` }} />
-                </div>
-                <b>{money(g.total)}</b>
-              </div>
-            ))}
-          </div>
+    <section className="ledger-summary" aria-label={`Ringkasan ${scope}`}>
+      <div>
+        <span className="ledger-summary-label">Realisasi biaya perjalanan {scope}</span>
+        {known ? (
+          <strong className="ledger-figure"><small>Rp</small>{total.toLocaleString("id-ID")}</strong>
         ) : (
-          <Empty
-            icon={<BarChart3 size={28} />}
-            heading="Belum ada rekap pada periode ini"
-            description="Ubah filter atau tambahkan arsip perjalanan terlebih dahulu."
-          />
+          <strong className="ledger-figure is-empty">Belum ada nominal tercatat</strong>
         )}
-      </section>
-      <section className="archive-panel mt-5">
-        <div className="register-heading">
-          <div>
-            <h2>Rekap bulanan</h2>
-            <p>
-              {filters.year === "all"
-                ? "Gabungan bulan yang sama dari seluruh tahun."
-                : `Perjalanan yang berangkat pada tahun ${filters.year}.`}
-            </p>
-          </div>
+        <div className="ledger-summary-facts">
+          <span><strong>{groups.length}</strong> perjalanan</span>
+          <span><strong>{trips.length}</strong> rekap</span>
+          <span><strong>{people}</strong> pegawai</span>
+          {unknown > 0 && <span className="is-warning"><strong>{unknown}</strong> rekap belum bernominal</span>}
         </div>
-        <div className="table-scroll">
-          <table className="report-table">
-            <thead>
-              <tr>
-                <th>Bulan</th>
-                <th>Jumlah rekap</th>
-                <th>Catatan pegawai</th>
-                <th>Arsip lengkap</th>
-                <th className="text-right">Total realisasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthNames.map((m, i) => {
-                const ts = trips.filter(
-                  (t) => Number(t.startDate.slice(5, 7)) === i + 1,
-                );
-                if (!ts.length) return null;
-                return (
-                  <tr key={m}>
-                    <td>{m}</td>
-                    <td>{ts.length}</td>
-                    <td>
-                      {ts.reduce((s, t) => s + t.participants.length, 0)}{" "}
-                      catatan
-                    </td>
-                    <td>
-                      {ts.filter(isComplete).length} / {ts.length}
-                    </td>
-                    <td className="text-right font-semibold">
-                      {money(ts.reduce((s, t) => s + (totalCost(t) ?? 0), 0))}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  );
-}
-function Documents({
-  trips,
-  onOpen,
-}: {
-  trips: Trip[];
-  onOpen: (id: string) => void;
-}) {
-  const [q, setQ] = useState("");
-  const [kind, setKind] = useState("all");
-  const docs = trips
-    .flatMap((t) => t.documents.map((d) => ({ ...d, trip: t })))
-    .filter(
-      (d) =>
-        (kind === "all" || d.kind === kind) &&
-        [d.name, d.location, d.trip.title, d.trip.sptNo, docLabels[d.type]]
-          .join(" ")
-          .toLowerCase()
-          .includes(q.toLowerCase()),
-    );
-  return (
-    <section className="archive-panel">
-      <div className="filter-toolbar">
-        <div className="search-control">
-          <Search size={17} />
-          <input
-            aria-label="Cari dokumen"
-            placeholder="Cari nama berkas, nomor surat, atau lokasi map…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <CustomSelect
-          aria-label="Bentuk dokumen"
-          value={kind}
-          onValueChange={(value) => setKind(value)}
-        >
-          <SelectOption value="all">Digital & fisik</SelectOption>
-          <SelectOption value="file">Dokumen digital</SelectOption>
-          <SelectOption value="physical">Berkas fisik</SelectOption>
-        </CustomSelect>
-        <span className="muted text-xs">{docs.length} dokumen</span>
       </div>
-      {docs.length ? (
-        <div className="document-grid">
-          {docs.map((d) => (
-            <article key={d.id} className="document-card">
-              <div>
-                <div className={`file-icon ${d.kind}`}>
-                  {d.kind === "file" ? (
-                    <FileText size={23} />
-                  ) : (
-                    <FolderOpen size={23} />
-                  )}
-                </div>
-                <span className="status-badge neutral">
-                  {d.kind === "file" ? "Digital" : "Fisik"}
-                </span>
-              </div>
-              <h3>{docLabels[d.type]}</h3>
-              <p>{d.trip.title}</p>
-              <span className="document-location">
-                {d.kind === "file" ? d.name : d.location}
-              </span>
-              <footer>
-                <span>{d.trip.startDate.slice(0, 4)}</span>
-                <button onClick={() => onOpen(d.trip.id)}>
-                  Lihat perjalanan <ArrowUpRight size={14} />
-                </button>
-              </footer>
-            </article>
-          ))}
+      <div>
+        <div className="ledger-summary-row">
+          <span>Perjalanan lengkap</span>
+          <strong>{complete} dari {groups.length}</strong>
         </div>
-      ) : (
-        <Empty
-          icon={<FileText size={28} />}
-          heading="Belum ada dokumen yang cocok"
-          description="Tambahkan dokumen melalui detail perjalanan, atau ubah pencarian."
-        />
-      )}
+        <div className={`ledger-bar ${groups.length ? "" : "is-empty"}`} role="img"
+          aria-label={`${complete} perjalanan lengkap, ${draft} masih draft`}>
+          <span key={`${year}-${groups.length}`} style={{ width: `${ratio * 100}%` }} />
+        </div>
+        <div className="ledger-legend">
+          <span><i aria-hidden="true" /><strong>{complete}</strong> lengkap</span>
+          <span><i className="draft" aria-hidden="true" /><strong>{draft}</strong> draft</span>
+        </div>
+      </div>
     </section>
   );
 }
-function People({ trips, people, onOpen, departments, onChange, notify }: {
-  trips: Trip[];
-  people: Employee[];
-  onOpen: (id: string) => void;
-  departments: string[];
-  onChange: (employee: Employee) => void;
-  notify: (message: string) => void;
-}) {
-  const [q, setQ] = useState("");
-  const [department, setDepartment] = useState("all");
-  const [person, setPerson] = useState<Employee | null>(null);
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [editor, setEditor] = useState<Employee | "new" | null>(null);
-  const [removing, setRemoving] = useState<Employee | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const match = (p: Employee, t: Trip) => t.participants.some(x => employeeMatches(p, x));
-  async function change(person: Employee, restore = false) {
-    setBusy(true); setError("");
-    try {
-      const saved = await api<Employee>(`/api/employees/${person.id}`, {
-        method: restore ? "PATCH" : "DELETE", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({version: person.version, ...(restore ? {action: "restore"} : {})}),
-      });
-      onChange(saved); setRemoving(null);
-      notify(restore ? "Pegawai berhasil dipulihkan." : "Pegawai dihapus dari daftar aktif.");
-    } catch(e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
-  return (
-    <>
-      <EmployeeRegister people={people} trips={trips} query={q} onQueryChange={setQ}
-        department={department} onDepartmentChange={setDepartment}
-        showDeleted={showDeleted} onDeletedChange={value => {setShowDeleted(value); setError("");}}
-        busy={busy} onCreate={() => setEditor("new")} onDetail={setPerson} onEdit={setEditor}
-        onRemove={person => {setError(""); setRemoving(person);}} onRestore={person => change(person, true)}
-        error={!removing && <ErrorMessage message={error} />} />
-      {editor && <EmployeeForm key={editor === "new" ? "new" : editor.id} employee={editor === "new" ? null : editor} departments={departments} onClose={() => setEditor(null)} onSaved={p => {onChange(p); setEditor(null); setShowDeleted(false); setQ(""); setDepartment("all"); notify("Data pegawai berhasil disimpan.");}} />}
-      <Dialog open={!!removing} onOpenChange={open => {if (!open && !busy) setRemoving(null);}}>
-        <DialogContent showCloseButton={!busy}>
-          <DialogHeader><DialogTitle>Hapus pegawai?</DialogTitle><DialogDescription>{removing?.name} akan dihapus dari daftar aktif. Arsip perjalanan tetap tersimpan. Pegawai dapat dipulihkan melalui daftar Pegawai terhapus.</DialogDescription></DialogHeader>
-          <ErrorMessage message={error} />
-          <div className="flex justify-end gap-2"><Button variant="outline" disabled={busy} onClick={() => setRemoving(null)}>Batal</Button><Button variant="destructive" disabled={busy} onClick={() => removing && change(removing)}>{busy ? "Menghapus…" : "Hapus pegawai"}</Button></div>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!person}
-        onOpenChange={(open) => {
-          if (!open) setPerson(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{person?.name}</DialogTitle>
-            <DialogDescription>
-              Riwayat perjalanan yang tersimpan dalam arsip.
-            </DialogDescription>
-          </DialogHeader>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div><dt className="muted">NIP</dt><dd>{person?.nip || "Belum dicatat"}</dd></div>
-            <div><dt className="muted">Jabatan</dt><dd>{person?.position || "Belum dicatat"}</dd></div>
-            <div><dt className="muted">Golongan</dt><dd>{person?.rank || "Belum dicatat"}</dd></div>
-            <div><dt className="muted">Bidang</dt><dd>{person?.department || "Belum dicatat"}</dd></div>
-          </dl>
-          {person && !trips.some(t => match(person, t)) && <p className="muted text-sm">Belum ada perjalanan tercatat.</p>}
-          <div className="person-history">
-            {person &&
-              trips
-                .filter((t) => match(person, t))
-                .map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      setPerson(null);
-                      onOpen(t.id);
-                    }}
-                  >
-                    <span>
-                      <strong>{t.title}</strong>
-                      <small>
-                        {dateText(t.startDate)} · {t.destination}
-                      </small>
-                    </span>
-                    <ChevronRight size={17} />
-                  </button>
-                ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-function EmployeeForm({employee, departments, onClose, onSaved}: {
-  employee: Employee | null; departments: string[]; onClose: () => void; onSaved: (p: Employee) => void;
-}) {
-  const [form, setForm] = useState<EmployeeInput>({name: employee?.name ?? "", nip: employee?.nip ?? "", position: employee?.position ?? "", department: employee?.department ?? "", rank: employee?.rank ?? ""});
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function save(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
-    try {
-      const saved = await api<Employee>(employee ? `/api/employees/${employee.id}` : "/api/employees", {
-        method: employee ? "PATCH" : "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({...form, ...(employee ? {version: employee.version} : {})}),
-      });
-      onSaved(saved);
-    } catch(e) {setError((e as Error).message);}
-    finally {setBusy(false);}
-  }
-  return <Dialog open onOpenChange={open => {if (!open && !busy) onClose();}}>
-    <DialogContent className="employee-form-dialog" showCloseButton={!busy}>
-      <DialogHeader><DialogTitle>{employee ? "Edit pegawai" : "Tambah pegawai"}</DialogTitle><DialogDescription>Data ini tersedia saat mengisi arsip baru. Identitas pada arsip lama tetap tersimpan.</DialogDescription></DialogHeader>
-      <form onSubmit={save} className="grid gap-4">
-        <fieldset disabled={busy} className="grid gap-4">
-          <Field label="Nama pegawai" required><input autoFocus required maxLength={250} value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></Field>
-          <Field label="NIP" hint="Opsional. Masukkan sebagai teks agar angka awal tetap tersimpan."><input maxLength={250} value={form.nip} onChange={e => setForm({...form, nip: e.target.value})} /></Field>
-          <Field label="Jabatan"><input maxLength={250} value={form.position} onChange={e => setForm({...form, position: e.target.value})} /></Field>
-          <Field label="Golongan" hint="Pilih atau ketik sesuai data kepegawaian. Kosongkan untuk menghapus golongan.">
-            <Combobox aria-label="Golongan pegawai" maxLength={1000} value={form.rank} onValueChange={rank => setForm({...form, rank})} options={employeeRankOptions} placeholder="Pilih atau ketik golongan" />
-          </Field>
-          <Field label="Bidang"><Combobox aria-label="Bidang pegawai" maxLength={250} value={form.department} onValueChange={value => setForm({...form, department: value})} options={departments.map(value => ({value}))} placeholder="Pilih atau ketik bidang" /></Field>
-        </fieldset>
-        <ErrorMessage message={error} />
-        <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Batal</Button><Button type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan pegawai"}</Button></div>
-      </form>
-    </DialogContent>
-  </Dialog>;
-}
+
 function Settings({
   departments,
   setDepartments,
@@ -1424,8 +1003,10 @@ function Settings({
         <h2>Identitas instansi</h2>
         <img
           className="settings-logo"
-          src="/logo-esdm-jambi.png"
-          alt="Logo resmi Dinas ESDM Provinsi Jambi"
+          src="/logo-jambi.svg"
+          alt="Lambang Provinsi Jambi"
+          width="100"
+          height="104"
         />
         <dl className="metadata-list">
           <div>
@@ -1545,10 +1126,10 @@ function OfficialLetterhead({ compact = false }: { compact?: boolean }) {
     <div className={`auth-kop ${compact ? "compact" : ""}`}>
       <span className="auth-crest">
         <img
-          src="/logo-esdm-jambi.png"
+          src="/logo-jambi.svg"
           alt="Lambang Provinsi Jambi"
-          width="371"
-          height="57"
+          width="100"
+          height="104"
         />
       </span>
       <div className="auth-kop-name">
@@ -1646,10 +1227,10 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
           <div className="auth-brand-mark">
             <span className="auth-crest">
               <img
-                src="/logo-esdm-jambi.png"
+                src="/logo-jambi.svg"
                 alt="Lambang Provinsi Jambi"
-                width="371"
-                height="57"
+                width="100"
+                height="104"
               />
             </span>
             <span className="auth-brand-label">

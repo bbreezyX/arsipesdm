@@ -1,0 +1,766 @@
+/*
+  Honorarium: buku honor di atas lapisan register (arsip.css).
+  Warna, tipe, dan kelas ledger-* sama dengan Arsip perjalanan dan Surat Tugas.
+  Yang khas di halaman ini: rel jenis honorarium mengikuti lima tabel Lampiran 3,
+  satu angka netto pada pita ringkasan, dan baris jumlah biru laut di kaki tabel
+  seperti daftar pembayaran honor yang dicetak.
+*/
+.honor-page {
+  min-width: 0;
+}
+.honor-sheet {
+  border-top-left-radius: 0;
+}
+
+/* ----- Rel jenis honorarium ----- */
+.honor-index {
+  display: flex;
+  align-items: stretch;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.honor-index-all {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 148px;
+  padding: 14px 22px 14px 24px;
+  text-align: left;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line);
+  transition: background 0.15s, color 0.15s;
+}
+.honor-index-all strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+}
+.honor-index-all span {
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.honor-kinds {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-width: 0;
+}
+.honor-kind {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 4px;
+  min-width: 0;
+  padding: 13px 16px 12px;
+  text-align: left;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line-soft);
+  transition: background 0.15s, color 0.15s;
+}
+.honor-kind:last-child {
+  border-right: 0;
+}
+.honor-kind > span {
+  grid-column: 1 / -1;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  line-height: 1.35;
+  color: inherit;
+}
+.honor-kind strong {
+  font-size: 1.375rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.honor-kind small {
+  min-width: 0;
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.honor-kind:disabled {
+  cursor: default;
+  color: #aab6c3;
+}
+.honor-kind:disabled strong {
+  color: #aab6c3;
+  font-weight: 500;
+}
+.honor-kind:not(:disabled):hover,
+.honor-index-all:hover {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.honor-kind[aria-pressed="true"],
+.honor-index-all[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.honor-kind[aria-pressed="true"]::after,
+.honor-index-all[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--ledger-gold);
+}
+.honor-index-all[aria-pressed="true"]::after {
+  left: 24px;
+  right: 22px;
+}
+.honor-kind:focus-visible,
+.honor-index-all:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* ----- Pita ringkasan: satu angka netto, satu bilah bruto ----- */
+.honor-summary .ledger-figure {
+  margin-bottom: 12px;
+}
+.honor-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ledger-action-soft);
+}
+.honor-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 6px 0 0 6px;
+  background: var(--ledger-navy);
+  transform-origin: left center;
+  animation: ledger-fill 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.honor-bar.is-empty {
+  background: var(--ledger-line-soft);
+}
+.honor-legend i {
+  background: var(--ledger-navy);
+}
+.honor-legend i.tax {
+  background: var(--ledger-action-soft);
+  box-shadow: inset 0 0 0 1px #b9cbdd;
+}
+
+/* ----- Kepala register dan penyaring ----- */
+.ledger-register-tools .custom-select.honor-sort {
+  width: auto;
+  min-width: 160px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 32px 0 12px;
+  border-radius: 9px;
+  border-color: #d3dbe4;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-text);
+}
+.honor-reload.ledger-tool[data-slot="button"] {
+  width: 34px;
+  padding: 0;
+}
+.honor-register .ledger-filters {
+  padding-top: 2px;
+}
+.ledger-filters .custom-select.honor-sk-select {
+  max-width: 340px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.honor-error {
+  margin: 0 24px 14px;
+}
+
+/* ----- Tabel honor ----- */
+.honor-table {
+  min-width: 1120px;
+}
+.honor-table th:first-child,
+.honor-table td:first-child {
+  padding-left: 24px;
+}
+.honor-table [data-column="recipient"] {
+  min-width: 250px;
+}
+.honor-table [data-column="sk"] {
+  min-width: 230px;
+}
+.honor-table [data-column="calc"],
+.honor-table [data-column="gross"],
+.honor-table [data-column="tax"],
+.honor-table [data-column="net"] {
+  text-align: right;
+  white-space: nowrap;
+}
+.honor-table [data-column="calc"] {
+  width: 190px;
+  min-width: 190px;
+}
+.honor-table [data-column="gross"] {
+  width: 150px;
+  min-width: 150px;
+}
+.honor-table [data-column="tax"] {
+  width: 140px;
+  min-width: 140px;
+}
+.honor-table [data-column="net"] {
+  width: 160px;
+  min-width: 160px;
+}
+.honor-table [data-column="actions"] {
+  width: 92px;
+  min-width: 92px;
+  text-align: right;
+  padding-inline: 8px 16px;
+}
+.honor-row-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.honor-menu[data-slot="button"] {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--ledger-muted);
+}
+.honor-menu[data-slot="button"]:hover {
+  color: var(--ledger-ink);
+}
+.honor-who {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.honor-name {
+  font-size: var(--type-body);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ledger-ink);
+  text-align: left;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.honor-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ledger-gold);
+  text-decoration-thickness: 2px;
+}
+.honor-who > span {
+  font-size: var(--type-meta);
+  line-height: 1.5;
+  color: var(--ledger-muted);
+  overflow-wrap: anywhere;
+}
+.honor-sk {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.honor-ref.ledger-ref {
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+.honor-ref.ledger-ref.is-name {
+  font-stretch: 100%;
+  font-weight: 500;
+  font-size: var(--type-data);
+  color: var(--ledger-text);
+}
+.honor-sk small {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.honor-calc-cell {
+  color: var(--ledger-text);
+  font-variant-numeric: tabular-nums;
+}
+.honor-calc-cell b {
+  padding: 0 2px;
+  font-weight: 400;
+  color: var(--ledger-muted);
+}
+.honor-amount {
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.honor-amount.is-tax {
+  color: var(--ledger-text);
+}
+.honor-amount.is-tax small {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.honor-amount.is-net {
+  font-weight: 650;
+}
+
+/* Baris jumlah: kaki buku honor, melekat di dasar tabel. */
+.honor-foot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 13px 14px;
+  background: var(--ledger-navy);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.005em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-top: 1px solid var(--ledger-navy-deep);
+}
+.honor-foot td[data-column="net"] {
+  color: var(--ledger-gold);
+}
+.honor-table .honor-foot td[data-column="actions"] {
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  background: var(--ledger-navy);
+}
+.honor-foot-label {
+  font-size: var(--type-data);
+  font-weight: 500;
+  font-stretch: 100%;
+  letter-spacing: 0;
+  color: #c9d4e2;
+}
+.honor-foot-label strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ----- Rincian di dalam baris ----- */
+.honor-table .ledger-detail-row > td {
+  padding: 22px 24px 24px;
+}
+.honor-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(280px, 0.9fr);
+  gap: 16px;
+}
+.honor-facts {
+  display: grid;
+  align-content: start;
+  margin: 0;
+  padding: 4px 18px 8px;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+}
+.honor-facts-title {
+  padding: 10px 0 9px;
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.honor-facts > div:not(.honor-facts-title) {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-data);
+  line-height: 1.55;
+}
+.honor-facts > div:last-child {
+  border-bottom: 0;
+}
+.honor-facts dt {
+  color: var(--ledger-muted);
+}
+.honor-facts dd {
+  margin: 0;
+  color: var(--ledger-ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.honor-empty {
+  color: #93a2b3;
+  font-weight: 400;
+}
+.honor-ledger {
+  align-self: start;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.honor-ledger-head {
+  padding: 10px 16px;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.honor-ledger > div:not(.honor-ledger-head) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-data);
+}
+.honor-ledger > div > span {
+  color: var(--ledger-text);
+}
+.honor-ledger > div > b {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.honor-ledger > .honor-ledger-total {
+  padding: 12px 16px;
+  background: var(--ledger-navy);
+  border-bottom: 0;
+}
+.honor-ledger > .honor-ledger-total > span {
+  color: #c9d4e2;
+}
+.honor-ledger > .honor-ledger-total > strong {
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  color: var(--ledger-gold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.honor-detail-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.honor-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.honor-detail-actions [data-slot="button"] {
+  height: 34px;
+  border-radius: 9px;
+  font-weight: 500;
+}
+.honor-detail-actions [data-variant="outline"] {
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-ink);
+}
+.honor-detail-actions [data-variant="default"] {
+  background: var(--ledger-navy);
+  font-weight: 600;
+}
+.honor-detail-actions [data-variant="default"]:hover {
+  background: var(--ledger-navy-soft);
+}
+.honor-detail-actions .is-danger[data-slot="button"] {
+  color: var(--ledger-danger);
+}
+.honor-detail-actions .is-danger[data-slot="button"]:hover {
+  background: #fbeeed;
+  color: var(--ledger-danger);
+}
+
+/* ----- Catatan kaki dan dialog kecil ----- */
+.honor-footnote {
+  margin: 14px 4px 0;
+  max-width: 92ch;
+  font-size: var(--type-meta);
+  line-height: 1.6;
+  color: var(--ledger-muted);
+}
+.honor-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ----- Formulir: lembar isian dengan pita perhitungan biru laut ----- */
+.honor-dialog[data-slot="dialog-content"] {
+  max-width: 820px;
+}
+.honor-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.honor-dialog .custom-select {
+  height: auto;
+  min-height: 40px;
+  white-space: normal;
+  text-align: left;
+}
+.honor-dialog .form-section > .field {
+  margin-bottom: 16px;
+}
+.honor-dialog .form-grid + .field-hint {
+  margin-top: 12px;
+}
+.honor-dialog .form-grid + .field-hint + .field {
+  margin-top: 16px;
+}
+.honor-calc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  flex-shrink: 0;
+  background: var(--ledger-navy);
+  color: #fff;
+}
+.honor-calc > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 14px 20px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+.honor-calc > div:first-child {
+  padding-left: var(--form-inset);
+}
+.honor-calc > div:last-child {
+  padding-right: var(--form-inset);
+  border-right: 0;
+  justify-items: end;
+  text-align: right;
+}
+.honor-calc span {
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: #9fb0c4;
+}
+.honor-calc strong {
+  font-size: 1.125rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.honor-calc > div:last-child strong {
+  font-size: 1.5rem;
+  color: var(--ledger-gold);
+}
+
+/* ----- Layar sempit ----- */
+.honor-mobile-foot {
+  display: none;
+}
+@media (max-width: 1250px) {
+  .honor-index-all {
+    min-width: 132px;
+    padding-inline: 18px;
+  }
+  .honor-kind {
+    padding-inline: 12px;
+  }
+  .honor-kind strong {
+    font-size: 1.25rem;
+  }
+  .honor-detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .honor-ledger {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 900px) {
+  .honor-index {
+    flex-direction: column;
+  }
+  .honor-index-all {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 12px 20px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ledger-line);
+  }
+  .honor-index-all[aria-pressed="true"]::after {
+    left: 20px;
+    right: 20px;
+  }
+  .honor-kinds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .honor-kind:nth-child(3) {
+    border-right: 0;
+  }
+  .honor-kind:nth-child(-n + 3) {
+    border-bottom: 1px solid var(--ledger-line-soft);
+  }
+  .ledger-register-tools .custom-select.honor-sort {
+    flex: 1;
+  }
+}
+@media (max-width: 760px) {
+  .honor-index-all {
+    padding-inline: 16px;
+  }
+  .honor-index-all[aria-pressed="true"]::after {
+    left: 16px;
+    right: 16px;
+  }
+  .honor-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .honor-kind:nth-child(3) {
+    border-right: 1px solid var(--ledger-line-soft);
+  }
+  .honor-kind:nth-child(even),
+  .honor-kind:last-child {
+    border-right: 0;
+  }
+  .honor-kind:nth-child(-n + 4) {
+    border-bottom: 1px solid var(--ledger-line-soft);
+  }
+  .honor-kind:last-child {
+    grid-column: 1 / -1;
+  }
+  .honor-footnote {
+    margin-inline: 0;
+  }
+  .honor-error {
+    margin-inline: 16px;
+  }
+  .honor-card .honor-who {
+    flex: 1;
+    min-width: 0;
+  }
+  .honor-card .honor-sk {
+    margin-top: 10px;
+  }
+  .honor-card-net {
+    display: grid;
+    gap: 2px;
+  }
+  .honor-card-net span {
+    font-size: var(--type-micro);
+    color: var(--ledger-muted);
+  }
+  .honor-card-net strong {
+    font-size: 1.125rem;
+    font-weight: 650;
+    font-stretch: var(--ledger-condensed);
+    color: var(--ledger-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .honor-mobile-foot {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    background: var(--ledger-navy);
+    color: #fff;
+  }
+  .honor-mobile-foot > span {
+    font-size: var(--type-meta);
+    color: #c9d4e2;
+  }
+  .honor-mobile-foot dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+  .honor-mobile-foot dt {
+    font-size: var(--type-micro);
+    color: #9fb0c4;
+  }
+  .honor-mobile-foot dd {
+    margin: 2px 0 0;
+    font-size: 1rem;
+    font-weight: 650;
+    font-stretch: var(--ledger-condensed);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .honor-mobile-foot dl > div:last-child dd {
+    color: var(--ledger-gold);
+  }
+  .honor-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .honor-facts > div:not(.honor-facts-title) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .honor-detail-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .honor-detail-actions [data-slot="button"] {
+    flex: 1;
+  }
+  .honor-calc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .honor-calc > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 10px 18px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .honor-calc > div:first-child,
+  .honor-calc > div:last-child {
+    padding-inline: 18px;
+  }
+  .honor-calc > div:last-child {
+    border-bottom: 0;
+  }
+  .honor-calc > div:last-child strong {
+    font-size: 1.25rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .honor-kind,
+  .honor-index-all {
+    transition: none;
+  }
+  .honor-bar > span {
+    animation: none;
+  }
+}
+@media print {
+  .honor-index {
+    display: none;
+  }
+}

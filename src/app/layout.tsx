@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/source-sans-3";
+import "@fontsource-variable/instrument-sans/wdth.css";
 import "./globals.css";
+import "./arsip.css";
+import "./surat-tugas.css";
+import "./honorarium.css";
+import "./arsip-rincian.css";
+import "./laporan.css";
+import "./pegawai.css";
+import "./dokumen.css";
 export const metadata: Metadata = {
   title: "Arsip Perjalanan | Dinas ESDM Jambi",
   description:

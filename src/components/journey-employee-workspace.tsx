@@ -3,6 +3,7 @@
 import TravelScopeFields from "./travel-scope-fields";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowRight, CalendarDays, Check, Search, Users, X } from "lucide-react";
 import type { BatchRow, SharedJourney } from "@/lib/batch-recap";
 import { formatDestinations, tripDestinations } from "@/lib/destinations";
@@ -23,7 +24,7 @@ import { CustomSelect, SelectOption } from "./ui/select";
 export type JourneyIssue = { section: "letter" | "schedule" | "route" | "people"; field?: keyof SharedJourney; message: string };
 const journeySections = [["letter", "Surat & kegiatan"], ["schedule", "Jadwal"], ["route", "Rute"]] as const;
 
-export default function JourneyEmployeeWorkspace({ shared, rows, people, suggestions, onJourneyChange, onSelect, issue }: {
+export default function JourneyEmployeeWorkspace({ shared, rows, people, suggestions, onJourneyChange, onSelect, issue, headerSlot }: {
   shared: SharedJourney;
   rows: BatchRow[];
   people: Employee[];
@@ -31,6 +32,8 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
   onJourneyChange: (patch: Partial<SharedJourney>) => void;
   onSelect: (keys: Set<string>, checked: boolean) => void;
   issue?: JourneyIssue;
+  /** Dialog header area that shows the shared-journey title and section shortcuts. */
+  headerSlot?: HTMLElement | null;
 }) {
   const [query, setQuery] = useState("");
   const [unit, setUnit] = useState("all");
@@ -106,21 +109,26 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
     return issue?.section === section ? <p className="journey-inline-error">{issue.message}</p> : null;
   }
 
+  const sharedHeader = <header className={`journey-panel-heading journey-panel-heading-shared${headerSlot ? " is-in-dialog-header" : ""}`}>
+    <div className="journey-panel-heading-text">
+      <h3>Perjalanan bersama</h3>
+      <p>Berlaku untuk semua pegawai yang dipilih. Kolom bertanda * wajib diisi.</p>
+      {adjusted > 0 && <RecapStatus tone="different" description="Sebagian isian pegawai berbeda dari perjalanan bersama.">{adjusted} pegawai memiliki penyesuaian</RecapStatus>}
+    </div>
+    <nav className="journey-section-nav" aria-label="Lompat ke isian perjalanan">
+      {journeySections.map(([section, label]) => <button type="button" key={section} data-filled={sectionFilled[section]} title={sectionFilled[section] ? "Isian tersedia; periksa sebelum menyimpan" : "Isian belum lengkap"} onClick={() => jump(section)}>{sectionFilled[section] && <Check size={12} />}{label}</button>)}
+    </nav>
+  </header>;
+
   return <div ref={root} className="journey-employee-workspace" data-mobile-panel={mobilePanel}>
+    {headerSlot ? createPortal(sharedHeader, headerSlot) : null}
     <div className="journey-mobile-switch" role="group" aria-label="Bagian perjalanan dan pegawai">
       <button type="button" aria-pressed={mobilePanel === "journey"} onClick={() => setMobilePanel("journey")}>Data perjalanan</button>
       <button type="button" aria-pressed={mobilePanel === "people"} onClick={() => setMobilePanel("people")}>Pegawai <span>{selected.length}</span></button>
     </div>
 
     <section className="shared-journey-editor" aria-label="Data perjalanan bersama">
-      <header className="journey-panel-heading">
-        <h3>Perjalanan bersama</h3>
-        <p>Berlaku untuk semua pegawai yang dipilih. Kolom bertanda * wajib diisi.</p>
-        {adjusted > 0 && <RecapStatus tone="different" description="Sebagian isian pegawai berbeda dari perjalanan bersama.">{adjusted} pegawai memiliki penyesuaian</RecapStatus>}
-      </header>
-      <nav className="journey-section-nav" aria-label="Lompat ke isian perjalanan">
-        {journeySections.map(([section, label]) => <button type="button" key={section} data-filled={sectionFilled[section]} title={sectionFilled[section] ? "Isian tersedia; periksa sebelum menyimpan" : "Isian belum lengkap"} onClick={() => jump(section)}>{sectionFilled[section] && <Check size={12} />}{label}</button>)}
-      </nav>
+      {!headerSlot && sharedHeader}
       <div className="journey-entry-scroll">
         <section className="journey-entry-section" data-journey-section="letter" data-error={issue?.section === "letter" || undefined}>
           <h4><span>01</span>Surat & kegiatan</h4>

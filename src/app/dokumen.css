@@ -1,0 +1,978 @@
+/*
+  Dokumen: daftar kelengkapan berkas di atas lapisan register (arsip.css).
+  Warna, tipe, dan kelas ledger-* mengikuti register lain.
+  Yang khas di halaman ini: rel jenis dokumen, matriks kelengkapan
+  (baris rekap, kolom jenis dokumen, sel bertanda), dan map berkas yang
+  terbuka di samping dengan tujuh kantong tempat foto dijatuhkan.
+*/
+.dokumen-page {
+  min-width: 0;
+}
+/* Lembar ini tidak memotong isinya agar map di samping bisa melekat saat digulir (WebKit
+   mengurung position: sticky di balik overflow: clip). Sudut dibulatkan per bagian. */
+.dokumen-sheet {
+  border-top-left-radius: 0;
+  overflow: visible;
+}
+.dokumen-index {
+  border-top-right-radius: var(--ledger-radius);
+}
+.dokumen-matrix-wrap {
+  border-bottom-left-radius: var(--ledger-radius);
+}
+.dokumen-side {
+  border-bottom-right-radius: var(--ledger-radius);
+}
+.dokumen-body:not(.has-open) .dokumen-side,
+.dokumen-body .dokumen-matrix-wrap:last-child {
+  border-bottom-right-radius: var(--ledger-radius);
+}
+
+/* ----- Rel jenis dokumen ----- */
+.dokumen-index {
+  display: flex;
+  align-items: stretch;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.dokumen-index-all {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 156px;
+  padding: 12px 22px 12px 24px;
+  text-align: left;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line);
+  transition: background 0.15s, color 0.15s;
+}
+.dokumen-index-all strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+}
+.dokumen-index-all span {
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dokumen-kinds {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+.dokumen-kind {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 11px 6px 10px;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line-soft);
+  transition: background 0.15s, color 0.15s;
+}
+.dokumen-kind:last-child {
+  border-right: 0;
+}
+.dokumen-kind strong {
+  font-size: 1.125rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  color: var(--ledger-ink);
+  white-space: nowrap;
+}
+.dokumen-kind span {
+  font-size: var(--type-micro);
+  line-height: 1.45;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-kind span b {
+  font-weight: 600;
+  color: var(--ledger-text);
+}
+.dokumen-kind span.is-missing,
+.dokumen-kind span.is-missing b {
+  color: var(--ledger-amber);
+}
+.dokumen-kind:disabled {
+  cursor: default;
+  color: #aab6c3;
+}
+.dokumen-kind:disabled strong,
+.dokumen-kind:disabled b {
+  color: #aab6c3;
+  font-weight: 500;
+}
+.dokumen-kind:not(:disabled):hover,
+.dokumen-index-all:hover {
+  background: #eef2f6;
+  color: var(--ledger-text);
+}
+.dokumen-kind[aria-pressed="true"],
+.dokumen-index-all[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.dokumen-kind[aria-pressed="true"]::after,
+.dokumen-index-all[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--ledger-gold);
+}
+.dokumen-kind:focus-visible,
+.dokumen-index-all:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+}
+
+/* ----- Kepala register dan saringan ----- */
+.dokumen-register-head {
+  border-top: 0;
+}
+.dokumen-filters .ledger-filters-end {
+  margin-left: auto;
+}
+
+/* ----- Badan: matriks di kiri, map di kanan ----- */
+.dokumen-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 1px solid var(--ledger-line);
+  min-height: 420px;
+}
+@media (min-width: 1101px) {
+  .dokumen-body {
+    grid-template-columns: minmax(0, 1fr) 420px;
+  }
+  .dokumen-side {
+    border-left: 1px solid var(--ledger-line);
+    background: var(--ledger-tint);
+  }
+}
+.dokumen-matrix-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.dokumen-matrix-wrap .empty-state {
+  padding: 56px 24px;
+}
+
+/* Matriks kelengkapan: sel bertanda. */
+.dokumen-matrix {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--type-data);
+}
+.dokumen-matrix th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 44px;
+  padding: 0 10px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: left;
+  box-shadow: inset 0 -1px var(--ledger-line);
+  white-space: nowrap;
+}
+.dokumen-matrix th.dokumen-col-map {
+  padding-left: 24px;
+  min-width: 260px;
+}
+.dokumen-matrix th.dokumen-col-kind {
+  width: 56px;
+  text-align: center;
+  padding: 0 4px;
+}
+.dokumen-matrix th.dokumen-col-kind span {
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.dokumen-matrix th.dokumen-col-kind.is-active span {
+  background: var(--ledger-gold-soft);
+  color: var(--ledger-ink);
+}
+.dokumen-matrix th.dokumen-col-state {
+  padding-right: 24px;
+  min-width: 150px;
+}
+.dokumen-matrix td {
+  padding: 10px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  color: var(--ledger-text);
+  transition: background 0.12s;
+}
+.dokumen-matrix td.dokumen-col-map {
+  padding: 0;
+}
+.dokumen-matrix td.dokumen-col-kind {
+  text-align: center;
+  padding: 10px 4px;
+}
+.dokumen-matrix td.dokumen-col-kind.is-active {
+  background: #fdf8ea;
+}
+.dokumen-matrix td.dokumen-col-state {
+  padding-right: 24px;
+}
+.dokumen-row:hover td {
+  background: var(--ledger-tint);
+}
+.dokumen-row[data-open="true"] td {
+  background: #f3f6f9;
+}
+.dokumen-row[data-open="true"] td.dokumen-col-map {
+  box-shadow: inset 4px 0 var(--ledger-gold);
+}
+
+.dokumen-open {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px 10px 24px;
+  text-align: left;
+  color: var(--ledger-text);
+  border-radius: 0;
+}
+.dokumen-open:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+}
+.dokumen-ref {
+  font-size: 1rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-ink);
+  line-height: 1.2;
+}
+.dokumen-names {
+  font-weight: 500;
+  color: var(--ledger-ink);
+  line-height: 1.4;
+}
+.dokumen-meta {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Sel: ada (isi navy), belum (bingkai kuning tua), tidak diminta (titik). */
+.dokumen-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: var(--type-micro);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.dokumen-cell[data-state="present"] {
+  background: var(--ledger-navy);
+  color: #fff;
+}
+.dokumen-cell[data-state="missing"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #dcbd6e;
+}
+.dokumen-cell[data-state="none"] {
+  background: transparent;
+}
+.dokumen-cell[data-state="none"]::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c8d1db;
+}
+.dokumen-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px -2px rgba(20, 39, 63, 0.35);
+}
+.dokumen-cell[data-state="missing"]:hover {
+  background: var(--ledger-amber-soft);
+  box-shadow: inset 0 0 0 1.5px #d8b25f, 0 2px 6px -2px rgba(20, 39, 63, 0.35);
+}
+.dokumen-cell:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+
+.dokumen-state {
+  display: grid;
+  gap: 1px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.dokumen-state b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-ink);
+}
+.dokumen-state span {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.dokumen-state.is-complete b {
+  color: var(--ledger-success);
+}
+.dokumen-state.is-missing span {
+  color: var(--ledger-amber);
+}
+.dokumen-state.is-none b {
+  color: var(--ledger-muted);
+  font-weight: 500;
+}
+
+/* ----- Map berkas yang terbuka ----- */
+.dokumen-side {
+  min-width: 0;
+}
+.dokumen-map {
+  position: sticky;
+  top: calc(var(--shell-header-height) + 12px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--shell-header-height) - 24px);
+  min-width: 0;
+}
+.dokumen-map-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 420px;
+  padding: 40px 36px;
+  text-align: center;
+  color: var(--ledger-muted);
+}
+.dokumen-map-empty svg {
+  width: 30px;
+  height: 30px;
+  color: #aab6c3;
+  margin-bottom: 6px;
+}
+.dokumen-map-empty h2 {
+  font-size: var(--type-section);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.dokumen-map-empty p {
+  max-width: 34ch;
+  font-size: var(--type-meta);
+  line-height: 1.55;
+}
+
+.dokumen-map-head {
+  padding: 20px 24px 18px;
+  background: var(--ledger-navy);
+  color: #d5deea;
+}
+.dokumen-map-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  color: var(--ledger-gold);
+}
+.dokumen-map-close {
+  display: inline-flex;
+  padding: 6px;
+  margin: -6px -8px -6px 0;
+  border-radius: 8px;
+  color: #c9d4e2;
+}
+.dokumen-map-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.dokumen-map-ref {
+  margin-top: 6px;
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.dokumen-map-names {
+  margin-top: 4px;
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.4;
+}
+.dokumen-map-meta {
+  margin-top: 2px;
+  font-size: var(--type-meta);
+  line-height: 1.5;
+  color: #b7c4d4;
+}
+.dokumen-map-facts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: var(--type-meta);
+}
+.dokumen-map-state {
+  font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-map-state.is-complete {
+  color: #9ad4b4;
+}
+.dokumen-map-state.is-missing {
+  color: #f0cf7c;
+}
+.dokumen-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-weight: 500;
+  border-radius: 6px;
+}
+.dokumen-map-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dokumen-map-link:focus-visible,
+.dokumen-map-close:focus-visible {
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 2px;
+}
+.dokumen-map-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  font-size: var(--type-meta);
+  color: var(--ledger-text);
+  background: var(--ledger-surface);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.dokumen-map-location svg {
+  color: var(--ledger-muted);
+  flex-shrink: 0;
+}
+.dokumen-map-location strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.dokumen-map-location .is-empty {
+  color: var(--ledger-muted);
+}
+
+/* Kantong dokumen. */
+.dokumen-slots {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.dokumen-slot {
+  position: relative;
+  padding: 12px 14px 12px;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.dokumen-slot[data-tone="missing"] {
+  border-color: #e3c98a;
+  background: #fffcf4;
+}
+.dokumen-slot[data-tone="none"] {
+  border-style: dashed;
+  background: transparent;
+}
+.dokumen-slot[data-highlight="true"] {
+  box-shadow: 0 0 0 3px var(--ledger-gold-soft), inset 3px 0 var(--ledger-gold);
+}
+.dokumen-slot[data-dragging="true"] {
+  border-color: var(--ledger-action);
+  border-style: solid;
+  background: var(--ledger-action-soft);
+  box-shadow: 0 0 0 3px #d5e2ef;
+}
+.dokumen-slot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dokumen-slot-head h3 {
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  line-height: 1.3;
+}
+.dokumen-slot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-slot[data-tone="missing"] .dokumen-slot-status {
+  color: var(--ledger-amber);
+  font-weight: 500;
+}
+.dokumen-slot[data-tone="present"] .dokumen-slot-status {
+  color: var(--ledger-text);
+}
+.dokumen-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: var(--type-meta);
+  font-weight: 600;
+  color: var(--ledger-action);
+  background: var(--ledger-surface);
+  border: 1px solid #cad5e0;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dokumen-slot[data-tone="missing"] .dokumen-add {
+  color: #fff;
+  background: var(--ledger-action);
+  border-color: var(--ledger-action);
+}
+.dokumen-add:hover {
+  background: var(--ledger-action-soft);
+  border-color: var(--ledger-action);
+}
+.dokumen-slot[data-tone="missing"] .dokumen-add:hover {
+  background: #1a3f63;
+}
+.dokumen-add.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.dokumen-slot input[type="file"]:focus-visible + *,
+.dokumen-slot input[type="file"]:focus-visible ~ .dokumen-add,
+.dokumen-add:has(+ input:focus-visible) {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+
+/* Foto di dalam kantong. */
+.dokumen-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dokumen-thumb {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ledger-tint);
+  border: 1px solid var(--ledger-line);
+  color: var(--ledger-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.dokumen-thumb.is-image {
+  background: #dfe5ec;
+}
+.dokumen-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.dokumen-thumb.is-physical {
+  width: auto;
+  max-width: 100%;
+  height: 40px;
+  flex-direction: row;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  color: var(--ledger-text);
+  background: var(--ledger-surface);
+}
+.dokumen-thumb.is-physical span {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dokumen-thumb:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -4px rgba(20, 39, 63, 0.35);
+}
+.dokumen-thumb:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+
+.dokumen-slot-foot {
+  margin-top: 10px;
+}
+.dokumen-slot-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  line-height: 1.5;
+}
+.dokumen-slot[data-dragging="true"] .dokumen-slot-hint {
+  color: var(--ledger-action);
+  font-weight: 600;
+}
+.dokumen-note-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ledger-action);
+  font-weight: 500;
+  border-radius: 4px;
+}
+.dokumen-note-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dokumen-note-toggle:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+.dokumen-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dokumen-note input {
+  flex: 1 1 180px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #cad5e0;
+  border-radius: 8px;
+  font-size: var(--type-data);
+  background: var(--ledger-surface);
+}
+.dokumen-note input:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 0;
+  border-color: var(--ledger-action);
+}
+.dokumen-slot .error-message {
+  margin-top: 8px;
+}
+
+/* Map sebagai dialog di layar sempit. */
+.dokumen-map-dialog {
+  width: min(560px, calc(100% - 2rem));
+  max-width: none;
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.dokumen-map-dialog .dokumen-map {
+  position: static;
+  max-height: calc(100vh - 2rem);
+}
+.dokumen-map-dialog .dokumen-slots {
+  background: var(--ledger-tint);
+}
+
+/* ----- Penampil berkas ----- */
+.dokumen-viewer {
+  width: min(1100px, calc(100% - 2rem));
+  max-width: none;
+  height: min(88vh, 900px);
+  padding: 0;
+  gap: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ledger-surface);
+}
+.dokumen-viewer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.dokumen-viewer-title {
+  font-size: var(--type-panel);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  line-height: 1.25;
+}
+.dokumen-viewer-sub {
+  margin-top: 2px;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  overflow-wrap: anywhere;
+}
+.dokumen-viewer-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: var(--type-meta);
+}
+.dokumen-viewer-count {
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-viewer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.dokumen-viewer-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dokumen-viewer-close {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--ledger-muted);
+}
+.dokumen-viewer-close:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.dokumen-viewer-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  background: #1a2a40;
+}
+.dokumen-viewer-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.dokumen-viewer-stage iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.dokumen-viewer-stage.is-note {
+  background: var(--ledger-tint);
+}
+.dokumen-viewer-note {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 40px;
+  text-align: center;
+  color: var(--ledger-muted);
+}
+.dokumen-viewer-note svg {
+  width: 32px;
+  height: 32px;
+  color: #aab6c3;
+  margin-bottom: 8px;
+}
+.dokumen-viewer-note strong {
+  font-size: var(--type-panel);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  max-width: 40ch;
+  overflow-wrap: anywhere;
+}
+.dokumen-viewer-nav {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ledger-ink);
+  transform: translateY(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.dokumen-viewer-nav.is-prev {
+  left: 14px;
+}
+.dokumen-viewer-nav.is-next {
+  right: 14px;
+}
+.dokumen-viewer-nav:hover {
+  background: #fff;
+}
+.dokumen-viewer-nav:focus-visible,
+.dokumen-viewer-close:focus-visible,
+.dokumen-viewer-link:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+.dokumen-viewer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 20px;
+  border-top: 1px solid var(--ledger-line);
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.dokumen-viewer-remove {
+  color: var(--ledger-danger);
+}
+.dokumen-viewer-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ledger-ink);
+  font-weight: 500;
+}
+
+/* ----- Layar sempit ----- */
+@media (max-width: 1100px) {
+  .dokumen-kinds {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .dokumen-index {
+    flex-direction: column;
+  }
+  .dokumen-index-all {
+    border-right: 0;
+    border-bottom: 1px solid var(--ledger-line);
+    padding: 10px 24px;
+  }
+  .dokumen-kind {
+    border-bottom: 1px solid var(--ledger-line-soft);
+  }
+  .dokumen-kind:nth-child(4n) {
+    border-right: 0;
+  }
+}
+@media (max-width: 760px) {
+  .dokumen-matrix th.dokumen-col-map,
+  .dokumen-open {
+    padding-left: 16px;
+  }
+  .dokumen-matrix td.dokumen-col-map {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--ledger-surface);
+    box-shadow: inset -1px 0 var(--ledger-line);
+  }
+  .dokumen-matrix th.dokumen-col-map {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    min-width: 200px;
+  }
+  .dokumen-row:hover td.dokumen-col-map,
+  .dokumen-row[data-open="true"] td.dokumen-col-map {
+    background: #f3f6f9;
+  }
+  .dokumen-map-head {
+    padding: 16px 18px 14px;
+  }
+  .dokumen-map-location {
+    padding: 10px 18px;
+  }
+  .dokumen-slots {
+    padding: 10px 10px 12px;
+  }
+  .dokumen-viewer {
+    width: calc(100% - 1rem);
+    height: calc(100vh - 1rem);
+  }
+  .dokumen-viewer-tools .dokumen-viewer-link {
+    display: none;
+  }
+  .dokumen-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dokumen-kind:nth-child(4n) {
+    border-right: 1px solid var(--ledger-line-soft);
+  }
+  .dokumen-kind:nth-child(2n) {
+    border-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dokumen-cell,
+  .dokumen-thumb,
+  .dokumen-slot,
+  .dokumen-kind,
+  .dokumen-index-all {
+    transition: none;
+  }
+  .dokumen-cell:hover,
+  .dokumen-thumb:hover {
+    transform: none;
+  }
+}

@@ -1056,7 +1056,7 @@ export function GroundFields({
           value={value.mode}
           maxLength={1000}
           onValueChange={mode => onChange({mode})}
-          options={["Travel", "Bus", "Taksi", "Mobil pribadi", "Mobil dinas", "Kereta"].map(value => ({value}))}
+          options={["Travel", "Bus", "Taksi", "Kendaraan pribadi", "Mobil pribadi", "Mobil dinas", "Kereta"].map(value => ({value}))}
           placeholder="Pilih atau ketik jenis transport"
         />
       </Field>
@@ -1069,7 +1069,7 @@ export function GroundFields({
       </Field>
       <Field label="Jenis mobil">
         <Combobox aria-label="Jenis mobil" value={value.vehicleType} maxLength={1000}
-          options={["Toyota Avanza", "Toyota Innova", "Toyota Fortuner", "Toyota Hilux", "Daihatsu Xenia", "Mitsubishi Xpander", "Mitsubishi Pajero Sport", "Suzuki Ertiga"].map(value => ({value}))}
+          options={["Toyota Avanza", "Toyota Innova", "Toyota Fortuner", "Toyota Hilux", "Daihatsu Xenia", "Mitsubishi Xpander", "Mitsubishi Pajero Sport", "Mitsubishi Triton", "Suzuki Ertiga"].map(value => ({value}))}
           onValueChange={vehicleType => onChange({vehicleType})} placeholder="Pilih atau ketik jenis / model mobil" />
       </Field>
       <Field label="Jenis BBM">

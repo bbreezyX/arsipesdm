@@ -1,123 +1,709 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, FileText, MapPin, Search, X } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type ExpandedState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronsUpDown,
+  Columns3,
+  FileText,
+  MapPin,
+  Rows3,
+  Search,
+  X,
+} from "lucide-react";
 import { dateText, money, totalCost, type Trip } from "@/lib/model";
-import { filterTaskLetters, groupTaskLetters, summarizeTripCosts, type TaskLetter } from "@/lib/task-letters";
+import {
+  filterTaskLetters,
+  groupTaskLetters,
+  summarizeTripCosts,
+  type TaskLetter,
+} from "@/lib/task-letters";
 import { Button } from "./ui/button";
 import { CustomSelect, SelectOption } from "./ui/select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "./ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "./ui/dropdown-menu";
 import { Empty } from "./fields";
-import DataRegister, { type RegisterSort } from "./data-register";
 
-const getRowId = (letter: TaskLetter) => letter.key;
-const sortOptions: RegisterSort[] = [
-  { id: "dates", asc: "Tanggal terlama", desc: "Tanggal terbaru" },
-  { id: "reference", asc: "Nomor ST A–Z", desc: "Nomor ST Z–A" },
-  { id: "people", asc: "Pegawai paling sedikit", desc: "Pegawai paling banyak" },
-  { id: "total", asc: "Biaya terendah", desc: "Biaya tertinggi" },
-];
+/* Bulan mengikuti penomoran surat dinas: angka Romawi pada nomor ST. */
+const months = [
+  ["I", "Januari"], ["II", "Februari"], ["III", "Maret"], ["IV", "April"],
+  ["V", "Mei"], ["VI", "Juni"], ["VII", "Juli"], ["VIII", "Agustus"],
+  ["IX", "September"], ["X", "Oktober"], ["XI", "November"], ["XII", "Desember"],
+] as const;
 
-function LetterToggle({ row, mobile = false }: { row: Row<TaskLetter>; mobile?: boolean }) {
-  return <Button variant="outline" size="sm" aria-label={`Rincian ST ${row.original.number}`}
-    aria-expanded={row.getIsExpanded()} aria-controls={`letter-${mobile ? "mobile-" : ""}${encodeURIComponent(row.id)}`}
-    onClick={() => row.toggleExpanded()}>{row.getIsExpanded() ? "Tutup" : "Rincian"}<ChevronDown size={14} className={row.getIsExpanded() ? "rotate-180" : undefined} /></Button>;
+const columnLabels: Record<string, string> = {
+  reference: "Nomor surat dan kegiatan",
+  dates: "Pelaksanaan",
+  people: "Pegawai",
+  total: "Realisasi",
+  actions: "Rincian",
+};
+
+function dateRange(start: string, end: string) {
+  if (start === end) return dateText(start);
+  const sameMonth = start.slice(0, 7) === end.slice(0, 7);
+  return `${dateText(start, sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" })} – ${dateText(end)}`;
 }
-function LetterAmount({ letter }: { letter: TaskLetter }) {
-  return <div className="register-amount">{money(letter.total)}{letter.unknownCount > 0 && <small className="register-cell-note">{letter.total !== null ? "Sementara · " : ""}{letter.unknownCount} rekap belum diisi</small>}</div>;
+
+function dayCount(start: string, end: string) {
+  const days = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) + 1;
+  return `${Math.max(1, days)} hari`;
+}
+
+function tripMonth(trip: Trip) {
+  return Number(trip.startDate.slice(5, 7)) - 1;
+}
+
+function letterMatchesYear(letter: TaskLetter, year: string) {
+  return year === "all" || letter.trips.some((trip) => trip.startDate.slice(0, 4) === year);
+}
+
+function letterMatchesMonth(letter: TaskLetter, year: string, month: number | null) {
+  if (month === null) return true;
+  return letter.trips.some(
+    (trip) => tripMonth(trip) === month && (year === "all" || trip.startDate.slice(0, 4) === year),
+  );
+}
+
+function peopleOf(letter: TaskLetter) {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const trip of letter.trips) {
+    for (const person of trip.participants) {
+      const key = person.nip.trim() ? `nip:${person.nip.replace(/\s+/g, "")}` : `name:${person.name.trim().toLocaleLowerCase("id-ID")}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(person.name.trim());
+    }
+  }
+  return names;
 }
 
 const columns: ColumnDef<TaskLetter>[] = [
-  { id: "reference", accessorKey: "number", header: "Surat Tugas & perjalanan", size: 340, enableHiding: false,
-    cell: ({ row }) => <div className="register-identity">
-      <button className="register-reference" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()} aria-controls={`letter-${encodeURIComponent(row.id)}`}>{row.original.number}</button>
-      <p className="register-description">{row.original.titles[0]}</p>
-      <div className="register-destination"><MapPin size={13} /><span>{row.original.destinations.join(", ")}</span></div>
-    </div> },
-  { id: "dates", accessorKey: "startDate", header: "Pelaksanaan", size: 145,
-    cell: ({ row }) => <div className="register-dates"><time>{dateText(row.original.startDate)}</time>{row.original.endDate !== row.original.startDate && <span>s.d. {dateText(row.original.endDate)}</span>}</div> },
-  { id: "people", accessorKey: "peopleCount", header: "Pegawai", size: 125,
-    cell: ({ row }) => <div className="register-people"><strong>{row.original.peopleCount} pegawai</strong><small>{row.original.trips.length} rekap</small></div> },
-  { id: "total", accessorFn: letter => letter.total ?? undefined, header: "Realisasi", size: 150, sortUndefined: "last",
-    cell: ({ row }) => <LetterAmount letter={row.original} /> },
-  { id: "actions", header: "Rincian", size: 108, enableHiding: false, enableSorting: false, cell: ({ row }) => <LetterToggle row={row} /> },
+  {
+    id: "reference",
+    accessorKey: "number",
+    header: "Nomor surat dan kegiatan",
+    size: 380,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <div className="ledger-identity">
+        <button
+          className="ledger-ref"
+          onClick={() => row.toggleExpanded()}
+          aria-expanded={row.getIsExpanded()}
+          aria-controls={`surat-detail-${encodeURIComponent(row.id)}`}
+        >
+          {row.original.number}
+        </button>
+        <p className="ledger-title">{row.original.titles[0]}</p>
+        <div className="ledger-place">
+          <MapPin size={13} aria-hidden="true" />
+          <span>{row.original.destinations.join(", ")}</span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "dates",
+    accessorKey: "startDate",
+    header: "Pelaksanaan",
+    size: 180,
+    cell: ({ row }) => (
+      <div className="ledger-dates">
+        <time dateTime={row.original.startDate}>{dateRange(row.original.startDate, row.original.endDate)}</time>
+        <span>{dayCount(row.original.startDate, row.original.endDate)}</span>
+      </div>
+    ),
+  },
+  {
+    id: "people",
+    accessorKey: "peopleCount",
+    header: "Pegawai",
+    size: 190,
+    cell: ({ row }) => <LetterPeople letter={row.original} />,
+  },
+  {
+    id: "total",
+    accessorFn: (letter) => letter.total ?? undefined,
+    header: "Realisasi",
+    size: 160,
+    sortUndefined: "last",
+    cell: ({ row }) => <LetterAmount letter={row.original} />,
+  },
+  {
+    id: "actions",
+    header: () => <span className="sr-only">Rincian</span>,
+    size: 56,
+    enableHiding: false,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="ledger-expand"
+        aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} rincian ${row.original.number}`}
+        aria-expanded={row.getIsExpanded()}
+        aria-controls={`surat-detail-${encodeURIComponent(row.id)}`}
+        onClick={() => row.toggleExpanded()}
+      >
+        <ChevronDown />
+      </Button>
+    ),
+  },
 ];
 
 export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: (id: string) => void }) {
   const { letters, unassigned } = useMemo(() => groupTaskLetters(trips), [trips]);
+  const years = useMemo(
+    () => [...new Set(letters.flatMap((letter) => letter.trips.map((trip) => trip.startDate.slice(0, 4))))].sort().reverse(),
+    [letters],
+  );
   const [query, setQuery] = useState("");
-  const [year, setYear] = useState("all");
+  const [year, setYear] = useState<string>(() => years[0] ?? "all");
+  const [month, setMonth] = useState<number | null>(null);
   const [showUnassigned, setShowUnassigned] = useState(false);
-  const years = [...new Set(letters.flatMap(letter => letter.trips.map(trip => trip.startDate.slice(0, 4))))].sort().reverse();
-  const visible = useMemo(() => filterTaskLetters(letters, query, year), [letters, query, year]);
-  const summary = summarizeTripCosts(visible.flatMap(letter => letter.trips));
-  function reset() { setQuery(""); setYear("all"); }
-  return <div className="task-letters secondary-register-page">
-    <section className="archive-panel">
-      <div className="register-heading task-letter-heading">
-        <div><h2>Daftar surat tugas <span className="count-badge">{visible.length}</span></h2><p>Satu Surat Tugas memuat seluruh rekap pegawai dan realisasi biayanya.</p></div>
-        <div className="task-letter-total"><span>Total biaya tercatat</span><strong>{visible.length ? money(summary.total) : money(0)}</strong><small>{summary.unknownCount ? `${summary.unknownCount} rekap belum memiliki biaya` : "Dari seluruh hasil pencarian"}</small></div>
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (year !== "all" && !years.includes(year)) setYear(years[0] ?? "all");
+  }, [years, year]);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (event.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, []);
+
+  const inYear = useMemo(() => letters.filter((letter) => letterMatchesYear(letter, year)), [letters, year]);
+  const yearCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const letter of letters)
+      for (const y of new Set(letter.trips.map((trip) => trip.startDate.slice(0, 4))))
+        counts.set(y, (counts.get(y) ?? 0) + 1);
+    return counts;
+  }, [letters]);
+  const monthCounts = useMemo(() => {
+    const counts = Array<number>(12).fill(0);
+    for (const letter of inYear) {
+      const seen = new Set<number>();
+      for (const trip of letter.trips) {
+        if (year !== "all" && trip.startDate.slice(0, 4) !== year) continue;
+        seen.add(tripMonth(trip));
+      }
+      for (const m of seen) counts[m]++;
+    }
+    return counts;
+  }, [inYear, year]);
+  const scoped = useMemo(() => inYear.filter((letter) => letterMatchesMonth(letter, year, month)), [inYear, year, month]);
+  const summary = useMemo(() => {
+    const scopedTrips = scoped.flatMap((letter) =>
+      letter.trips.filter((trip) => year === "all" || trip.startDate.slice(0, 4) === year));
+    const people = new Set(scopedTrips.flatMap((trip) => trip.participants.map((person) =>
+      person.nip.trim() ? `nip:${person.nip.replace(/\s+/g, "")}` : `name:${person.name.trim().toLocaleLowerCase("id-ID")}`)));
+    return { letters: scoped.length, trips: scopedTrips.length, people: people.size, ...summarizeTripCosts(scopedTrips) };
+  }, [scoped, year]);
+  const visible = useMemo(() => filterTaskLetters(scoped, query, "all"), [scoped, query]);
+  const scopeLabel = month === null
+    ? year === "all" ? "seluruh tahun" : `tahun ${year}`
+    : `${months[month][1]}${year === "all" ? ", seluruh tahun" : ` ${year}`}`;
+
+  const filtered = query.trim() !== "" || month !== null;
+  function reset() { setQuery(""); setMonth(null); }
+  function chooseYear(next: string) { setYear(next); setMonth(null); }
+
+  return (
+    <div className="surat-page">
+      <nav className="ledger-years" aria-label="Tahun surat tugas">
+        {years.map((value) => (
+          <button
+            key={value}
+            className="ledger-year"
+            aria-pressed={year === value}
+            onClick={() => chooseYear(value)}
+          >
+            <strong>{value}</strong>
+            <span>{yearCounts.get(value)} surat tugas</span>
+          </button>
+        ))}
+        <button
+          className="ledger-year ledger-year-all"
+          aria-pressed={year === "all"}
+          onClick={() => chooseYear("all")}
+        >
+          <strong>Semua</strong>
+          <span>{letters.length} surat tugas</span>
+        </button>
+      </nav>
+      <section className="ledger-sheet surat-sheet" aria-label="Register surat tugas">
+        <div className="surat-index" role="group" aria-label="Bulan pelaksanaan">
+          <button
+            className="surat-index-all"
+            aria-pressed={month === null}
+            onClick={() => setMonth(null)}
+          >
+            <strong>Semua bulan</strong>
+            <span>{inYear.length} surat</span>
+          </button>
+          <div className="surat-index-months">
+            {months.map(([roman, name], index) => {
+              const count = monthCounts[index];
+              return (
+                <button
+                  key={roman}
+                  className="surat-month"
+                  aria-pressed={month === index}
+                  aria-label={`${name}, ${count} surat tugas`}
+                  disabled={count === 0}
+                  onClick={() => setMonth(month === index ? null : index)}
+                >
+                  <strong>{roman}</strong>
+                  <span>{name.slice(0, 3)}</span>
+                  <b>{count || "–"}</b>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="surat-facts" aria-label={`Ringkasan ${scopeLabel}`}>
+          <dl>
+            <div><dt>Surat tugas</dt><dd>{summary.letters}</dd></div>
+            <div><dt>Rekap perjalanan</dt><dd>{summary.trips}</dd></div>
+            <div><dt>Pegawai ditugaskan</dt><dd>{summary.people}</dd></div>
+          </dl>
+          <div className="surat-facts-cost">
+            <span>Realisasi biaya {scopeLabel}</span>
+            <strong>{summary.total === null ? "Belum dicatat" : money(summary.total)}</strong>
+            <small className={summary.unknownCount ? "is-warning" : undefined}>
+              {summary.unknownCount
+                ? `${summary.unknownCount} dari ${summary.trips} rekap belum bernominal`
+                : summary.trips ? "Seluruh rekap sudah bernominal" : "Belum ada rekap"}
+            </small>
+          </div>
+        </div>
+        <LetterRegister
+          letters={visible}
+          filtered={filtered}
+          hasAny={letters.length > 0}
+          scope={scopeLabel}
+          onReset={reset}
+          onOpen={onOpen}
+          search={
+            <div className="ledger-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                id="surat-search"
+                ref={searchRef}
+                aria-label="Cari surat tugas"
+                aria-keyshortcuts="/"
+                placeholder="Cari nomor surat, kegiatan, tujuan, atau nama pegawai"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              {query ? (
+                <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button>
+              ) : (
+                <kbd aria-hidden="true">/</kbd>
+              )}
+            </div>
+          }
+        />
+      </section>
+      <p className="surat-footnote">
+        Total setiap surat tugas menjumlahkan seluruh rekapnya, termasuk rekap gabungan yang dihitung satu kali. Arsip di Sampah tidak dihitung, dan biaya yang belum dicatat tidak dianggap nol.
+      </p>
+      {unassigned.length > 0 && (
+        <section className="surat-unassigned" aria-label="Rekap tanpa nomor surat tugas">
+          <div className="surat-unassigned-head">
+            <div>
+              <strong>{unassigned.length} rekap belum memiliki nomor surat tugas</strong>
+              <p>Rekap ini belum masuk ke register. Lengkapi nomor ST pada arsip perjalanannya agar ikut terhitung.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ledger-tool"
+              aria-expanded={showUnassigned}
+              aria-controls="surat-unassigned-list"
+              onClick={() => setShowUnassigned(!showUnassigned)}
+            >
+              {showUnassigned ? "Tutup daftar" : "Lihat rekap"}
+              <ChevronDown className={showUnassigned ? "rotate-180" : undefined} />
+            </Button>
+          </div>
+          {showUnassigned && (
+            <div id="surat-unassigned-list" className="surat-unassigned-list">
+              <Roster trips={unassigned} onOpen={onOpen} showTitles />
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, search }: {
+  letters: TaskLetter[];
+  filtered: boolean;
+  hasAny: boolean;
+  scope: string;
+  onReset: () => void;
+  onOpen: (id: string) => void;
+  search: ReactNode;
+}) {
+  const registerRef = useRef<HTMLDivElement>(null);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "dates", desc: true }]);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [density, setDensity] = useState("comfortable");
+  const table = useReactTable({
+    data: letters,
+    columns,
+    getRowId: (letter) => letter.key,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageIndex: 0, pageSize: 10 } },
+    state: { sorting, expanded, columnVisibility },
+    onSortingChange: setSorting,
+    onExpandedChange: setExpanded,
+    onColumnVisibilityChange: setColumnVisibility,
+    getRowCanExpand: () => true,
+    enableMultiSort: false,
+    enableSortingRemoval: false,
+  });
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const pageCount = Math.max(1, table.getPageCount());
+  const rows = table.getRowModel().rows;
+  const sorted = sorting[0];
+  const sortValue = sorted ? `${sorted.id}:${sorted.desc ? "desc" : "asc"}` : "dates:desc";
+  useEffect(() => {
+    registerRef.current?.querySelector('[data-slot="table-container"]')?.scrollTo({ top: 0 });
+  }, [pageIndex, pageSize, sorting, letters]);
+  function go(page: number) {
+    table.setPageIndex(page);
+    if (window.matchMedia("(max-width: 760px)").matches) registerRef.current?.scrollIntoView({ block: "start" });
+  }
+  return (
+    <div className="ledger-register surat-register" data-density={density} ref={registerRef}>
+      <div className="ledger-register-head">
+        <div className="ledger-register-title">
+          <h2>Daftar surat tugas</h2>
+          <span>{letters.length} surat, {scope}</span>
+        </div>
+        <div className="ledger-register-tools">
+          <CustomSelect
+            aria-label="Urutkan surat tugas"
+            className="ledger-select surat-sort"
+            value={sortValue}
+            onValueChange={(value) => {
+              const [id, direction] = value.split(":");
+              setSorting([{ id, desc: direction === "desc" }]);
+            }}
+          >
+            <SelectOption value="dates:desc">Tanggal terbaru</SelectOption>
+            <SelectOption value="dates:asc">Tanggal terlama</SelectOption>
+            <SelectOption value="reference:asc">Nomor surat A–Z</SelectOption>
+            <SelectOption value="reference:desc">Nomor surat Z–A</SelectOption>
+            <SelectOption value="total:desc">Realisasi terbesar</SelectOption>
+            <SelectOption value="total:asc">Realisasi terkecil</SelectOption>
+            <SelectOption value="people:desc">Pegawai terbanyak</SelectOption>
+            <SelectOption value="people:asc">Pegawai tersedikit</SelectOption>
+          </CustomSelect>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ledger-tool ledger-desktop"><Columns3 /> Kolom</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Tampilkan kolom</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {table.getAllLeafColumns().filter((column) => column.getCanHide()).map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  checked={column.getIsVisible()}
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={(checked) => column.toggleVisibility(checked)}
+                >
+                  {columnLabels[column.id]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ledger-tool ledger-desktop" aria-label="Kepadatan tabel"><Rows3 /><span>Tampilan</span></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Kepadatan tabel</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={density} onValueChange={setDensity}>
+                <DropdownMenuRadioItem value="comfortable">Nyaman</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="compact">Ringkas</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      <div className="register-filters secondary-register-filters">
-        <div className="register-search-field"><label htmlFor="letter-search">Cari surat tugas</label><div className="search-control"><Search size={16} />
-          <input id="letter-search" aria-label="Cari surat tugas" placeholder="Nomor ST, kegiatan, tujuan, atau pegawai…" value={query} onChange={event => setQuery(event.target.value)} />
-          {query && <button aria-label="Hapus pencarian surat tugas" onClick={() => setQuery("")}><X size={14} /></button>}
-        </div></div>
-        <div><label htmlFor="letter-year">Tahun perjalanan</label><CustomSelect id="letter-year" aria-label="Tahun perjalanan surat tugas" value={year} onValueChange={setYear}>
-          <SelectOption value="all">Semua tahun</SelectOption>{years.map(value => <SelectOption key={value} value={value}>{value}</SelectOption>)}
-        </CustomSelect></div>
-        {(query || year !== "all") && <Button variant="ghost" size="sm" className="register-reset" onClick={reset}>Reset filter</Button>}
+      <div className="ledger-filters">
+        {search}
+        {filtered && (
+          <Button variant="ghost" size="sm" className="ledger-reset" onClick={onReset}>Bersihkan filter</Button>
+        )}
       </div>
-      <DataRegister data={visible} columns={columns} getRowId={getRowId} label="Daftar surat tugas" unit="surat tugas"
-        initialSorting={[{ id: "dates", desc: true }]} sortOptions={sortOptions} className="letter-register"
-        emptyState={<Empty icon={<FileText />} heading={letters.length ? "Surat tugas tidak ditemukan" : "Belum ada surat tugas"}
-          description={letters.length ? "Coba nomor ST, kegiatan, atau tahun lainnya." : "Nomor ST yang diisi pada arsip perjalanan akan muncul di sini beserta total biayanya."}
-          action={letters.length ? <Button variant="outline" onClick={reset}>Reset pencarian</Button> : undefined} />}
-        renderMobile={row => <>
-          <div className="register-mobile-top"><strong>{row.original.number}</strong></div>
-          <p className="register-description">{row.original.titles[0]}</p>
-          <div className="register-destination"><MapPin size={13} /><span>{row.original.destinations.join(", ")}</span></div>
-          <div className="register-mobile-meta"><span>{dateText(row.original.startDate)}{row.original.endDate !== row.original.startDate && ` – ${dateText(row.original.endDate)}`}</span><span>{row.original.peopleCount} pegawai · {row.original.trips.length} rekap</span></div>
-          <div className="register-mobile-bottom"><LetterAmount letter={row.original} /><LetterToggle row={row} mobile /></div>
-        </>}
-        renderExpanded={(row, mobile) => <section id={`letter-${mobile ? "mobile-" : ""}${encodeURIComponent(row.id)}`} className="task-letter-detail" aria-label={`Rincian biaya ST ${row.original.number}`}>
-          <div className="task-letter-detail-heading"><h3>Rincian biaya perjalanan</h3><p>Biaya setiap rekap dihitung satu kali, termasuk rekap dengan beberapa peserta.</p></div>
-          <TripCosts trips={row.original.trips} onOpen={onOpen} />
-          <div className="task-letter-detail-total"><span>{row.original.unknownCount ? "Total biaya sementara" : "Total biaya surat tugas"}</span><strong>{money(row.original.total)}</strong></div>
-          {row.original.unknownCount > 0 && <p className="task-letter-note">{row.original.unknownCount} rekap belum memiliki biaya. Total akan mengikuti biaya yang dilengkapi pada arsip perjalanan.</p>}
-        </section>} />
-      <p className="task-letter-note task-letter-footnote">Total mencakup seluruh rekap dalam setiap ST. Arsip di Sampah tidak dihitung. Biaya yang belum dicatat tidak dianggap nol.</p>
+      {letters.length ? (
+        <>
+          <div className="ledger-table-wrap">
+            <Table className="ledger-table surat-table" style={{ minWidth: table.getTotalSize() }} aria-label="Daftar surat tugas">
+              <TableHeader>
+                {table.getHeaderGroups().map((group) => (
+                  <TableRow key={group.id}>
+                    {group.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        data-column={header.column.id}
+                        aria-sort={header.column.getCanSort()
+                          ? header.column.getIsSorted() === "asc" ? "ascending"
+                            : header.column.getIsSorted() === "desc" ? "descending" : "none"
+                          : undefined}
+                      >
+                        {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                          <button
+                            className="ledger-sort"
+                            onClick={header.column.getToggleSortingHandler()}
+                            aria-label={`Urutkan ${columnLabels[header.column.id]}`}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {header.column.getIsSorted() === "asc" ? <ArrowUp size={13} />
+                              : header.column.getIsSorted() === "desc" ? <ArrowDown size={13} />
+                                : <ChevronsUpDown size={13} />}
+                          </button>
+                        ) : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <Fragment key={row.id}>
+                    <TableRow data-expanded={row.getIsExpanded()}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} data-column={cell.column.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {row.getIsExpanded() && (
+                      <TableRow className="ledger-detail-row">
+                        <TableCell colSpan={row.getVisibleCells().length}>
+                          <div id={`surat-detail-${encodeURIComponent(row.id)}`}>
+                            <LetterDetail letter={row.original} onOpen={onOpen} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="ledger-mobile">
+            {rows.map((row) => (
+              <article className="ledger-card" key={row.id} data-expanded={row.getIsExpanded()}>
+                <div className="ledger-card-top">
+                  <button
+                    className="ledger-ref"
+                    onClick={() => row.toggleExpanded()}
+                    aria-expanded={row.getIsExpanded()}
+                    aria-controls={`surat-mobile-${encodeURIComponent(row.id)}`}
+                  >
+                    {row.original.number}
+                  </button>
+                </div>
+                <p className="ledger-title">{row.original.titles[0]}</p>
+                <div className="ledger-place">
+                  <MapPin size={13} aria-hidden="true" />
+                  <span>{row.original.destinations.join(", ")}</span>
+                </div>
+                <div className="ledger-card-meta">
+                  <span>{dateRange(row.original.startDate, row.original.endDate)}</span>
+                  <span>{row.original.peopleCount} pegawai, {row.original.trips.length} rekap</span>
+                </div>
+                <div className="ledger-card-bottom">
+                  <LetterAmount letter={row.original} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-expanded={row.getIsExpanded()}
+                    aria-controls={`surat-mobile-${encodeURIComponent(row.id)}`}
+                    onClick={() => row.toggleExpanded()}
+                  >
+                    {row.getIsExpanded() ? "Tutup rincian" : "Lihat pegawai"}
+                    <ChevronDown className={row.getIsExpanded() ? "rotate-180" : undefined} />
+                  </Button>
+                </div>
+                {row.getIsExpanded() && (
+                  <div className="ledger-card-detail" id={`surat-mobile-${encodeURIComponent(row.id)}`}>
+                    <LetterDetail letter={row.original} onOpen={onOpen} />
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </>
+      ) : (
+        <Empty
+          icon={<FileText />}
+          heading={hasAny ? "Surat tugas tidak ditemukan" : "Belum ada surat tugas"}
+          description={hasAny
+            ? "Coba nomor surat, nama pegawai, atau pilih bulan dan tahun lain."
+            : "Nomor ST yang diisi pada arsip perjalanan akan tersusun di sini beserta pegawai dan biayanya."}
+          action={hasAny && filtered ? <Button variant="outline" onClick={onReset}>Bersihkan filter</Button> : undefined}
+        />
+      )}
+      <div className="ledger-pagination">
+        <p role="status">
+          Menampilkan <strong>{letters.length ? pageIndex * pageSize + 1 : 0}–{Math.min((pageIndex + 1) * pageSize, letters.length)}</strong> dari <strong>{letters.length}</strong> surat tugas
+        </p>
+        <div className="ledger-page-size">
+          <label htmlFor="surat-page-size">Baris per halaman</label>
+          <CustomSelect id="surat-page-size" value={String(pageSize)} onValueChange={(value) => table.setPageSize(Number(value))}>
+            {[10, 25, 50].map((size) => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
+          </CustomSelect>
+        </div>
+        <nav aria-label="Halaman daftar surat tugas">
+          <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={!table.getCanPreviousPage()} onClick={() => go(0)}><ChevronsLeft /></Button>
+          <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={!table.getCanPreviousPage()} onClick={() => go(pageIndex - 1)}><ChevronLeft /></Button>
+          <span><strong>{pageIndex + 1}</strong> / {pageCount}</span>
+          <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={!table.getCanNextPage()} onClick={() => go(pageIndex + 1)}><ChevronRight /></Button>
+          <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={!table.getCanNextPage()} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+function LetterPeople({ letter }: { letter: TaskLetter }) {
+  const names = peopleOf(letter);
+  const rest = names.length - 1;
+  return (
+    <div className="ledger-people">
+      <strong>{letter.peopleCount} pegawai</strong>
+      {names[0] && (
+        <span>{names[0]}{rest > 0 ? ` dan ${rest} lainnya` : ""}</span>
+      )}
+      <small>{letter.trips.length} rekap</small>
+    </div>
+  );
+}
+
+function LetterAmount({ letter }: { letter: TaskLetter }) {
+  return (
+    <div className="ledger-amount">
+      {letter.total === null ? <span className="is-unknown">Belum dicatat</span> : money(letter.total)}
+      {letter.unknownCount > 0 && (
+        <small>{letter.total !== null ? "Sementara, " : ""}{letter.unknownCount} rekap belum bernominal</small>
+      )}
+    </div>
+  );
+}
+
+function LetterDetail({ letter, onOpen }: { letter: TaskLetter; onOpen: (id: string) => void }) {
+  return (
+    <section className="ledger-detail" aria-label={`Rincian ${letter.number}`}>
+      <div className="ledger-detail-purpose">
+        <span>Uraian kegiatan</span>
+        {letter.titles.map((title, index) => <p key={index}>{title}</p>)}
+      </div>
+      <div className="ledger-members surat-roster">
+        <div className="ledger-members-head">
+          <strong>Pegawai yang ditugaskan</strong>
+          <span>{letter.peopleCount} pegawai dalam {letter.trips.length} rekap</span>
+        </div>
+        <Roster trips={letter.trips} onOpen={onOpen} showTitles={letter.titles.length > 1} />
+        <div className="ledger-members-total">
+          <span>{letter.unknownCount ? "Total sementara" : "Total realisasi surat tugas"}</span>
+          <strong>{money(letter.total)}</strong>
+        </div>
+        {letter.unknownCount > 0 && (
+          <p className="surat-roster-note">
+            {letter.unknownCount} rekap belum bernominal. Total akan mengikuti biaya yang dilengkapi pada arsip perjalanan.
+          </p>
+        )}
+      </div>
     </section>
-    {unassigned.length > 0 && <section className="archive-panel task-letter-unassigned">
-      <div><strong>{unassigned.length} rekap belum memiliki nomor ST</strong><p>Rekap ini belum masuk ke total surat tugas. Buka arsip untuk melengkapi nomor ST.</p></div>
-      <Button variant="outline" size="sm" aria-expanded={showUnassigned} aria-controls="unassigned-letters" onClick={() => setShowUnassigned(!showUnassigned)}>{showUnassigned ? "Tutup rekap" : "Lihat rekap"}</Button>
-      {showUnassigned && <div id="unassigned-letters" className="table-scroll"><TripCosts trips={unassigned} onOpen={onOpen} /></div>}
-    </section>}
-  </div>;
+  );
 }
 
-function TripPeople({ participants }: { participants: Trip["participants"] }) {
-  return <span className="letter-participants">{participants.map(person => <span className="letter-participant" key={person.id}>
-    <strong>{person.name}</strong>
-    <small>{person.nip.trim() ? `NIP ${person.nip}` : "NIP belum diisi"}</small>
-  </span>)}</span>;
-}
-
-function TripCosts({ trips, onOpen }: { trips: Trip[]; onOpen: (id: string) => void }) {
-  return <><div className="letter-breakdown-desktop"><Table className="report-table task-letter-breakdown" aria-label="Rincian biaya per rekap">
-    <TableHeader><TableRow><TableHead>Pegawai / rekap</TableHead><TableHead>Perjalanan</TableHead><TableHead className="task-letter-amount">Biaya tercatat</TableHead><TableHead><span className="sr-only">Arsip</span></TableHead></TableRow></TableHeader>
-    <TableBody>{trips.map(trip => <TableRow key={trip.id}>
-      <TableCell><TripPeople participants={trip.participants} /></TableCell>
-      <TableCell><span>{trip.destination}</span><small>{dateText(trip.startDate)} – {dateText(trip.endDate)}</small><small className="task-letter-purpose">{trip.title}</small></TableCell>
-      <TableCell className="task-letter-amount"><strong>{money(totalCost(trip))}</strong></TableCell>
-      <TableCell><Button variant="secondary" size="xs" className="archive-open-badge" onClick={() => onOpen(trip.id)} aria-label={`Buka arsip ${trip.code}`}>Buka arsip</Button></TableCell>
-    </TableRow>)}</TableBody>
-  </Table></div>
-    <div className="letter-breakdown-mobile">{trips.map(trip => <div className="letter-breakdown-item" key={trip.id}>
-      <TripPeople participants={trip.participants} />
-      <p>{trip.title}</p><small>{trip.destination} · {dateText(trip.startDate)} – {dateText(trip.endDate)}</small>
-      <div><strong className="register-amount">{money(totalCost(trip))}</strong><Button variant="secondary" size="xs" className="archive-open-badge" onClick={() => onOpen(trip.id)} aria-label={`Buka arsip ${trip.code}`}>Buka arsip</Button></div>
-    </div>)}</div>
-  </>;
+function Roster({ trips, onOpen, showTitles }: { trips: Trip[]; onOpen: (id: string) => void; showTitles: boolean }) {
+  return (
+    <>
+      {trips.map((trip) => (
+        <div className="ledger-member surat-member" key={trip.id}>
+          <div className="ledger-member-who">
+            <ul className="surat-names">
+              {trip.participants.map((person) => (
+                <li key={person.id}>
+                  <strong>{person.name}</strong>
+                  <span>{person.nip.trim() ? `NIP ${person.nip}` : "NIP belum diisi"}{person.position.trim() ? `, ${person.position}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+            {showTitles && <span className="surat-member-title">{trip.title}</span>}
+            <span className="surat-member-trip">
+              {trip.destination}, {dateRange(trip.startDate, trip.endDate)}
+            </span>
+            <span className="surat-member-code">
+              {trip.code}, {trip.department}{trip.participants.length > 1 ? ", rekap gabungan dihitung satu kali" : ""}
+            </span>
+          </div>
+          <div className="ledger-member-cost">
+            <strong>{money(totalCost(trip))}</strong>
+            <small>{trip.sppdNo ? `SPPD ${trip.sppdNo}` : "SPPD belum dicatat"}</small>
+          </div>
+          <Button variant="outline" size="sm" className="ledger-tool surat-open" onClick={() => onOpen(trip.id)} aria-label={`Buka arsip ${trip.code}`}>
+            Buka arsip
+          </Button>
+        </div>
+      ))}
+    </>
+  );
 }

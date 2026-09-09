@@ -2,10 +2,6 @@
 import { CustomSelect, SelectOption } from "./ui/select";
 import { useState } from "react";
 import {
-  MapPin,
-  CalendarDays,
-  Users,
-  Wallet,
   FileText,
   Plus,
   Upload,
@@ -39,6 +35,17 @@ import {
   paymentLabel,
   isComplete,
 } from "@/lib/model";
+
+function dateRange(start: string, end: string) {
+  if (start === end) return dateText(start);
+  const sameMonth = start.slice(0, 7) === end.slice(0, 7);
+  return `${dateText(start, sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" })} – ${dateText(end)}`;
+}
+
+function Value({ value }: { value: string | null | undefined }) {
+  return value && value.trim() ? <>{value}</> : <span className="rincian-empty">Belum dicatat</span>;
+}
+
 export default function TripDetail({
   trip,
   onClose,
@@ -87,6 +94,17 @@ export default function TripDetail({
     }
   }
   const total = totalCost(trip);
+  const complete = isComplete(trip);
+  const people = trip.participants;
+  const lead = people[0];
+  const title = people.length <= 3
+    ? people.map((p) => p.name).join(", ")
+    : `${people.slice(0, 2).map((p) => p.name).join(", ")} dan ${people.length - 2} pegawai lainnya`;
+  const subtitle = people.length === 1
+    ? [lead.nip.trim() ? `NIP ${lead.nip}` : "NIP belum dicatat", lead.position.trim() || null, `Bidang ${trip.department}`]
+        .filter(Boolean).join(", ")
+    : `${people.length} pegawai dalam satu rekap, Bidang ${trip.department}`;
+  const days = duration(trip);
   return (
     <Dialog
       open
@@ -94,380 +112,360 @@ export default function TripDetail({
         if (!open && !busy) onClose();
       }}
     >
-      <DialogContent className="detail-dialog">
+      <DialogContent className="detail-dialog rincian-dialog">
         <DialogHeader>
-          <div className="dialog-kicker">
-            {trip.code}
-            <span
-              className={`status-badge ${isComplete(trip) ? "complete" : "incomplete"}`}
-            >
-              {isComplete(trip) ? "Arsip lengkap" : "Draft"}
+          <div className="dialog-kicker rincian-kicker">
+            <FileText size={15} aria-hidden="true" />
+            <span>Rekap perjalanan dinas</span>
+            <span className="rincian-code">{trip.code}</span>
+            <span className={`rincian-state ${complete ? "complete" : ""}`}>
+              {complete ? "Arsip lengkap" : "Draft"}
             </span>
           </div>
-          <DialogTitle>{trip.title}</DialogTitle>
-          <DialogDescription>
-            {trip.department}
-            {trip.lampiran6 ? ` · ${trip.participants[0].name}` : ""}
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{subtitle}</DialogDescription>
+          <dl className="rincian-facts">
+            <div>
+              <dt>Surat tugas</dt>
+              <dd className="rincian-facts-ref"><Value value={trip.sptNo} /></dd>
+            </div>
+            <div>
+              <dt>Tujuan</dt>
+              <dd>{trip.destination}</dd>
+            </div>
+            <div>
+              <dt>Pelaksanaan</dt>
+              <dd>
+                {dateRange(trip.startDate, trip.endDate)}
+                <small>{days} hari</small>
+              </dd>
+            </div>
+            <div className="rincian-facts-money">
+              <dt>Realisasi biaya</dt>
+              <dd>{total === null ? <span className="rincian-empty">Belum dicatat</span> : money(total)}</dd>
+            </div>
+          </dl>
         </DialogHeader>
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="detail-tabs">
+          <TabsList className="detail-tabs rincian-tabs">
             <TabsTrigger value="overview">Ringkasan</TabsTrigger>
             <TabsTrigger value="costs">
-              {trip.lampiran6 ? "Pegawai & biaya" : "Peserta & biaya"}
+              {people.length > 1 ? "Peserta & biaya" : "Biaya"}
             </TabsTrigger>
             {trip.lampiran6 && (
               <TabsTrigger value="lampiran">Rincian rekap</TabsTrigger>
             )}
             <TabsTrigger value="documents">
-              Dokumen{" "}
-              <span className="tiny-count">{trip.documents.length}</span>
+              Dokumen <span className="tiny-count">{trip.documents.length}</span>
             </TabsTrigger>
             <TabsTrigger value="history">Riwayat</TabsTrigger>
           </TabsList>
-          <div className="detail-scroll">
+          <div className="detail-scroll rincian-scroll">
             {trip.lampiran6 && (
               <TabsContent value="lampiran">
                 <Lampiran6Summary trip={trip} />
               </TabsContent>
             )}
             <TabsContent value="overview">
-              <div className="detail-facts">
-                <div>
-                  <MapPin />
-                  <span>
-                    Tujuan<strong>{trip.destination}</strong>
-                  </span>
-                </div>
-                <div>
-                  <CalendarDays />
-                  <span>
-                    Pelaksanaan
-                    <strong>
-                      {dateText(trip.startDate)} – {dateText(trip.endDate)}
-                    </strong>
-                    <small>{duration(trip)} hari perjalanan</small>
-                  </span>
-                </div>
-                <div>
-                  <Users />
-                  <span>
-                    {trip.lampiran6 ? "Pegawai" : "Peserta"}
-                    <strong>
-                      {trip.lampiran6
-                        ? trip.participants[0].name
-                        : `${trip.participants.length} pegawai`}
-                    </strong>
-                    {trip.lampiran6 && (
-                      <small>Rekap perjalanan dan biaya pegawai ini.</small>
-                    )}
-                  </span>
-                </div>
-                <div>
-                  <Wallet />
-                  <span>
-                    Total realisasi<strong>{money(total)}</strong>
-                  </span>
-                </div>
-              </div>
-              <dl className="metadata-list">
-                <div>
-                  <dt>Nomor SPT</dt>
-                  <dd>{trip.sptNo || "Belum dicatat"}</dd>
-                </div>
-                <div>
-                  <dt>Nomor SPPD</dt>
-                  <dd>{trip.sppdNo || "—"}</dd>
-                </div>
-                <div>
-                  <dt>Kegiatan / subkegiatan</dt>
-                  <dd>{trip.activity || "Belum dicatat"}</dd>
-                </div>
-                <div>
-                  <dt>Kode rekening</dt>
-                  <dd>{trip.account || "Belum dicatat"}</dd>
-                </div>
-                <div>
-                  <dt>Lokasi berkas fisik</dt>
-                  <dd>{trip.physicalLocation || "Belum dicatat"}</dd>
-                </div>
-                <div>
-                  <dt>Sumber data</dt>
-                  <dd>{trip.source}</dd>
-                </div>
-              </dl>
-              {trip.notes && (
-                <div className="note-box">
-                  <h4>Catatan arsip</h4>
-                  <p>{trip.notes}</p>
-                </div>
-              )}
-              {!isComplete(trip) && (
-                <div className="next-action">
+              <section className="rincian-section">
+                <h3 className="rincian-heading">Uraian kegiatan</h3>
+                <p className="rincian-purpose">{trip.title}</p>
+              </section>
+              <section className="rincian-section">
+                <h3 className="rincian-heading">Administrasi</h3>
+                <dl className="rincian-meta">
                   <div>
-                    <Info size={19} />
-                    <span>
-                      <strong>Draft · Biaya belum dicatat</strong>
-                      <small>Dokumen pendukung tidak wajib.</small>
-                    </span>
+                    <dt>Nomor SPPD</dt>
+                    <dd><Value value={trip.sppdNo} /></dd>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setTab("costs")}
-                  >
+                  <div>
+                    <dt>Kegiatan / subkegiatan</dt>
+                    <dd><Value value={trip.activity} /></dd>
+                  </div>
+                  <div>
+                    <dt>Kode rekening</dt>
+                    <dd><Value value={trip.account} /></dd>
+                  </div>
+                  <div>
+                    <dt>Berkas fisik</dt>
+                    <dd><Value value={trip.physicalLocation} /></dd>
+                  </div>
+                  <div>
+                    <dt>Sumber data</dt>
+                    <dd>{trip.source}</dd>
+                  </div>
+                  <div>
+                    <dt>Diperbarui</dt>
+                    <dd>
+                      {new Date(trip.updatedAt).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: "Asia/Jakarta",
+                      })}{" "}
+                      WIB
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+              {trip.notes && (
+                <section className="rincian-section">
+                  <h3 className="rincian-heading">Catatan arsip</h3>
+                  <p className="rincian-note">{trip.notes}</p>
+                </section>
+              )}
+              {!complete && (
+                <div className="rincian-next">
+                  <Info size={18} aria-hidden="true" />
+                  <span>
+                    <strong>Biaya belum dicatat</strong>
+                    <small>Rekap tetap tersimpan sebagai draft. Dokumen pendukung tidak wajib.</small>
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setTab("costs")}>
                     Lengkapi biaya
                   </Button>
                 </div>
               )}
             </TabsContent>
             <TabsContent value="costs">
-              <h3 className="subheading">
-                {trip.lampiran6 ? "Pegawai" : "Peserta perjalanan"}
-              </h3>
-              <div className="people-list">
-                {trip.participants.map((p) => (
-                  <div key={p.id}>
-                    <div className="avatar">
-                      {p.name
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((s) => s[0])
-                        .join("")}
-                    </div>
-                    <span>
+              {people.length > 1 && <section className="rincian-section">
+                <h3 className="rincian-heading">
+                  Peserta perjalanan
+                  <span>{people.length} pegawai</span>
+                </h3>
+                <ul className="rincian-people">
+                  {people.map((p) => (
+                    <li key={p.id}>
                       <strong>{p.name}</strong>
-                      <small>
-                        {p.nip ? `NIP ${p.nip}` : "NIP belum dicatat"}
-                        {p.department ? ` · ${p.department}` : ""}
-                      </small>
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <h3 className="subheading mt-7">Rincian biaya realisasi</h3>
-              {trip.costs.length ? (
-                <div className="cost-detail">
-                  {trip.costs.map((c) => (
-                    <div key={c.id}>
                       <span>
-                        <strong>{c.category}</strong>
-                        <small>
-                          {c.participantId === "shared"
-                            ? "Bersama / total perjalanan"
-                            : trip.participants.find(
-                                (p) => p.id === c.participantId,
-                              )?.name}
-                          {c.label ? ` · ${c.label}` : ""}
-                        </small>
+                        {p.nip.trim() ? `NIP ${p.nip}` : "NIP belum dicatat"}
+                        {p.position.trim() ? `, ${p.position}` : ""}
+                        {p.department.trim() ? `, ${p.department}` : ""}
                       </span>
-                      <strong>{money(c.amount)}</strong>
-                    </div>
+                    </li>
                   ))}
-                </div>
-              ) : (
-                <div className="note-box">
-                  Biaya belum dicatat. Lengkapi dari rekap atau kuitansi asli.
-                </div>
-              )}
-              <div className="cost-total">
-                <span>Total realisasi</span>
-                <strong>{money(total)}</strong>
-              </div>
-              <dl className="metadata-list">
-                <div>
-                  <dt>Sudah dibayar</dt>
-                  <dd>{money(trip.paid)}</dd>
-                </div>
-                <div>
-                  <dt>Status pembayaran</dt>
-                  <dd>{paymentLabel(trip)}</dd>
-                </div>
-                {total !== null &&
-                  trip.paid !== null &&
-                  trip.paid !== total && (
+                </ul>
+              </section>}
+              <section className="rincian-section">
+                <h3 className="rincian-heading">
+                  Rincian biaya realisasi
+                  <span>{trip.costs.length ? `${trip.costs.length} komponen` : "Belum ada komponen"}</span>
+                </h3>
+                {trip.costs.length ? (
+                  <div className="rincian-costs">
+                    <div className="rincian-costs-head">
+                      <span>Komponen</span>
+                      <span>Untuk</span>
+                      <span>Jumlah</span>
+                    </div>
+                    {trip.costs.map((c) => (
+                      <div className="rincian-cost" key={c.id}>
+                        <strong>{c.category}</strong>
+                        <span>
+                          {c.participantId === "shared"
+                            ? "Bersama, satu kali untuk perjalanan ini"
+                            : people.find((p) => p.id === c.participantId)?.name}
+                          {c.label ? <small>{c.label}</small> : null}
+                        </span>
+                        <b>{money(c.amount)}</b>
+                      </div>
+                    ))}
+                    <div className="rincian-costs-total">
+                      <span>Total realisasi</span>
+                      <strong>{money(total)}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="rincian-note">
+                    Biaya belum dicatat. Lengkapi dari rekap atau kuitansi asli melalui Edit arsip.
+                  </p>
+                )}
+              </section>
+              <section className="rincian-section">
+                <h3 className="rincian-heading">Pembayaran</h3>
+                <dl className="rincian-meta">
+                  <div>
+                    <dt>Sudah dibayar</dt>
+                    <dd>{trip.paid === null ? <span className="rincian-empty">Belum dicatat</span> : money(trip.paid)}</dd>
+                  </div>
+                  <div>
+                    <dt>Status pembayaran</dt>
+                    <dd>{paymentLabel(trip)}</dd>
+                  </div>
+                  {total !== null && trip.paid !== null && trip.paid !== total && (
                     <div>
-                      <dt>
-                        {trip.paid > total
-                          ? "Perlu dikembalikan"
-                          : "Sisa pembayaran"}
-                      </dt>
+                      <dt>{trip.paid > total ? "Perlu dikembalikan" : "Sisa pembayaran"}</dt>
                       <dd>{money(Math.abs(total - trip.paid))}</dd>
                     </div>
                   )}
-              </dl>
-              <p className="field-hint">
-                Biaya bersama dihitung satu kali untuk seluruh perjalanan.
-              </p>
+                </dl>
+                <p className="rincian-hint">Biaya bersama dihitung satu kali untuk seluruh perjalanan.</p>
+              </section>
             </TabsContent>
             <TabsContent value="documents">
-              <div className="section-heading">
-                <div>
-                  <h3 className="subheading">Dokumen perjalanan</h3>
-                  <p className="muted text-xs">
-                    Opsional. Foto/PDF dan catatan berkas fisik tidak memengaruhi status rekap.
-                  </p>
+              <section className="rincian-section">
+                <div className="rincian-section-head">
+                  <div>
+                    <h3 className="rincian-heading">Dokumen perjalanan</h3>
+                    <p className="rincian-hint">
+                      Opsional. Foto, PDF, dan catatan berkas fisik tidak memengaruhi status rekap.
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => setAdding(!adding)} aria-expanded={adding}>
+                    <Plus /> Tambah dokumen
+                  </Button>
                 </div>
-                <Button size="sm" onClick={() => setAdding(!adding)}>
-                  <Plus /> Tambah dokumen
-                </Button>
-              </div>
-              {adding && (
-                <form className="upload-form" onSubmit={upload}>
-                  <div className="segmented">
-                    <button
-                      type="button"
-                      className={kind === "file" ? "selected" : ""}
-                      onClick={() => setKind("file")}
-                    >
-                      <Upload size={15} /> Unggah file
-                    </button>
-                    <button
-                      type="button"
-                      className={kind === "physical" ? "selected" : ""}
-                      onClick={() => setKind("physical")}
-                    >
-                      <FolderOpen size={15} /> Berkas fisik
-                    </button>
-                  </div>
-                  <Field label="Jenis dokumen">
-                    <CustomSelect
-                      value={type}
-                      onValueChange={(value) => setType(value as typeof type)}
-                    >
-                      {Object.entries(docLabels).map(([k, v]) => (
-                        <SelectOption key={k} value={k}>
-                          {v}
-                        </SelectOption>
-                      ))}
-                    </CustomSelect>
-                  </Field>
-                  {kind === "file" ? (
-                    <Field
-                      key="digital"
-                      label="Pilih berkas"
-                      hint="PDF, JPG, atau PNG. Maksimal 10 MB per berkas."
-                    >
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        required
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                      />
-                    </Field>
-                  ) : (
-                    <Field
-                      key="physical"
-                      label="Lokasi berkas fisik"
-                      hint="Tandai hanya setelah keberadaan berkas diperiksa."
-                    >
-                      <input
-                        required
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Lemari, nomor map, dan tahun arsip"
-                      />
-                    </Field>
-                  )}
-                  <ErrorMessage message={error} />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setAdding(false)}
-                      disabled={busy}
-                    >
-                      Batal
-                    </Button>
-                    <Button type="submit" disabled={busy}>
-                      {busy && <LoaderCircle className="animate-spin" />}Simpan
-                      dokumen
-                    </Button>
-                  </div>
-                </form>
-              )}
-              <div className="document-list">
-                {trip.documents.map((d) => (
-                  <div className="document-item" key={d.id}>
-                    <div className={`file-icon ${d.kind}`}>
-                      {d.kind === "file" ? (
-                        <FileText size={20} />
-                      ) : (
-                        <FolderOpen size={20} />
-                      )}
-                    </div>
-                    <div className="file-info">
-                      <strong>{docLabels[d.type]}</strong>
-                      <span>{d.kind === "file" ? d.name : d.location}</span>
-                      <small>
-                        {d.kind === "file"
-                          ? `${(d.size / 1024).toLocaleString("id-ID", { maximumFractionDigits: 0 })} KB · Digital`
-                          : "Tersimpan secara fisik"}
-                      </small>
-                    </div>
-                    {d.kind === "file" ? (
-                      <a
-                        className="icon-link"
-                        href={`/api/documents/${d.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Buka ${d.name}`}
+                {adding && (
+                  <form className="upload-form rincian-upload" onSubmit={upload}>
+                    <div className="segmented">
+                      <button
+                        type="button"
+                        className={kind === "file" ? "selected" : ""}
+                        onClick={() => setKind("file")}
                       >
-                        <ExternalLink size={17} />
-                      </a>
+                        <Upload size={15} /> Unggah file
+                      </button>
+                      <button
+                        type="button"
+                        className={kind === "physical" ? "selected" : ""}
+                        onClick={() => setKind("physical")}
+                      >
+                        <FolderOpen size={15} /> Berkas fisik
+                      </button>
+                    </div>
+                    <Field label="Jenis dokumen">
+                      <CustomSelect
+                        value={type}
+                        onValueChange={(value) => setType(value as typeof type)}
+                      >
+                        {Object.entries(docLabels).map(([k, v]) => (
+                          <SelectOption key={k} value={k}>
+                            {v}
+                          </SelectOption>
+                        ))}
+                      </CustomSelect>
+                    </Field>
+                    {kind === "file" ? (
+                      <Field
+                        key="digital"
+                        label="Pilih berkas"
+                        hint="PDF, JPG, atau PNG. Maksimal 10 MB per berkas."
+                      >
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          required
+                          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                        />
+                      </Field>
                     ) : (
-                      <span className="status-badge neutral">Fisik</span>
+                      <Field
+                        key="physical"
+                        label="Lokasi berkas fisik"
+                        hint="Tandai hanya setelah keberadaan berkas diperiksa."
+                      >
+                        <input
+                          required
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          placeholder="Lemari, nomor map, dan tahun arsip"
+                        />
+                      </Field>
                     )}
+                    <ErrorMessage message={error} />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setAdding(false)}
+                        disabled={busy}
+                      >
+                        Batal
+                      </Button>
+                      <Button type="submit" disabled={busy}>
+                        {busy && <LoaderCircle className="animate-spin" />}Simpan dokumen
+                      </Button>
+                    </div>
+                  </form>
+                )}
+                {trip.documents.length ? (
+                  <ul className="rincian-docs">
+                    {trip.documents.map((d) => (
+                      <li className="rincian-doc" key={d.id}>
+                        <span className={`rincian-doc-icon ${d.kind}`} aria-hidden="true">
+                          {d.kind === "file" ? <FileText size={18} /> : <FolderOpen size={18} />}
+                        </span>
+                        <span className="rincian-doc-info">
+                          <strong>{docLabels[d.type]}</strong>
+                          <span>{d.kind === "file" ? d.name : d.location}</span>
+                          <small>
+                            {d.kind === "file"
+                              ? `Berkas digital, ${(d.size / 1024).toLocaleString("id-ID", { maximumFractionDigits: 0 })} KB`
+                              : "Berkas fisik, tersimpan di lokasi ini"}
+                          </small>
+                        </span>
+                        {d.kind === "file" ? (
+                          <a
+                            className="rincian-doc-open"
+                            href={`/api/documents/${d.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Buka ${d.name}`}
+                          >
+                            Buka <ExternalLink size={14} aria-hidden="true" />
+                          </a>
+                        ) : (
+                          <span className="rincian-doc-tag">Fisik</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="rincian-empty-state">
+                    <FileText aria-hidden="true" />
+                    <p>Belum ada dokumen untuk rekap ini. Tambahkan hanya jika diperlukan.</p>
                   </div>
-                ))}
-              </div>
-              {trip.documents.length === 0 && (
-                <div className="small-empty">
-                  <FileText />
-                  <p>
-                    Belum ada dokumen. Tambahkan hanya jika diperlukan.
-                  </p>
-                </div>
-              )}
+                )}
+              </section>
             </TabsContent>
             <TabsContent value="history">
-              <h3 className="subheading">Riwayat arsip</h3>
-              <p className="section-note">
-                Perubahan tersimpan bersama nama operator dan waktunya.
-              </p>
-              <ol className="timeline">
-                {trip.history.map((h) => (
-                  <li key={h.id}>
-                    <div className="timeline-marker">
-                      <Clock3 size={14} />
-                    </div>
-                    <div>
-                      <strong>{h.action}</strong>
-                      <p>{h.detail}</p>
-                      <small>
-                        {h.actor} ·{" "}
-                        {new Date(h.at).toLocaleString("id-ID", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                          timeZone: "Asia/Jakarta",
-                        })}{" "}
-                        WIB
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+              <section className="rincian-section">
+                <h3 className="rincian-heading">
+                  Riwayat arsip
+                  <span>{trip.history.length} catatan</span>
+                </h3>
+                <p className="rincian-hint">Setiap perubahan tersimpan bersama nama operator dan waktunya.</p>
+                <ol className="rincian-timeline">
+                  {trip.history.map((h) => (
+                    <li key={h.id}>
+                      <span className="rincian-timeline-mark" aria-hidden="true">
+                        <Clock3 size={13} />
+                      </span>
+                      <div>
+                        <strong>{h.action}</strong>
+                        {h.detail && <p>{h.detail}</p>}
+                        <small>
+                          {h.actor},{" "}
+                          {new Date(h.at).toLocaleString("id-ID", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                            timeZone: "Asia/Jakarta",
+                          })}{" "}
+                          WIB
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             </TabsContent>
           </div>
         </Tabs>
-        <div className="detail-footer">
-          <span className="muted text-xs">
-            Versi {trip.version} · Tersimpan di arsip
-          </span>
+        <div className="detail-footer rincian-footer">
+          <span>Versi {trip.version}, tersimpan di arsip kantor</span>
           <div className="detail-action-buttons">
             <Button
               variant="ghost"
-              className="text-destructive"
+              className="text-destructive rincian-delete"
               onClick={onDelete}
               disabled={busy}
             >

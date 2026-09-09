@@ -10,7 +10,7 @@ function Facts({ rows }: { rows: [string, string | number | null][] }) {
       {rows.map(([key, value]) => (
         <div key={key}>
           <dt>{key}</dt>
-          <dd>{value === null || value === "" ? "Belum dicatat" : value}</dd>
+          <dd>{value === null || value === "" || value === "Belum dicatat" ? <span className="rincian-empty">Belum dicatat</span> : value}</dd>
         </div>
       ))}
     </dl>

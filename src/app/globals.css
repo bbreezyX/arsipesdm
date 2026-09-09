@@ -16,7 +16,7 @@
   --color-ring: #5f89ac;
   --color-popover: #fff;
   --color-popover-foreground: #20354c;
-  --font-sans: "Source Sans 3 Variable", sans-serif;
+  --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
 }
 :root {
   --background: #fff;
@@ -65,7 +65,7 @@ body {
   margin: 0;
   color: var(--foreground);
   background: var(--canvas);
-  font-family: "Source Sans 3 Variable", sans-serif;
+  font-family: "Instrument Sans Variable", system-ui, sans-serif;
   font-size: var(--type-body);
   -webkit-font-smoothing: antialiased;
   line-height: 1.6;
@@ -210,13 +210,11 @@ h4 {
   width: 35px;
   height: 36px;
   flex-shrink: 0;
-  overflow: hidden;
 }
 .official-brand-mark img {
-  /* Crop the original 371 × 57 lockup to its first 55 pixels (the crest). */
-  width: calc(36px * 371 / 57);
-  height: 36px;
-  max-width: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 .official-brand-name {
@@ -2379,33 +2377,6 @@ table td {
 .people-table button {
   font-size: var(--type-button);
 }
-.person-history {
-  max-height: 55dvh;
-  overflow: auto;
-}
-.person-history > button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 15px 0;
-  border-bottom: 1px solid var(--line);
-  width: 100%;
-  text-align: left;
-  color: var(--primary);
-}
-.person-history strong {
-  font-size: var(--type-meta);
-  font-weight: 550;
-  display: block;
-  color: var(--muted);
-}
-.person-history small {
-  font-size: var(--type-meta);
-  color: var(--muted);
-  display: block;
-  margin-top: 5px;
-}
 .settings-layout {
   max-width: 900px;
   display: grid;
@@ -2461,7 +2432,7 @@ table td {
   font-size: var(--type-button);
 }
 .settings-logo {
-  width: 280px;
+  width: 96px;
   height: auto;
   margin: 24px 0;
 }
@@ -2777,12 +2748,11 @@ table td {
   width: 40px;
   height: 42px;
   flex-shrink: 0;
-  overflow: hidden;
 }
 .auth-crest img {
-  width: calc(42px * 371 / 57);
-  height: 42px;
-  max-width: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 .auth-kop-name {
@@ -3476,7 +3446,7 @@ table td {
   }
   .settings-logo {
     max-width: 100%;
-    width: 260px;
+    width: 80px;
   }
   .office-banner {
     flex-wrap: wrap;
@@ -3787,13 +3757,13 @@ table td {
     display: block;
     width: 25px;
     height: 26px;
-    overflow: hidden;
     margin-right: 2px;
   }
   .compact-brand img {
-    height: 26px;
-    width: auto;
-    max-width: none;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
   }
 }
 
@@ -4581,56 +4551,9 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 @keyframes selector-appear { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .select-popup { animation: none; } .select-chevron { transition: none; } }
 
-.employee-form-dialog[data-slot="dialog-content"] {
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-}
 
 
 /* Surat tugas: one total per letter, with traceable archive details. */
-.task-letters { display: grid; gap: 18px; }
-.task-letter-heading { align-items: flex-start; gap: 24px; }
-.task-letter-total { display: grid; gap: 5px; flex-shrink: 0; text-align: right; }
-.task-letter-total > span { color: var(--muted); font-size: var(--type-meta); }
-.task-letter-total > strong { color: var(--ink); font-size: var(--type-total); font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.6px; }
-.task-letter-total > small { color: var(--muted); font-size: var(--type-meta); }
-.task-letter-table { width: 100%; min-width: 850px; }
-.task-letter-table > tbody > tr > td { vertical-align: top; }
-.task-letter-table > tbody > tr > td:first-child { width: 38%; }
-.task-letter-table small { display: block; margin-top: 5px; font-size: var(--type-meta); color: var(--muted); }
-.task-letter-number { display: block; color: var(--ink); font-size: var(--type-data); overflow-wrap: anywhere; }
-.task-letter-purpose { display: block; margin-top: 6px; max-width: 56ch; line-height: 1.65; overflow-wrap: anywhere; }
-.task-letter-dates { white-space: nowrap; line-height: 1.7; }
-.task-letter-amount { text-align: right; font-variant-numeric: tabular-nums; }
-.task-letter-amount > strong { color: var(--ink); white-space: nowrap; font-size: var(--type-data); }
-.task-letter-amount > small { max-width: 24ch; margin-left: auto; }
-.task-letter-selected { background: #f7fafc; }
-.task-letter-table td.task-letter-detail-cell { padding: 20px; background: #f7fafc; }
-.task-letter-detail { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; }
-.task-letter-detail-heading { padding: 18px 20px 6px; }
-.task-letter-detail-heading h3 { color: var(--ink); font-size: var(--type-section); font-weight: 600; }
-.task-letter-detail-heading p, .task-letter-note { color: var(--muted); font-size: var(--type-body); line-height: 1.7; }
-.task-letter-detail-heading p { margin-top: 5px; }
-.task-letter-breakdown { width: 100%; }
-.task-letter-breakdown td { vertical-align: top; }
-.task-letter-breakdown td:first-child { width: 28%; }
-.task-letter-breakdown td > strong { color: var(--ink); }
-.task-letter-breakdown small { display: block; color: var(--muted); margin-top: 5px; }
-.task-letter-detail-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 600; }
-.task-letter-detail-total strong { font-size: var(--type-total); font-variant-numeric: tabular-nums; }
-.task-letter-detail > .task-letter-note { padding: 0 22px 16px; }
-.task-letter-footnote { padding: 14px 22px; border-top: 1px solid var(--line); }
-.task-letter-unassigned { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 20px 22px; }
-.task-letter-unassigned > div > strong { color: var(--ink); font-size: var(--type-data); }
-.task-letter-unassigned p { margin-top: 5px; color: var(--muted); font-size: var(--type-meta); line-height: 1.7; }
-.task-letter-unassigned > .table-scroll { width: 100%; flex-basis: 100%; }
-@media (max-width: 700px) {
-  .task-letter-heading { flex-direction: column; gap: 18px; }
-  .task-letter-total { text-align: left; }
-  .task-letter-total > strong { font-size: var(--type-total); }
-  .task-letter-footnote { padding: 14px 16px; }
-  .task-letter-unassigned { padding: 18px 16px; }
-}
 
 .destination-fields { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .destination-row { display: flex; gap: 8px; align-items: flex-end; min-width: 0; }
@@ -5117,7 +5040,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .archive-register[data-density="compact"] .register-table td { padding-top: 11px; padding-bottom: 11px; }
 .archive-register[data-density="compact"] .register-description { -webkit-line-clamp: 1; margin-block: 3px; }
 .archive-register[data-density="compact"] .register-table .register-detail-row > td { padding: 14px 20px; }
-.letter-register.archive-register .register-table .register-detail-row > td { padding-top: 20px; }
 .workspace-archives .register-selection { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px 18px; margin: 0; padding: 12px 22px; background: #eaf2fa; border-bottom: 1px solid #caddec; color: #244f73; font-size: var(--type-data); }
 .register-selection > span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .workspace-archives .register-selection button { display: inline-flex; align-items: center; gap: 6px; font-size: var(--type-button); min-height: 28px; color: #244f73; text-decoration: underline; text-underline-offset: 3px; }
@@ -5210,38 +5132,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 }
 
 /* Surat Tugas and employee registers share the archive table's controls and rhythm. */
-.secondary-register-page.archive-panel, .secondary-register-page .archive-panel { border-color: #dce3eb; border-radius: 8px; box-shadow: none; }
-.secondary-register-page .register-heading { padding: 22px 22px 17px; gap: 18px; }
-.secondary-register-page .register-heading h2 { color: #18344f; font-size: var(--type-panel); letter-spacing: -.02em; }
-.secondary-register-page .register-heading p { font-size: var(--type-body); line-height: 1.7; max-width: 660px; }
-.secondary-register-page .register-heading > button { flex-shrink: 0; font-size: var(--type-button); }
-.secondary-register-page .count-badge { font-size: var(--type-micro); background: #eef3f8; color: #375675; padding: 2px 7px; }
-.secondary-register-page .task-letter-total strong { color: #263f58; font-size: var(--type-total); font-variant-numeric: tabular-nums; }
-.secondary-register-filters, .secondary-register-filters:has(.register-reset) { grid-template-columns: minmax(220px, 1fr) minmax(170px, 230px) auto; }
-.secondary-register-page .register-tabs { padding-inline: 22px; gap: 26px; }
-.secondary-register-page .register-tabs > button { height: 43px; font-size: var(--type-button); color: #52677c; }
-.secondary-register-page .register-tabs > button.active { color: #204f76; }
-.secondary-register-page .register-tabs > button > span { font-size: var(--type-micro); color: #52677c; }
-.secondary-register-table td:first-child, .secondary-register-table th:first-child { padding-left: 22px; }
-.secondary-register-table [data-column="actions"] { min-width: 72px; width: 72px; }
-.letter-register .secondary-register-table [data-column="actions"] { min-width: 108px; width: 108px; }
-.letter-register .secondary-register-table [data-column="actions"] button { font-size: var(--type-button); border-color: #dfe5ec; }
-.letter-register .secondary-register-table [data-column="people"] { min-width: 125px; width: 125px; }
-.data-register .register-cell-note { display: block; font-size: var(--type-meta); font-weight: 400; line-height: 1.7; color: var(--muted); margin-top: 4px; }
-.employee-register-identity { min-width: 0; }
-.employee-register-identity .register-reference { font-size: var(--type-data); }
-.employee-register-table, .secondary-register-table { width: 100%; }
-.employee-register [data-column="name"] { min-width: 240px; }
-.employee-register [data-column="department"] { min-width: 145px; }
-.employee-register [data-column="rank"] { min-width: 94px; }
-.employee-register [data-column="trips"] { min-width: 115px; }
-.employee-register-nip { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: var(--type-meta); color: #52677c; }
-.employee-trip-count { color: #52677c; font-size: var(--type-meta); white-space: nowrap; }
-.employee-trip-count strong { color: #244f73; font-weight: 600; }
-.employee-trip-count:hover { text-decoration: underline; text-underline-offset: 3px; }
-.data-register .task-letter-breakdown { font-size: var(--type-meta); min-width: 610px; }
-.data-register .task-letter-breakdown th { position: static; height: auto; font-size: var(--type-label); padding: 10px 16px; box-shadow: none; }
-.data-register .task-letter-breakdown td { padding: 14px 16px; white-space: normal; }
 .letter-breakdown-mobile { display: none; }
 .letter-participants, .letter-participant { display: block; }
 .letter-participant + .letter-participant { margin-top: 10px; }
@@ -5251,22 +5141,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .archive-open-badge[data-slot="button"]:hover { background: #dfeaf3; border-color: #9db6cb; color: #183e5d; }
 .archive-open-badge[data-slot="button"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 @media (max-width: 760px) {
-  .secondary-register-page .register-heading { padding: 18px 16px 14px; flex-wrap: wrap; align-items: flex-start; }
-  .secondary-register-page .register-heading h2 { font-size: var(--type-panel); }
-  .secondary-register-page .register-heading p { font-size: var(--type-body); }
-  .secondary-register-page .task-letter-total { width: 100%; text-align: left; padding-top: 12px; border-top: 1px solid #e5eaf0; }
-  .secondary-register-page .task-letter-total strong { font-size: var(--type-total); }
-  .secondary-register-filters, .secondary-register-filters:has(.register-reset) { grid-template-columns: minmax(0, 1fr); }
-  .secondary-register-filters .register-reset { grid-column: auto; }
-  .secondary-register-page .register-tabs { padding-inline: 16px; gap: 24px; }
-  .secondary-register-page .register-tabs > button { font-size: var(--type-button); }
-  .employee-mobile-heading { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
-  .employee-mobile-heading > button { flex-shrink: 0; }
-  .employee-mobile-meta { display: grid; gap: 7px; margin-top: 13px; font-size: var(--type-meta); }
-  .employee-mobile-meta > div { display: grid; grid-template-columns: 65px minmax(0, 1fr); gap: 10px; }
-  .employee-mobile-meta dt { color: var(--muted); }
-  .employee-mobile-meta dd { color: #344f69; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-  .employee-register .register-mobile-bottom > span { font-size: var(--type-meta); color: #52677c; }
   .letter-breakdown-desktop { display: none; }
   .letter-breakdown-mobile { display: block; }
   .letter-breakdown-item { padding: 15px; border-bottom: 1px solid #e5eaf0; font-size: var(--type-data); }
@@ -5275,64 +5149,4 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
   .letter-breakdown-item > small { display: block; color: var(--muted); margin-top: 5px; }
   .letter-breakdown-item > p { line-height: 1.8; color: #52677c; margin-top: 8px; overflow-wrap: anywhere; }
   .letter-breakdown-item > div { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-  .secondary-register-page .task-letter-detail-heading { padding: 15px 15px 8px; }
-  .secondary-register-page .task-letter-detail-total { padding: 15px; gap: 10px; flex-wrap: wrap; font-size: var(--type-meta); }
-  .secondary-register-page .task-letter-detail-total strong { font-size: var(--type-total); }
-}
-
-/* Honorarium follows the shared register, with a compact financial summary. */
-.honorarium-workspace { display: grid; gap: 20px; min-width: 0; }
-.honorarium-summary { display: grid; grid-template-columns: .8fr 1fr 1fr 1fr; background: #fff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 22px 0; box-shadow: 0 2px 2px #1b345003; }
-.honorarium-summary > div { padding: 0 23px; min-width: 0; border-right: 1px solid var(--line); display: grid; gap: 7px; align-content: start; }
-.honorarium-summary > div:last-child { border: 0; }
-.honorarium-summary span { color: var(--muted); font-size: var(--type-meta); }
-.honorarium-summary span.metric-label { font-size: var(--type-label); }
-.honorarium-summary strong { color: var(--ink); font-size: var(--type-metric); font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.honorarium-summary > div > small { color: var(--muted); font-size: var(--type-meta); display: block; }
-.honorarium-summary strong.money-number { display: flex; align-items: baseline; gap: 5px; letter-spacing: -.8px; }
-.honorarium-summary strong.count-number { display: flex; align-items: baseline; gap: 8px; letter-spacing: -1px; }
-.honorarium-summary strong.count-number span { font-size: var(--type-micro); color: var(--muted); font-weight: 400; letter-spacing: 0; }
-.honorarium-summary strong .currency { font-size: var(--type-metric); color: var(--muted); font-weight: 500; letter-spacing: 0; }
-.honorarium-detail-scroll { border-top: 1px solid var(--line); }
-.honorarium-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.honorarium-filters { display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(180px, 1fr) minmax(120px, .55fr) auto; align-items: end; }
-.honorarium-filters .field { margin: 0; }
-.honorarium-cell { max-width: 250px; overflow-wrap: anywhere; }
-.honorarium-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.honorarium-panel > .error-message { margin: 12px 20px; }
-.honorarium-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-.honorarium-dialog[data-slot="dialog-content"], .honorarium-dialog .editor-form { overflow: clip; }
-.honorarium-dialog .custom-select, .honorarium-filters .custom-select { height: auto; min-height: 38px; white-space: normal; text-align: left; }
-.honorarium-dialog .form-section h3 { margin-bottom: 16px; }
-.honorarium-dialog .form-section > .field { margin-bottom: 16px; }
-.honorarium-dialog .form-grid { margin-bottom: 12px; }
-.honorarium-form-bottom { padding: 16px 29px; border-top: 1px solid var(--line); background: #fff; flex-shrink: 0; }
-.honorarium-calculation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding-bottom: 16px; }
-.honorarium-calculation div { display: grid; gap: 5px; min-width: 0; }
-.honorarium-calculation span { color: var(--muted); font-size: var(--type-meta); }
-.honorarium-calculation strong { font-size: var(--type-total); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; color: var(--ink); }
-.honorarium-form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.honorarium-form-actions > span { margin-right: auto; color: var(--muted); font-size: var(--type-micro); }
-.honorarium-mobile-kind { color: var(--muted); font-size: var(--type-meta); margin: 10px 0; }
-@media (max-width: 1100px) {
-  .honorarium-summary > div { padding: 0 16px; }
-  .honorarium-filters { grid-template-columns: 1fr 1fr; }
-  .honorarium-filters .register-search-field { grid-column: 1 / -1; }
-}
-@media (max-width: 600px) {
-  .honorarium-summary { grid-template-columns: 1fr 1fr; padding: 0; }
-  .honorarium-summary > div { padding: 16px; gap: 7px; border-bottom: 1px solid var(--line); }
-  .honorarium-summary > div:nth-child(even) { border-right: 0; }
-  .honorarium-summary > div:nth-child(n+3) { border-bottom: 0; }
-  .honorarium-summary strong { font-size: var(--type-metric); }
-  .honorarium-panel .register-heading { align-items: stretch; }
-  .honorarium-panel .register-heading > .honorarium-actions { justify-content: flex-start; }
-  .honorarium-filters { grid-template-columns: minmax(0, 1fr); }
-  .honorarium-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
-  .honorarium-dialog .span-2 { grid-column: auto; }
-  .honorarium-form-bottom { padding: 14px 18px; }
-  .honorarium-calculation { gap: 8px; }
-  .honorarium-calculation strong { font-size: var(--type-total); }
-  .honorarium-form-actions > span { display: none; }
-  .honorarium-detail > div { grid-template-columns: 1fr; gap: 5px; }
 }
