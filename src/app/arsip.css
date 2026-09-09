@@ -1786,6 +1786,7 @@
   border-top: 1px solid var(--ledger-line-soft);
 }
 .form-dialog .form-body > .form-section:first-child,
+.form-dialog .form-body > fieldset > .form-section:first-child,
 .lampiran-form-body .form-section:first-child,
 .lampiran-form-body [data-slot="tabs-content"] > .form-section:first-child {
   border-top: 0;

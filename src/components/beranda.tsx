@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Archive, ArrowRight, ArrowUpRight, CheckCircle2, ClipboardList, FileSpreadsheet, FileText, Plus, Upload, Users, Wallet, Sparkles,
+  Archive, ArrowRight, ArrowUpRight, CheckCircle2, ClipboardList, FileSpreadsheet, FileText, Users, Wallet, Sparkles,
 } from "lucide-react";
 import { berandaSummary, greeting, relativeTime, type AttentionId } from "@/lib/beranda";
 import { shortMoney, type Filters, type Trip, type User } from "@/lib/model";
@@ -11,9 +11,8 @@ import type { Honorarium } from "@/lib/honorarium";
 import type { Section } from "@/lib/workspace-navigation";
 import BerandaCalendar, { calendarLegend } from "./beranda-calendar";
 import { AnimatedNumber } from "./animated-number";
-import { Button } from "./ui/button";
+import BerandaHero from "./beranda-hero";
 
-const monthLong = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const jakartaDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" });
 const jakartaHour = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", hour: "2-digit", hourCycle: "h23" });
 const attentionCopy: Record<AttentionId, { title: (year: string) => string; hint: string; section: Section; filters?: Partial<Filters> }> = {
@@ -51,7 +50,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   const date = new Date(now);
   const today = jakartaDate.format(date);
   const summary = useMemo(() => berandaSummary({ trips, employees, honorariums, today }), [trips, employees, honorariums, today]);
-  const { year, hero, calendar, attention, registers, activity } = summary;
+  const { year, hero, monthlyDetails, calendar, attention, registers, activity } = summary;
   const firstName = (user?.name ?? (demo ? "Operator contoh" : "Operator")).split(",")[0].trim();
   const registerItems: { section: Section; icon: typeof Archive; name: string; figure: ReactNode; unit?: string; detail: string }[] = [
     { section: "archives", icon: Archive, name: "Arsip perjalanan", figure: <AnimatedNumber value={registers.archives.journeys} duration={900} />, unit: "perjalanan",
@@ -71,44 +70,9 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
 
   return (
     <div className="beranda">
-      <section className="beranda-hero" aria-labelledby="beranda-title">
-        <div className="beranda-kop">
-          <span>{demo ? "Ruang contoh · data fiktif" : "Pemerintah Provinsi Jambi"}</span>
-          <span>Dinas Energi dan Sumber Daya Mineral · Tahun {year}</span>
-        </div>
-        <h1 id="beranda-title" className="beranda-greeting">
-          {greeting(Number(jakartaHour.format(date)))}, {firstName}.
-        </h1>
-        {hero.recaps ? (
-          <>
-            <p className="beranda-hero-label">Realisasi perjalanan dinas {year}</p>
-            {hero.known ? (
-              <p className="beranda-figure"><small>Rp</small><AnimatedNumber value={hero.total} /></p>
-            ) : (
-              <p className="beranda-figure is-empty">Belum ada nominal tercatat</p>
-            )}
-            <ul className="beranda-facts" aria-label="Ringkasan tahun">
-              <li><strong><AnimatedNumber value={hero.journeys} duration={900} /></strong> perjalanan</li>
-              <li><strong><AnimatedNumber value={hero.recaps} duration={900} /></strong> rekap</li>
-              <li><strong><AnimatedNumber value={hero.people} duration={900} /></strong> pegawai</li>
-            </ul>
-            <p className="beranda-insight">
-              {hero.peak ? <>Puncak realisasi pada <b>{monthLong[hero.peak.month]}</b>, Rp {shortMoney(hero.peak.total)}.</> : null}
-              {hero.unknown ? <> <b>{hero.unknown}</b> rekap belum bernominal.</> : hero.peak ? " Seluruh rekap sudah bernominal." : null}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="beranda-hero-label">Realisasi perjalanan dinas {year}</p>
-            <p className="beranda-figure is-empty">Belum ada arsip perjalanan tahun {year}</p>
-            <p className="beranda-insight">Mulai dari rekap yang sudah ada: impor Excel atau tambahkan perjalanan satu per satu.</p>
-          </>
-        )}
-        <div className="beranda-hero-actions">
-          <Button className="beranda-cta" onClick={onAdd}><Plus /> Tambah arsip</Button>
-          <Button variant="outline" className="beranda-cta-outline" onClick={onImport}><Upload /> Impor Excel</Button>
-        </div>
-      </section>
+      <BerandaHero key={year} year={year} hero={hero} monthlyDetails={monthlyDetails} demo={demo}
+        greeting={`${greeting(Number(jakartaHour.format(date)))}, ${firstName}.`}
+        onArchives={filters => onGo("archives", filters)} onAdd={onAdd} onImport={onImport} />
 
       <section className="beranda-panel beranda-attention" aria-labelledby="beranda-attention-title">
         <header className="beranda-panel-head">

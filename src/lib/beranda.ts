@@ -71,6 +71,15 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
     recaps: yearTrips.length, journeys: yearGroups.length, people,
     peak: monthly[peakMonth] > 0 ? { month: peakMonth, total: monthly[peakMonth] } : null,
   };
+  const monthlyDetails = monthly.map((total, month) => {
+    const entries = yearTrips.filter(t => Number(t.startDate.slice(5, 7)) - 1 === month);
+    const unknown = entries.filter(t => totalCost(t) === null).length;
+    return {
+      total, unknown, known: entries.length - unknown,
+      recaps: entries.length, journeys: groupArchives(entries).length,
+      people: new Set(entries.flatMap(t => t.participants.map(employeeIdentity))).size,
+    };
+  });
 
   // Calendar: every day a trip is under way, weighted by the people travelling.
   const yearStart = Date.UTC(Number(year), 0, 1);
@@ -137,5 +146,5 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 8);
 
-  return { year, hero, monthly, calendar, attention, registers, activity };
+  return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity };
 }

@@ -95,6 +95,34 @@ test("calendar folds per-employee ledgers of one surat tugas into a single journ
   assert.equal(day.entries[1].number, "PD/c");
 });
 
+test("month selection keeps journey and employee counts scoped to departure month", () => {
+  const summary = berandaSummary({
+    trips: [
+      trip("a", 100),
+      trip("b", 250), // Two employee recaps belong to the same journey.
+      trip("draft", null, { sptNo: "ST/02/2026" }),
+      trip("a-march", 0, { startDate: "2026-03-01", endDate: "2026-03-02" }),
+      trip("deleted", 9_000, { deletedAt: today }),
+      trip("old", 8_000, { startDate: "2025-02-01", endDate: "2025-02-02" }),
+    ], employees: [], honorariums: [], today,
+  });
+  assert.equal(summary.monthlyDetails.length, 12);
+  assert.deepEqual(summary.monthlyDetails[1], { total: 350, known: 2, unknown: 1, recaps: 3, journeys: 2, people: 3 });
+  assert.deepEqual(summary.monthlyDetails[2], { total: 0, known: 1, unknown: 0, recaps: 1, journeys: 1, people: 1 });
+  assert.deepEqual(summary.monthlyDetails[8], { total: 0, known: 0, unknown: 0, recaps: 0, journeys: 0, people: 0 });
+  assert.equal(summary.monthlyDetails.reduce((sum, item) => sum + item.total, 0), summary.hero.total);
+  assert.equal(summary.monthlyDetails.reduce((sum, item) => sum + item.recaps, 0), summary.hero.recaps);
+});
+
+test("monthly detail distinguishes drafts from empty months in the latest available year", () => {
+  const summary = berandaSummary({ trips: [trip("draft", null, { startDate: "2024-11-01", endDate: "2024-11-02" })],
+    employees: [], honorariums: [], today });
+  assert.equal(summary.year, "2024");
+  assert.deepEqual(summary.monthlyDetails[10], { total: 0, known: 0, unknown: 1, recaps: 1, journeys: 1, people: 1 });
+  const empty = berandaSummary({ trips: [], employees: [], honorariums: [], today });
+  assert.ok(empty.monthlyDetails.every(item => item.recaps === 0 && item.total === 0));
+});
+
 test("attention items only list open work, ordered by priority", () => {
   const withGap = trip("g", 10, { sptNo: "ST/04/2026", requiredDocs: ["spt", "sppd"], documents: [
     { id: "doc", type: "spt", name: "spt.pdf", kind: "file", size: 1, location: "", createdAt: "" },

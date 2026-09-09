@@ -1,7 +1,7 @@
 /*
   Beranda: papan situasi dinas, bukan lembar register.
   Dimuat setelah arsip.css dan memakai token --ledger-* yang sama.
-  Emas hanya menandai posisi: garis kop, hari ini, dan bulan berjalan.
+  Emas menandai kop, hari ini, serta bulan pilihan atau puncak realisasi.
 */
 .beranda {
   --beranda-l0: #e9eef3;
@@ -24,8 +24,14 @@
 
 /* ----- Hero: panel biru laut dengan garis ganda kop ----- */
 .beranda-hero {
+  --hero-muted: #b7c4d4;
+  --hero-line: rgba(183, 196, 212, 0.18);
+  --hero-bar: #7396bc;
+  --hero-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  container-type: inline-size;
   position: relative;
-  padding: 26px 32px 30px;
+  min-width: 0;
+  padding: 24px 30px;
   border-radius: var(--beranda-radius);
   background:
     radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.07), transparent 55%),
@@ -38,13 +44,13 @@
   position: relative;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 4px 16px;
   flex-wrap: wrap;
   padding-bottom: 13px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
   border-bottom: 2px solid var(--ledger-gold);
   font-size: var(--type-meta);
-  color: #b7c4d4;
+  color: var(--hero-muted);
   font-weight: 500;
 }
 .beranda-kop::after {
@@ -56,13 +62,43 @@
   height: 1px;
   background: rgba(255, 255, 255, 0.24);
 }
+.beranda-hero-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
 .beranda-greeting {
   color: #fff;
   font-size: 1.75rem;
   font-weight: 500;
   letter-spacing: -0.015em;
   line-height: 1.2;
-  margin-bottom: 26px;
+  margin: 0;
+}
+.beranda-year {
+  flex-shrink: 0;
+  color: var(--hero-muted);
+  font-size: var(--type-micro);
+  border: 1px solid var(--hero-line);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.beranda-hero-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.beranda-hero-summary {
+  min-width: 0;
+}
+.beranda-period {
+  margin-top: 3px;
+  font-size: var(--type-micro);
+  color: var(--hero-muted);
 }
 .beranda-hero-label {
   font-size: var(--type-data);
@@ -73,8 +109,9 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 6px 0 14px;
-  font-size: 3.25rem;
+  min-height: 54px;
+  margin: 10px 0 16px;
+  font-size: clamp(2rem, 6.3cqw, 3.25rem);
   font-weight: 650;
   font-stretch: var(--ledger-condensed);
   letter-spacing: -0.02em;
@@ -91,7 +128,7 @@
   color: #c9d4e2;
 }
 .beranda-figure.is-empty {
-  font-size: 1.625rem;
+  font-size: 1.5rem;
   font-weight: 500;
   font-stretch: 100%;
   letter-spacing: -0.01em;
@@ -100,11 +137,11 @@
 .beranda-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 24px;
+  gap: 6px 18px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--type-data);
+  font-size: var(--type-meta);
   color: #c9d4e2;
 }
 .beranda-facts strong {
@@ -113,7 +150,8 @@
   font-variant-numeric: tabular-nums;
 }
 .beranda-insight {
-  margin-top: 14px;
+  margin-top: 12px;
+  min-height: 2.9em;
   font-size: var(--type-meta);
   color: #9fb0c4;
   max-width: 52ch;
@@ -126,7 +164,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 28px;
+}
+.beranda-hero-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hero-line);
 }
 .beranda-hero .beranda-cta {
   background: #fff;
@@ -147,7 +194,174 @@
   color: #fff;
 }
 .beranda-hero button:focus-visible {
-  outline-color: var(--ledger-gold);
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 3px;
+}
+.beranda-hero .beranda-view-archives,
+.beranda-hero .beranda-year-reset {
+  color: var(--hero-muted);
+  background: transparent;
+}
+.beranda-hero .beranda-view-archives:hover,
+.beranda-hero .beranda-year-reset:hover {
+  color: #fff;
+  background: var(--hero-line);
+}
+.beranda-view-archives svg {
+  transition: transform 180ms var(--hero-ease);
+}
+.beranda-view-archives:hover svg { transform: translateX(3px); }
+.beranda-hero .beranda-year-reset {
+  height: 28px;
+  border: 1px solid var(--hero-line);
+  border-radius: 5px;
+  font-size: var(--type-micro);
+}
+.beranda-hero .beranda-year-reset[aria-pressed="true"] {
+  color: var(--ledger-gold-soft);
+  border-color: var(--ledger-gold);
+}
+
+/* The chart is also a month selector; no extra cards or chart dependency. */
+.beranda-monthly {
+  min-width: 0;
+  border-left: 1px solid var(--hero-line);
+  padding-left: 26px;
+}
+.beranda-monthly-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.beranda-monthly-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--hero-muted);
+  font-size: var(--type-meta);
+  font-weight: 500;
+}
+.beranda-monthly-heading svg { flex-shrink: 0; }
+.beranda-chart-detail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-content: start;
+  gap: 0 8px;
+  min-height: 38px;
+  margin-top: 10px;
+  font-size: var(--type-micro);
+  color: var(--hero-muted);
+  font-variant-numeric: tabular-nums;
+}
+.beranda-chart-detail strong {
+  font-weight: 500;
+  color: var(--ledger-gold-soft);
+}
+.beranda-month-chart {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  isolation: isolate;
+}
+.beranda-month-chart::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 28px;
+  z-index: -1;
+  pointer-events: none;
+  border-bottom: 1px solid var(--hero-line);
+  background: repeating-linear-gradient(to top, transparent 0, transparent calc(50% - 1px), var(--hero-line) calc(50% - 1px), var(--hero-line) 50%);
+}
+.beranda-month {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px 4px;
+  border-radius: 4px;
+  color: var(--hero-muted);
+  transition: background 160ms var(--hero-ease), color 160ms var(--hero-ease);
+}
+.beranda-month:hover,
+.beranda-month:focus-visible { background: var(--hero-line); color: #fff; }
+.beranda-month-track {
+  position: relative;
+  display: block;
+  height: 92px;
+  width: 100%;
+}
+.beranda-month-bar {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 3px 3px 0 0;
+  background: var(--hero-bar);
+  transform: scaleY(var(--bar-scale));
+  transform-origin: bottom;
+  animation: beranda-bar-in 550ms var(--hero-ease) both;
+  animation-delay: calc(var(--bar-order) * 25ms);
+  transition: background 180ms var(--hero-ease), opacity 180ms var(--hero-ease);
+}
+.beranda-month[data-highlight] .beranda-month-bar { background: var(--ledger-gold); }
+.beranda-month-zero {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--hero-muted);
+  opacity: 0.4;
+}
+.beranda-month:hover .beranda-month-bar { background: var(--beranda-l1); }
+.beranda-month[data-highlight]:hover .beranda-month-bar { background: var(--ledger-gold-soft); }
+.beranda-month-name {
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  line-height: 16px;
+}
+.beranda-month[aria-pressed="true"] .beranda-month-name {
+  color: var(--ledger-gold-soft);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: var(--ledger-gold);
+  text-underline-offset: 5px;
+}
+.beranda-month[aria-pressed="true"] { background: var(--hero-line); }
+.beranda-chart-hint {
+  margin-top: 7px;
+  color: var(--hero-muted);
+  font-size: var(--type-micro);
+}
+@keyframes beranda-bar-in {
+  from { transform: scaleY(0); opacity: 0; }
+}
+@container (min-width: 521px) and (max-width: 640px) {
+  .beranda-hero-body { gap: 20px; }
+  .beranda-monthly { padding-left: 14px; }
+  .beranda-month-chart { gap: 1px; }
+  .beranda-month { padding-inline: 0; }
+}
+@container (max-width: 520px) {
+  .beranda-hero-body { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .beranda-monthly { border-left: 0; border-top: 1px solid var(--hero-line); padding: 18px 0 0; }
+  .beranda-figure { font-size: clamp(2rem, 8.5cqw, 3.25rem); }
+  .beranda-figure.is-empty { font-size: 1.5rem; }
+  .beranda-insight { min-height: 0; }
+  .beranda-chart-detail { min-height: 24px; }
+  .beranda-month-name { font-size: 11px; }
+  .beranda-month-chart { gap: 4px; }
+  .beranda-month-track { height: 84px; }
+}
+@container (max-width: 370px) {
+  .beranda-hero-heading { align-items: flex-start; flex-direction: column; }
+  .beranda-hero-footer { align-items: stretch; }
+  .beranda-hero-actions { width: 100%; }
+  .beranda-hero-actions > button { flex: 1; }
+  .beranda-month-chart { gap: 2px; }
+  .beranda-month { padding-inline: 0; }
+  .beranda-month-name { font-size: 10px; }
 }
 
 /* ----- Panel putih ----- */
@@ -642,7 +856,7 @@
   from { opacity: 0; transform: translateY(8px); }
 }
 .beranda-hero > * {
-  animation: beranda-rise 0.5s ease-out both;
+  animation: beranda-rise 0.5s var(--hero-ease) both;
 }
 .beranda-hero > :nth-child(2) { animation-delay: 60ms; }
 .beranda-hero > :nth-child(3) { animation-delay: 120ms; }
@@ -652,12 +866,16 @@
 .beranda-hero > :nth-child(7) { animation-delay: 280ms; }
 @media (prefers-reduced-motion: reduce) {
   .beranda-hero > *,
+  .beranda-month-bar,
   .beranda-heatmap-cell,
   .beranda-heatmap-tip {
     animation: none;
   }
   .beranda-attention-list svg:last-child,
-  .beranda-register-arrow {
+  .beranda-register-arrow,
+  .beranda-hero button,
+  .beranda-month-bar,
+  .beranda-view-archives svg {
     transition: none;
   }
 }
@@ -687,9 +905,11 @@
   .beranda-hero {
     padding: 20px 20px 24px;
   }
+  .beranda-hero-heading {
+    margin-bottom: 20px;
+  }
   .beranda-greeting {
     font-size: 1.5rem;
-    margin-bottom: 20px;
   }
   .beranda-figure {
     font-size: 2.5rem;
@@ -706,7 +926,7 @@
   }
   .beranda-hero-actions .beranda-cta,
   .beranda-hero-actions .beranda-cta-outline {
-    flex: 1 1 160px;
+    flex: 1 1 130px;
   }
 }
 @media (max-width: 480px) {
