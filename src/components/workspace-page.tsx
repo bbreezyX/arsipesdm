@@ -16,6 +16,7 @@ export default async function WorkspacePage({ initialSection = "archives" }: { i
         initialNow={new Date().toISOString()}
         user={c.user}
         demo={c.workspace === "demo"}
+        session={c.session}
       />
     );
   } catch (error) {

@@ -1510,6 +1510,27 @@ table td {
   margin-left: 8px;
   color: var(--muted);
 }
+/* Layar penutup saat sesi habis; menutupi data sampai halaman login dimuat ulang. */
+.session-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--background, #fff);
+  color: #49637c;
+  font-size: var(--type-meta);
+}
+.session-lock p {
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.7;
+}
 .detail-dialog[data-slot="dialog-content"] {
   max-width: 820px;
   width: calc(100% - 32px);
@@ -2691,6 +2712,17 @@ table td {
   font-size: var(--type-meta);
   line-height: 1.7;
   color: var(--muted);
+}
+/* Alasan pengguna kembali ke halaman login, misalnya sesi habis. */
+.auth-form-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d3dfe9;
+  border-radius: 6px;
+  background: #f4f8fb;
+  font-size: var(--type-meta);
+  line-height: 1.7;
+  color: #49637c;
 }
 .auth-foot {
   display: flex;

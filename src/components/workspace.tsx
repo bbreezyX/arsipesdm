@@ -7,6 +7,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-navigation";
+import type { SessionInfo } from "@/lib/session-policy";
+import { takeSessionNotice } from "@/lib/session-client";
+import SessionGuard from "./session-guard";
 export type { Section } from "@/lib/workspace-navigation";
 import {
   Archive,
@@ -123,6 +126,7 @@ export default function Workspace({
   initialSection = "archives",
   initialHonorariums = [],
   initialNow = new Date().toISOString(),
+  session = null,
 }: {
   initialTrips: Trip[];
   initialEmployees: Employee[];
@@ -132,6 +136,7 @@ export default function Workspace({
   initialSection?: Section;
   initialHonorariums?: Honorarium[];
   initialNow?: string;
+  session?: SessionInfo | null;
 }) {
   const [employees, setEmployees] = useState(initialEmployees);
   const [trips, setTrips] = useState(initialTrips);
@@ -800,6 +805,7 @@ export default function Workspace({
       {login && (
         <Login forced={!user && !demo} onClose={() => setLogin(false)} />
       )}
+      {user && !demo && session && <SessionGuard session={session} />}
       <Dialog
         open={!!trashTrip}
         onOpenChange={(open) => {
@@ -1167,7 +1173,12 @@ function OfficialLetterhead({ compact = false }: { compact?: boolean }) {
 function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    const message = takeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -1187,6 +1198,11 @@ function LoginForm() {
   }
   return (
     <form className="auth-form" onSubmit={submit}>
+      {notice && (
+        <p className="auth-form-notice" role="status">
+          {notice}
+        </p>
+      )}
       <Field label="Email operator">
         <input
           type="email"
