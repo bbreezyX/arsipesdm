@@ -1549,11 +1549,16 @@ table td {
   padding: 0 2px;
   box-shadow: none;
   position: relative;
+  /* Bingkai tetap 0 di semua sisi dan garis bawah selalu ada (transparan saat
+     tidak aktif), sehingga pergantian tab hanya menganimasikan warna. Kalau
+     lebar bingkai ikut berubah, bingkai gelap 1px berkedip sesaat saat klik. */
+  border: 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 .detail-tabs [data-state="active"] {
   color: #385e7e;
-  border: 0;
-  border-bottom: 2px solid #3c6a8e;
+  border-bottom-color: #3c6a8e;
   background: transparent;
   box-shadow: none !important;
 }

@@ -152,13 +152,71 @@
   border-top: 1px solid var(--ledger-line);
   min-height: 420px;
 }
+/* Pembatas geser hanya ada pada bentang berdampingan; di layar sempit map menjadi dialog. */
+.dokumen-splitter {
+  display: none;
+}
 @media (min-width: 1101px) {
   .dokumen-body {
-    grid-template-columns: minmax(0, 1fr) 420px;
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) var(--dokumen-side, 420px);
   }
   .dokumen-side {
     border-left: 1px solid var(--ledger-line);
     background: var(--ledger-tint);
+  }
+  /* Pembatas geser: daerah sentuh 16px menempel pada garis batas; garis dan
+     gagang menegang saat disorot, difokus papan ketik, atau digeser. */
+  .dokumen-splitter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: var(--dokumen-side, 420px);
+    width: 16px;
+    transform: translateX(50%);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: col-resize;
+    touch-action: none;
+    border-radius: 8px;
+    outline: none;
+  }
+  .dokumen-splitter::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin-inline: auto;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .dokumen-splitter > span {
+    position: sticky;
+    top: 40vh;
+    z-index: 1;
+    width: 4px;
+    height: 44px;
+    border-radius: 999px;
+    background: #c3ced9;
+    transition: background 0.15s, height 0.15s;
+  }
+  .dokumen-splitter:hover::after,
+  .dokumen-splitter:focus-visible::after,
+  .dokumen-splitter[data-dragging="true"]::after {
+    background: var(--ledger-action);
+  }
+  .dokumen-splitter:hover > span,
+  .dokumen-splitter:focus-visible > span,
+  .dokumen-splitter[data-dragging="true"] > span {
+    background: var(--ledger-action);
+    height: 64px;
+  }
+}
+@media print {
+  .dokumen-splitter {
+    display: none;
   }
 }
 .dokumen-matrix-wrap {

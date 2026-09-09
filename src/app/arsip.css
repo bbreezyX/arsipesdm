@@ -424,7 +424,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Kepala register: judul, kelengkapan, alat. */
+/* Kepala register: judul dan kelengkapan mengelompok di kiri, alat di kanan. */
 .ledger-register-head {
   display: flex;
   flex-wrap: wrap;
@@ -436,7 +436,6 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-right: auto;
 }
 .ledger-register-title h2,
 .ledger-register-title span {
