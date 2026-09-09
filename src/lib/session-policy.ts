@@ -4,7 +4,7 @@
  * Rancangan: docs/research/session-policy-draft.md (Tahap 1).
  */
 export const IDLE_LIMIT_MS = 30 * 60 * 1000;
-export const ABSOLUTE_LIMIT_MS = 24 * 60 * 60 * 1000;
+export const ABSOLUTE_LIMIT_MS = 8 * 60 * 60 * 1000;
 export const WARNING_MS = 2 * 60 * 1000;
 /** Perpanjangan idle di database dilakukan paling cepat setiap interval ini. */
 export const TOUCH_INTERVAL_MS = 60 * 1000;

@@ -8,7 +8,7 @@ Untuk aplikasi internal dinas dengan pengguna sedikit, dua masalah nyata diseles
 
 | Bagian | Implementasi |
 | --- | --- |
-| Kebijakan waktu | `src/lib/session-policy.ts`: idle 30 menit, absolut 24 jam (angka yang sudah ada, bukan 8 jam agar tidak memutus hari kerja panjang), peringatan 2 menit. |
+| Kebijakan waktu | `src/lib/session-policy.ts`: idle 30 menit, absolut 8 jam sejak login (sesuai rancangan; sebelumnya 24 jam), peringatan 2 menit. Cookie mengikuti batas absolut. |
 | Penyimpanan | Kolom `last_activity BIGINT` pada `sesi_login` (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`). Login memakai daftar kolom eksplisit. |
 | Pemeriksaan server | `currentSession()` di `src/lib/auth.ts` menolak sesi yang melewati idle atau absolut. Request bisnis yang sukses memperpanjang idle paling cepat tiap 60 detik lewat `UPDATE ... WHERE` yang memastikan sesi masih valid saat ditulis. |
 | Endpoint | `GET /api/session` status tanpa memperpanjang; `PATCH /api/session` memperpanjang idle (tombol Lanjutkan bekerja dan aktivitas pengguna, dibatasi tiap 2 menit). |

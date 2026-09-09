@@ -218,7 +218,7 @@ docs/                     # Panduan operasional dan catatan desain
 <summary><b>Ringkasan API</b></summary>
 <br>
 
-Semua endpoint memerlukan sesi login dan bekerja di dalam ruang kerja pengguna. Sesi berakhir setelah 30 menit tanpa aktivitas atau 24 jam sejak masuk; browser menampilkan peringatan 2 menit sebelumnya.
+Semua endpoint memerlukan sesi login dan bekerja di dalam ruang kerja pengguna. Sesi berakhir setelah 30 menit tanpa aktivitas atau 8 jam sejak masuk; browser menampilkan peringatan 2 menit sebelumnya.
 
 | Endpoint | Metode | Keterangan |
 |---|---|---|
