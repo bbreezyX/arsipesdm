@@ -1,6 +1,6 @@
 "use client";
 import { CustomSelect, SelectOption } from "./ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   Plus,
@@ -67,6 +67,14 @@ export default function TripDetail({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 700px)");
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -167,10 +175,17 @@ export default function TripDetail({
               </TabsContent>
             )}
             <TabsContent value="overview">
-              <section className="rincian-section">
-                <h3 className="rincian-heading">Uraian kegiatan</h3>
-                <p className="rincian-purpose">{trip.title}</p>
-              </section>
+              {narrow ? (
+                <details className="rincian-section rincian-fold">
+                  <summary><span className="rincian-heading">Uraian kegiatan</span></summary>
+                  <p className="rincian-purpose">{trip.title}</p>
+                </details>
+              ) : (
+                <section className="rincian-section">
+                  <h3 className="rincian-heading">Uraian kegiatan</h3>
+                  <p className="rincian-purpose">{trip.title}</p>
+                </section>
+              )}
               <section className="rincian-section">
                 <h3 className="rincian-heading">Administrasi</h3>
                 <dl className="rincian-meta">

@@ -33,6 +33,7 @@ import {
   Columns3,
   Rows3,
   MapPin,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { ArchiveGroup } from "@/lib/archive-groups";
 import { dateText, isComplete, money, totalCost, type Trip } from "@/lib/model";
@@ -87,6 +88,7 @@ export default function ArchiveGroups({
   status,
   tools,
   filters,
+  filterCount = 0,
 }: {
   groups: ArchiveGroup[];
   selected: Set<string>;
@@ -99,7 +101,10 @@ export default function ArchiveGroups({
   tools?: ReactNode;
   /** Search and filter controls, rendered in the filter row. */
   filters?: ReactNode;
+  /** Active filters beyond search; shown on the mobile filter toggle. */
+  filterCount?: number;
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const registerRef = useRef<HTMLDivElement>(null);
   const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([
@@ -371,9 +376,20 @@ export default function ArchiveGroups({
           </DropdownMenu>
         </div>
       </div>
-      <div className="ledger-filters">
+      <div className="ledger-filters" data-open={filtersOpen || filterCount > 0}>
         {filters}
-        <div className="ledger-filters-end">
+        <button
+          type="button"
+          className="ledger-filter-toggle"
+          aria-expanded={filtersOpen || filterCount > 0}
+          aria-controls="ledger-filter-more"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal size={15} aria-hidden="true" />
+          Filter
+          {filterCount > 0 && <b>{filterCount}</b>}
+        </button>
+        <div className="ledger-filters-end" id="ledger-filter-more">
           <CustomSelect
             aria-label="Urutkan perjalanan"
             className="ledger-select ledger-sort-select"

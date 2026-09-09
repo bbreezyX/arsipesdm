@@ -113,6 +113,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
   const [focusType, setFocusType] = useState<DocType | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [narrow, setNarrow] = useState(false);
+  const [phone, setPhone] = useState(false);
   const [slotState, setSlotState] = useState<Record<string, SlotState>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
@@ -121,11 +122,13 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
     if (year !== "all" && !years.includes(year)) setYear(years[0] ?? "all");
   }, [years, year]);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1100px)");
-    const apply = () => setNarrow(media.matches);
+    const tablet = window.matchMedia("(max-width: 1100px)");
+    const handset = window.matchMedia("(max-width: 760px)");
+    const apply = () => { setNarrow(tablet.matches); setPhone(handset.matches); };
     apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    tablet.addEventListener("change", apply);
+    handset.addEventListener("change", apply);
+    return () => { tablet.removeEventListener("change", apply); handset.removeEventListener("change", apply); };
   }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -311,7 +314,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
       </nav>
 
       <section className="ledger-sheet dokumen-sheet" aria-label="Daftar kelengkapan berkas">
-        <div className="dokumen-index" role="group" aria-label="Jenis dokumen">
+        {!phone && <div className="dokumen-index" role="group" aria-label="Jenis dokumen">
           <button className="dokumen-index-all" aria-pressed={kind === "all"} onClick={() => setKind("all")}>
             <strong>Semua jenis</strong>
             <span>{scoped.length} map</span>
@@ -335,7 +338,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
               );
             })}
           </div>
-        </div>
+        </div>}
 
         <div className="ledger-summary dokumen-summary" aria-label={`Ringkasan kelengkapan ${scopeLabel}`}>
           <div>
@@ -362,6 +365,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
           </div>
         </div>
 
+        <div className="ledger-register dokumen-register">
         <div className="ledger-register-head dokumen-register-head">
           <div className="ledger-register-title">
             <h2>Daftar kelengkapan berkas</h2>
@@ -382,6 +386,15 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             {query ? <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
           </div>
           <div className="ledger-filter-group">
+            {phone && (
+              <CustomSelect aria-label="Jenis dokumen" className="ledger-select dokumen-kind-select" value={kind}
+                onValueChange={(v) => setKind(v as DocType | "all")} data-active={kind !== "all"}>
+                <SelectOption value="all">Semua jenis</SelectOption>
+                {docTypes.filter((type) => kind === type || (kindCounts.get(type)?.missing ?? 0) > 0).map((type) => (
+                  <SelectOption key={type} value={type}>Perlu {docShort[type]}, {kindCounts.get(type)?.missing ?? 0} map</SelectOption>
+                ))}
+              </CustomSelect>
+            )}
             <CustomSelect aria-label="Bidang" className="ledger-select" value={department}
               onValueChange={(v) => { setDepartment(v); setOpenId(null); }} data-active={department !== "all"}>
               <SelectOption value="all">Semua bidang</SelectOption>
@@ -394,7 +407,39 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
         </div>
 
         <div className={`dokumen-body ${open ? "has-open" : ""}`}>
-          <div className="dokumen-matrix-wrap">
+          {phone && rows.length > 0 && (
+            <ul className="dokumen-cards" aria-label="Daftar map">
+              {rows.map((f) => (
+                <li key={f.trip.id} className="dokumen-card" data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
+                  <button className="dokumen-card-open" onClick={() => openFolder(f.trip.id)} aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
+                    <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
+                    <span className="dokumen-names">{f.names}</span>
+                    <span className="dokumen-meta">{f.trip.destination}, {tripDates(f.trip)}</span>
+                  </button>
+                  <div className="dokumen-card-marks">
+                    {f.slots.map((s) => {
+                      const state = s.docs.length ? "present" : s.required ? "missing" : "none";
+                      return (
+                        <span key={s.type} className={`dokumen-mark ${kind === s.type ? "is-active" : ""}`}>
+                          <button className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
+                            aria-label={`${docLabels[s.type]}: ${state === "present" ? `${s.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`}>
+                            {state === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
+                          </button>
+                          <small>{docShort[s.type]}</small>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className={`dokumen-card-state ${f.complete ? "is-complete" : f.required ? "is-missing" : "is-none"}`}>
+                    {f.required
+                      ? `${f.present} dari ${f.required}, ${f.complete ? "lengkap" : f.present === 0 ? "belum ada foto" : `kurang ${f.missing.map((m) => docShort[m]).join(", ")}`}`
+                      : f.trip.documents.length ? `${f.trip.documents.length} berkas, tanpa syarat` : "Kosong, tanpa syarat"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="dokumen-matrix-wrap" hidden={phone && rows.length > 0}>
             {rows.length ? (
               <table className="dokumen-matrix" aria-label="Matriks kelengkapan berkas">
                 <thead>
@@ -460,6 +505,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             )}
           </div>
           {!narrow && <aside className="dokumen-side" aria-label="Map berkas terbuka">{panel}</aside>}
+        </div>
         </div>
       </section>
 
@@ -614,7 +660,7 @@ function SlotItem({ slot, folder, state, highlighted, onUpload, onNote, onView }
         ) : (
           <span className="dokumen-slot-hint">
             {dragging ? "Lepaskan untuk menyimpan ke kantong ini" : <>
-              JPG, PNG, atau PDF sampai 10 MB.
+              <span className="dokumen-slot-format">JPG, PNG, atau PDF sampai 10 MB.</span>
               <button type="button" className="dokumen-note-toggle" onClick={() => setNoting(true)} disabled={busy}>
                 <Camera size={13} aria-hidden="true" /> Hanya berkas fisik? Catat lokasinya
               </button>

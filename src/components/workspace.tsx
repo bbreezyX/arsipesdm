@@ -546,6 +546,7 @@ export default function Workspace({
                       {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
                     </Button>
                   }
+                  filterCount={[filters.department !== "all", filters.month !== "all"].filter(Boolean).length}
                   filters={
                     <>
                       <div className="ledger-search">

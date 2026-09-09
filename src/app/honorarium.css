@@ -186,6 +186,10 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* Pilihan jenis hanya untuk layar HP; di desktop rel jenis yang memegang peran ini. */
+.ledger-filters .custom-select.honor-kind-select {
+  display: none;
+}
 .honor-error {
   margin: 0 24px 14px;
 }
@@ -631,28 +635,28 @@
   }
 }
 @media (max-width: 760px) {
-  .honor-index-all {
-    padding-inline: 16px;
+  /* Layar HP: buku honor satu kolom seperti halaman Arsip. Rel jenis dilipat ke panel Filter,
+     pencarian berdampingan dengan tombol Filter, dan aksi baris menunggu di dalam rincian. */
+  .honor-index {
+    display: none;
   }
-  .honor-index-all[aria-pressed="true"]::after {
-    left: 16px;
-    right: 16px;
+  .ledger-filters .custom-select.honor-kind-select {
+    display: inline-flex;
   }
-  .honor-kinds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ledger-filters .custom-select.honor-sk-select {
+    max-width: none;
   }
-  .honor-kind:nth-child(3) {
-    border-right: 1px solid var(--ledger-line-soft);
+  .honor-register .ledger-search {
+    order: 0;
   }
-  .honor-kind:nth-child(even),
-  .honor-kind:last-child {
-    border-right: 0;
+  .honor-register .ledger-filter-toggle {
+    order: 1;
   }
-  .honor-kind:nth-child(-n + 4) {
-    border-bottom: 1px solid var(--ledger-line-soft);
+  .honor-register .ledger-filter-group {
+    order: 2;
   }
-  .honor-kind:last-child {
-    grid-column: 1 / -1;
+  .honor-register .ledger-filters-end {
+    order: 3;
   }
   .honor-footnote {
     margin-inline: 0;
@@ -668,11 +672,12 @@
     margin-top: 10px;
   }
   .honor-card-net {
-    display: grid;
-    gap: 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
   }
   .honor-card-net span {
-    font-size: var(--type-micro);
+    font-size: var(--type-meta);
     color: var(--ledger-muted);
   }
   .honor-card-net strong {

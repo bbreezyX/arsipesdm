@@ -263,6 +263,37 @@
   background: var(--ledger-navy);
   font-weight: 600;
 }
+.rincian-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.rincian-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.rincian-fold > summary .rincian-heading {
+  margin: 0;
+}
+.rincian-fold > summary::after {
+  content: "Lihat";
+  font-size: var(--type-meta);
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.rincian-fold[open] > summary::after {
+  content: "Tutup";
+}
+.rincian-fold[open] > summary {
+  margin-bottom: 12px;
+}
+.rincian-fold > summary:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
 .rincian-purpose {
   max-width: 78ch;
   font-size: var(--type-body);
@@ -784,5 +815,96 @@
 @media (prefers-reduced-motion: reduce) {
   .rincian-dialog [data-slot="dialog-close"] {
     transition: none;
+  }
+}
+
+/* ----- Layar sempit: kepala ringkas dan ikut tergulir, tab serta kaki menempel ----- */
+@media (max-width: 700px) {
+  .detail-dialog.rincian-dialog[data-slot="dialog-content"] {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .rincian-dialog [data-slot="dialog-header"] {
+    flex-shrink: 0;
+    padding: 16px var(--rincian-inset) 14px;
+    gap: 4px;
+  }
+  .rincian-kicker.dialog-kicker {
+    margin-bottom: 4px;
+    gap: 8px;
+    font-size: var(--type-micro);
+  }
+  .rincian-dialog [data-slot="dialog-title"] {
+    font-size: 1.125rem !important;
+  }
+  .rincian-dialog [data-slot="dialog-description"] {
+    font-size: var(--type-meta) !important;
+    line-height: 1.5 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .rincian-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .rincian-facts dt {
+    font-size: 0.6875rem;
+  }
+  .rincian-facts dd {
+    font-size: var(--type-data);
+    line-height: 1.35;
+  }
+  .rincian-facts dd small {
+    display: inline;
+    margin-left: 5px;
+  }
+  .rincian-facts-money dd {
+    font-size: 1.125rem;
+  }
+  .rincian-dialog > [data-slot="tabs"] {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+  }
+  .rincian-dialog .rincian-tabs[data-slot="tabs-list"] {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+  .rincian-dialog .rincian-scroll {
+    overflow: visible;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: 12px;
+  }
+  .rincian-dialog .rincian-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding: 10px var(--rincian-inset);
+    box-shadow: 0 -8px 20px -16px rgba(20, 39, 63, 0.35);
+  }
+  .rincian-footer .detail-action-buttons {
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .rincian-footer .detail-action-buttons > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .rincian-footer .detail-action-buttons [data-slot="button"] {
+    height: 40px;
+    padding-inline: 8px;
+    font-size: var(--type-label);
+  }
+  .rincian-footer .detail-action-buttons svg {
+    display: none;
   }
 }

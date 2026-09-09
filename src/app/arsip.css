@@ -2890,3 +2890,82 @@
     margin-top: 14px;
   }
 }
+
+/* ----- Layar HP: halaman arsip lebih tenang, desktop tidak berubah ----- */
+.ledger-filter-toggle {
+  display: none;
+}
+@media (max-width: 760px) {
+  .ledger-head p {
+    display: none;
+  }
+  .ledger-head {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ledger-summary > div {
+    padding: 18px 16px;
+  }
+  .ledger-summary > div + div {
+    padding-top: 14px;
+    gap: 8px;
+  }
+  .ledger-summary-facts > span:nth-child(2),
+  .ledger-legend {
+    display: none;
+  }
+  .ledger-register-title,
+  .ledger-register-tools {
+    display: none;
+  }
+  .ledger-register-head {
+    padding: 14px 16px 10px;
+  }
+  .ledger-filters {
+    gap: 8px;
+  }
+  .ledger-search {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ledger-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #cfd8e2;
+    border-radius: 10px;
+    background: var(--ledger-surface);
+    color: var(--ledger-text);
+    font-size: var(--type-label);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .ledger-filter-toggle b {
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ledger-navy);
+    color: #fff;
+    font-size: var(--type-micro);
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .ledger-filter-toggle[aria-expanded="true"] {
+    border-color: var(--ledger-navy);
+    color: var(--ledger-ink);
+    background: var(--ledger-action-soft);
+  }
+  .ledger-filters[data-open="false"] .ledger-filter-group,
+  .ledger-filters[data-open="false"] .ledger-filters-end {
+    display: none;
+  }
+  .ledger-filters .ledger-filter-group {
+    margin-top: 2px;
+  }
+  .ledger-mobile-all {
+    padding: 10px 16px;
+  }
+}

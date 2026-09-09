@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
-  Columns3, Copy, FileSpreadsheet, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Rows3, Search, Trash2, Wallet, X,
+  Columns3, Copy, FileSpreadsheet, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Rows3, Search, SlidersHorizontal, Trash2, Wallet, X,
 } from "lucide-react";
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
@@ -236,7 +236,8 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
         </div>
         <HonorRegister
           records={visible} foot={foot} scope={scopeLabel} filtered={filtered} hasAny={pool.length > 0} deleted={deleted}
-          busy={busy} showYear={year === "all"} error={removing ? "" : error} menu={menu}
+          busy={busy} showYear={year === "all"} showKind={category === "all"} error={removing ? "" : error} menu={menu}
+          filterCount={(sk !== "all" ? 1 : 0) + (category !== "all" ? 1 : 0)}
           onReset={reset} onEdit={record => open(record, "edit")} onCopy={record => open(record, "copy")}
           onRemove={record => open(record, "delete")} onRestore={record => change(record, true)} onReload={reload}
           onAdd={() => { setError(""); setEditor(newHonorarium()); }}
@@ -254,6 +255,12 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
               {query ? <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
             </div>
             <div className="ledger-filter-group">
+              {/* Di layar HP rel jenis disembunyikan; pilihan jenis pindah ke panel Filter ini. */}
+              <CustomSelect aria-label="Jenis honorarium" className="ledger-select honor-kind-select" value={category}
+                onValueChange={value => setCategory(value as "all" | Category)} data-active={category !== "all"}>
+                <SelectOption value="all">Semua jenis</SelectOption>
+                {kinds.map(kind => <SelectOption key={kind.key} value={kind.key} disabled={!kindFacts.has(kind.key)}>{kind.short}</SelectOption>)}
+              </CustomSelect>
               <CustomSelect aria-label="Dasar SK" className="ledger-select honor-sk-select" value={sk} onValueChange={setSk} data-active={sk !== "all"}>
                 <SelectOption value="all">Semua SK</SelectOption>
                 {skOptions.map(value => <SelectOption key={value} value={value}>{value}</SelectOption>)}
@@ -285,10 +292,10 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   );
 }
 
-function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, showYear, error, menu, status, filters,
+function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, showYear, showKind, filterCount, error, menu, status, filters,
   onReset, onEdit, onCopy, onRemove, onRestore, onReload, onAdd }: {
   records: Honorarium[]; foot: { gross: number; tax: number; net: number }; scope: string; filtered: boolean; hasAny: boolean;
-  deleted: boolean; busy: boolean; showYear: boolean; error: string; menu: (record: Honorarium) => ReactNode;
+  deleted: boolean; busy: boolean; showYear: boolean; showKind: boolean; filterCount: number; error: string; menu: (record: Honorarium) => ReactNode;
   status: ReactNode; filters: ReactNode; onReset: () => void; onEdit: (record: Honorarium) => void;
   onCopy: (record: Honorarium) => void; onRemove: (record: Honorarium) => void; onRestore: (record: Honorarium) => void;
   onReload: () => void; onAdd: () => void;
@@ -298,6 +305,8 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [density, setDensity] = useState("comfortable");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersShown = filtersOpen || filterCount > 0;
   const columns = useMemo<ColumnDef<Honorarium>[]>(() => [
     { id: "recipient", accessorKey: "recipient", header: "Penerima honor", size: 270, enableHiding: false,
       cell: ({ row }) => (
@@ -412,9 +421,13 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
           </Button>
         </div>
       </div>
-      <div className="ledger-filters">
+      <div className="ledger-filters" data-open={filtersShown}>
         {filters}
-        <div className="ledger-filters-end">
+        <button type="button" className="ledger-filter-toggle" aria-expanded={filtersShown} aria-controls="honor-filter-more"
+          onClick={() => setFiltersOpen(open => !open)}>
+          <SlidersHorizontal size={15} aria-hidden="true" />Filter{filterCount > 0 && <b>{filterCount}</b>}
+        </button>
+        <div className="ledger-filters-end" id="honor-filter-more">
           <CustomSelect aria-label="Urutkan honorarium" className="ledger-select ledger-sort-select" value={sortValue}
             onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
             <SelectOption value="recipient:asc">Nama A–Z</SelectOption>
@@ -477,18 +490,17 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
                     <button className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`}>{record.recipient}</button>
                     <span>{record.skPosition}</span>
                   </div>
-                  {menu(record)}
                 </div>
                 <div className="honor-sk">
                   <span className={`ledger-ref honor-ref ${record.skNumber ? "" : "is-name"}`}>{skKey(record)}</span>
-                  <small>{honorariumCategories[record.category]}, {record.year}</small>
+                  {(showKind || showYear) && <small>{[showKind ? honorariumCategories[record.category] : "", showYear ? String(record.year) : ""].filter(Boolean).join(", ")}</small>}
                 </div>
                 <div className="ledger-card-meta">
                   <span>{money(record.monthlyAmount)} × {record.months} bln</span>
                   <span>Pajak {money(totals.tax)}</span>
                 </div>
                 <div className="ledger-card-bottom">
-                  <div className="honor-card-net"><span>Netto</span><strong>{money(totals.net)}</strong></div>
+                  <div className="honor-card-net"><strong>{money(totals.net)}</strong><span>netto</span></div>
                   <Button variant="outline" size="sm" aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`} onClick={() => row.toggleExpanded()}>
                     {row.getIsExpanded() ? "Tutup rincian" : "Lihat rincian"}<ChevronDown className={row.getIsExpanded() ? "rotate-180" : undefined} />
                   </Button>

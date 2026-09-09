@@ -894,6 +894,74 @@
   font-weight: 500;
 }
 
+/* ----- Kartu map di ponsel: satu baris tanda untuk tujuh kantong ----- */
+.dokumen-cards {
+  display: grid;
+}
+.dokumen-card {
+  position: relative;
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.dokumen-card-open {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  color: var(--ledger-text);
+  border-radius: 6px;
+}
+.dokumen-card-open:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 4px;
+}
+.dokumen-card .dokumen-meta {
+  -webkit-line-clamp: 2;
+}
+.dokumen-card-marks {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 360px;
+  margin-top: 12px;
+}
+.dokumen-mark {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.dokumen-mark small {
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--ledger-muted);
+  white-space: nowrap;
+}
+.dokumen-mark.is-active small {
+  color: var(--ledger-ink);
+  font-weight: 600;
+}
+.dokumen-mark .dokumen-cell {
+  width: 32px;
+  height: 32px;
+}
+.dokumen-card-state {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-muted);
+}
+.dokumen-card-state.is-complete {
+  color: var(--ledger-success);
+}
+.dokumen-card-state.is-missing {
+  color: var(--ledger-amber);
+}
+.dokumen-kind-select {
+  display: none;
+}
+
 /* ----- Layar sempit ----- */
 @media (max-width: 1100px) {
   .dokumen-kinds {
@@ -915,6 +983,75 @@
   }
 }
 @media (max-width: 760px) {
+  /* Rel jenis dokumen diganti pilihan di baris saringan; ringkasan hanya angka dan bilah. */
+  .dokumen-index {
+    display: none;
+  }
+  .dokumen-kind-select {
+    display: inline-flex;
+  }
+  .dokumen-summary > div {
+    padding: 18px 16px 16px;
+  }
+  .dokumen-summary > div + div {
+    padding-top: 0;
+    padding-bottom: 18px;
+    border-top: 0;
+    gap: 8px;
+  }
+  .dokumen-summary .ledger-summary-row,
+  .dokumen-summary .ledger-legend {
+    display: none;
+  }
+  .dokumen-summary .ledger-figure {
+    margin: 4px 0 8px;
+    font-size: 2.125rem;
+  }
+  .dokumen-register-head {
+    padding: 16px 16px 12px;
+  }
+  .dokumen-register-head .ledger-status {
+    width: 100%;
+  }
+  .dokumen-register-head .ledger-status button {
+    flex: 1;
+    justify-content: center;
+  }
+  .dokumen-filters {
+    padding: 0 16px 14px;
+  }
+  .dokumen-filters .ledger-filters-end {
+    display: none;
+  }
+  .dokumen-body {
+    min-height: 0;
+  }
+  .dokumen-map-dialog {
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    /* Tailwind memusatkan dialog lewat properti translate; nolkan variabelnya,
+       karena deklarasi translate: none dilebur kompilator ke transform. */
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .dokumen-map-dialog .dokumen-map {
+    max-height: 100dvh;
+    height: 100dvh;
+  }
+  .dokumen-map-dialog .dokumen-slots {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .dokumen-slot-format {
+    display: none;
+  }
+  .dokumen-slot {
+    padding: 12px 14px 10px;
+  }
   .dokumen-matrix th.dokumen-col-map,
   .dokumen-open {
     padding-left: 16px;
