@@ -1,4 +1,5 @@
 export const sectionPaths = {
+  home: "/",
   archives: "/arsip-perjalanan",
   taskLetters: "/surat-tugas",
   reports: "/rekap-laporan",
@@ -20,7 +21,7 @@ export function sectionFromPath(pathname: string): Section | undefined {
 }
 
 const legacyPaths: Record<string, Section> = {
-  "/": "archives", "/task-letters": "taskLetters", "/reports": "reports",
+  "/task-letters": "taskLetters", "/reports": "reports",
   "/documents": "documents", "/people": "people", "/settings": "settings", "/trash": "trash",
 };
 

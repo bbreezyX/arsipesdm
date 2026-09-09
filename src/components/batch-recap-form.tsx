@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, FileSpreadsheet, LoaderCircle } from "lucide-react";
 import {
-  batchCostColumns, batchRecapSchema, newBatchRow, prepareRecap,
+  batchCostColumns, batchRecapSchema, isBatchEmpty, newBatchRow, prepareRecap,
   sharedJourney, updateSharedJourney,
   type BatchRecapState, type SharedJourney,
 } from "@/lib/batch-recap";
@@ -120,7 +120,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
     }
   }
   function close() {
-    if (!saving.current && window.confirm("Abaikan isian rekap yang belum disimpan?")) onClose();
+    if (!saving.current && (isBatchEmpty(state) || window.confirm("Abaikan isian rekap yang belum disimpan?"))) onClose();
   }
 
   const editingRow = state.rows.find(row => row.key === editing);

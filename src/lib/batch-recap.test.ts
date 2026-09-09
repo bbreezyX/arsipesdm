@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { batchRecapSchema, copyRecapAmount, newBatchRow, resumeBatch, setRecapAmount, updateSharedJourney, type SharedJourney } from "./batch-recap";
+import { batchRecapSchema, copyRecapAmount, isBatchEmpty, newBatchRow, resumeBatch, setRecapAmount, updateSharedJourney, type SharedJourney } from "./batch-recap";
 import type { Employee } from "./employees";
 import { totalCost, tripSchema } from "./model";
 import { groupTaskLetters } from "./task-letters";
@@ -99,6 +99,26 @@ test("mode switching retains all selections and personal costs without spreading
   assert.equal(resumed.rows[1].input.lampiran6!.lodgingCost, 125000);
   assert.equal(resumed.rows[2].input.lampiran6!.landCost, null);
   assert.deepEqual(resumed.rows.map(row => row.input.account), ["REKENING-A-BARU", "REKENING-B", ""]);
+});
+
+test("empty batch needs no discard confirmation, any journey or selection does", () => {
+  const empty: SharedJourney = {
+    title: "", sptNo: "", startDate: "", endDate: "", destination: "", destinations: [],
+    origin: "", claimedDays: null, program: "", activityName: "", subActivity: "",
+    dailyRateMode: "auto", format: "dalam-provinsi", destinationProvince: "",
+  };
+  assert.equal(isBatchEmpty({ shared: empty, rows: [] }), true);
+  assert.equal(isBatchEmpty({ shared: { ...empty, title: "   " }, rows: [] }), true);
+  const row = newBatchRow(shared, people[0]);
+  assert.equal(isBatchEmpty({ shared: empty, rows: [{ ...row, selected: false }] }), true);
+  assert.equal(isBatchEmpty({ shared: empty, rows: [row] }), false);
+  const patches: Partial<SharedJourney>[] = [
+    { title: "Monitoring" }, { sptNo: "ST-1" }, { startDate: "2025-01-02" }, { endDate: "2025-01-03" },
+    { destination: "Kerinci" }, { destinations: ["Kerinci"] }, { origin: "Jambi" }, { claimedDays: 2 },
+    { program: "Program" }, { activityName: "Kegiatan" }, { subActivity: "Sub" },
+    { destinationProvince: "Sumatera Barat" }, { format: "luar-provinsi" }, { dailyRateMode: "manual" },
+  ];
+  for (const patch of patches) assert.equal(isBatchEmpty({ shared: { ...empty, ...patch }, rows: [] }), false, JSON.stringify(patch));
 });
 
 test("batch validates every row, rejects repeated employees and malformed ledgers", () => {

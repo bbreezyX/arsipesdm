@@ -105,6 +105,20 @@ export function setRecapAmount(input: TripInput, field: BatchCostField, amount: 
 }
 
 /** Copy the chosen amount only; receipts, booking references and SPPD stay personal. */
+/** True when the batch form holds nothing worth confirming before discarding. */
+export function isBatchEmpty(state: BatchRecapState): boolean {
+  if (state.rows.some(row => row.selected)) return false;
+  const shared = state.shared;
+  if ([shared.title, shared.sptNo, shared.startDate, shared.endDate, shared.destination,
+    shared.origin, shared.program, shared.activityName, shared.subActivity,
+    shared.destinationProvince].some(value => value.trim().length > 0)) return false;
+  if ((shared.destinations ?? []).some(value => value.trim().length > 0)) return false;
+  if (shared.claimedDays !== null) return false;
+  if (shared.format !== "dalam-provinsi") return false;
+  if (shared.dailyRateMode && shared.dailyRateMode !== "auto") return false;
+  return true;
+}
+
 export function copyRecapAmount(rows: BatchRow[], sourceKey: string, field: BatchCostField, targetKeys: string[]): BatchRow[] {
   const source = rows.find(row => row.key === sourceKey && row.selected);
   if (!source) return rows;

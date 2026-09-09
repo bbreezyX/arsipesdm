@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@fontsource-variable/instrument-sans/wdth.css";
 import "./globals.css";
 import "./arsip.css";
+import "./beranda.css";
 import "./surat-tugas.css";
 import "./honorarium.css";
 import "./arsip-rincian.css";
