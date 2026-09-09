@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Favicon: perisai emas bergaris register di atas navy ledger. -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0c1a2f"/>
+  <path d="M22 16h20v17l-10 14-10-14V16z" fill="none" stroke="#d9a53a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M27 27h10M27 33h7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+</svg>
