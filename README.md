@@ -1,89 +1,282 @@
-# Arsip Perjalanan — Dinas ESDM Provinsi Jambi
+<div align="center">
 
-Aplikasi lokal untuk merekap perjalanan dinas yang **sudah dilaksanakan**, dari Excel, PDF/foto, dan berkas kertas. Identitas visual menggunakan logo pada situs resmi Dinas ESDM Provinsi Jambi; lihat DESIGN.md untuk sumbernya.
+<img src="public/logo-jambi.svg" alt="Lambang Provinsi Jambi" width="96">
 
-## Menjalankan
+# Arsip Perjalanan
 
-Memerlukan **Node.js 24** (SQLite bawaan Node) dan npm.
+**Buku register digital untuk perjalanan dinas, surat tugas, honorarium, dan berkasnya.**<br>
+Dibangun untuk Dinas Energi dan Sumber Daya Mineral Provinsi Jambi.
 
-```sh
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.com)
+[![Node](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+
+[Mulai cepat](#-mulai-cepat) · [Fitur](#-apa-yang-bisa-dilakukan) · [Alur kerja](#-alur-kerja) · [Arsitektur](#-di-balik-layar) · [Deploy](#-deploy-ke-railway) · [Panduan lengkap](docs/panduan-operasional.md)
+
+</div>
+
+---
+
+## 📖 Cerita singkat
+
+Setiap tahun, ratusan perjalanan dinas selesai dilaksanakan. Rekapnya tersebar di file Excel, foto kuitansi di ponsel, dan map kertas di lemari arsip. Ketika ada pemeriksaan, orang harus mencari satu per satu.
+
+**Arsip Perjalanan** mengumpulkan semuanya ke satu tempat. Tampilannya sengaja dibuat seperti buku register: satu lembar putih, tab tahun di punggungnya, dan setiap baris bisa dibuka untuk melihat rinciannya. Data historis dianggap benar apa adanya. Tidak ada alur persetujuan perjalanan baru dan tidak ada tarif yang diterapkan ulang ke biaya lama.
+
+> Aplikasi ini mencatat perjalanan yang **sudah dilaksanakan**. Ia adalah arsip, bukan sistem pengajuan.
+
+---
+
+## ✨ Apa yang bisa dilakukan
+
+| Menu | Untuk apa |
+|---|---|
+| 🗂️ **Arsip perjalanan** | Register utama. Satu baris per surat tugas, bisa dibuka untuk melihat setiap pegawai, SPPD, biaya, dan dokumennya. |
+| 📄 **Surat Tugas** | Agenda surat tugas per bulan dalam angka Romawi I sampai XII, lengkap dengan roster pegawai dan total biaya per surat. |
+| 💰 **Honorarium** | Buku honor per tahun anggaran: pengelola keuangan, pengadaan, UKPBJ, dan BMD. Bruto, pajak, dan netto dihitung otomatis. |
+| 📊 **Rekap & laporan** | Ringkasan realisasi per tahun, bidang, dan bulan. Ekspor Excel mengikuti filter yang sedang aktif. |
+| 📁 **Dokumen** | Matriks kelengkapan berkas. Sekali lihat langsung tahu map mana yang masih kurang foto SPPD atau laporannya. |
+| 👥 **Pegawai** | Direktori pegawai dengan NIP, jabatan, golongan, dan bidang. Menjadi sumber isian saat membuat arsip baru. |
+| ⚙️ **Pengaturan** | Kelola bidang dan akun operator. Administrator dibuat sekali dari variabel lingkungan. |
+
+<details>
+<summary><b>🧾 Impor Excel yang mengerti format kantor</b></summary>
+<br>
+
+Format **Rekap perjalanan dinas per pegawai** dikenali otomatis. Baris lanjutan biaya digabungkan ke pegawai yang benar, sel gabungan mengikuti sumber, dan rumus yang merujuk pegawai lain ditandai untuk ditinjau. Untuk format umum, baris judul kolom dideteksi sendiri dan pemetaan kolom bisa diperiksa sebelum disimpan.
+
+- Menerima XLSX, XLS, dan CSV sampai 20 MB, maksimal 1.000 entri per impor.
+- Pratinjau dulu, simpan belakangan. File sumber tidak pernah diubah.
+- NIP yang sama dengan nama berbeda tidak dibuang diam-diam, tetapi diberi catatan pemeriksaan.
+
+</details>
+
+<details>
+<summary><b>✍️ Isi manual untuk satu atau banyak pegawai sekaligus</b></summary>
+<br>
+
+Isi perjalanan sekali, pilih pegawai lewat pencarian, lalu lengkapi SPPD dan biaya masing-masing. Bagian Penginapan, Kendaraan/BBM, Penerbangan, dan Biaya lain tetap terbuka saat berpindah orang. **Salin biaya** memperlihatkan komponen dan penerimanya sebelum diterapkan.
+
+- Bukti hotel, kendaraan, dan tiket bisa dipakai untuk mengganti nominal komponen tanpa dijumlahkan dua kali.
+- Uang harian ke luar Provinsi Jambi otomatis memakai tarif provinsi tujuan sesuai Perpres 72/2025.
+- Semua pegawai dalam satu surat tugas disimpan dalam satu transaksi. Ada duplikat, seluruh kelompok dibatalkan.
+
+</details>
+
+<details>
+<summary><b>📤 Ekspor Excel dan cetak yang siap diserahkan</b></summary>
+<br>
+
+Hasil Excel berkop dinas dengan judul di tengah, judul kolom berkelompok, baris jumlah, panel beku, dan pengaturan cetak. Lembar rekap, rincian biaya, dan daftar dokumen dipisahkan. Perjalanan dalam dan luar provinsi mendapat lembar sumber masing-masing. Ringkasan per arsip juga bisa dicetak atau disimpan sebagai PDF dari browser.
+
+</details>
+
+<details>
+<summary><b>🛡️ Aman untuk dipakai bersama</b></summary>
+<br>
+
+- Setiap perubahan memeriksa versi, jadi pekerjaan operator lain tidak tertimpa.
+- Koreksi arsip memerlukan alasan dan tercatat dalam riwayat.
+- Arsip yang dihapus masuk **Sampah** dan bisa dipulihkan bersama dokumen serta riwayatnya.
+- Ruang contoh dan ruang kantor terpisah total, termasuk untuk unduhan lampiran.
+
+</details>
+
+---
+
+## 🔄 Alur kerja
+
+```mermaid
+flowchart LR
+    A[📊 Excel rekap] -->|Impor & tinjau| C
+    B[📝 Rekap kertas] -->|Isi manual| C
+    C[(🗂️ Arsip perjalanan)] --> D[📁 Unggah foto / PDF]
+    C --> E[📄 Surat Tugas]
+    C --> F[📊 Rekap & laporan]
+    D --> G{Berkas lengkap?}
+    G -->|Belum| D
+    G -->|Ya| H[📤 Ekspor Excel / Cetak PDF]
+    F --> H
+```
+
+1. **Masuk** dengan akun operator atau administrator.
+2. **Impor** file Excel atau **tambah arsip** dari rekap kertas.
+3. **Tinjau** catatan tanggal, rumus, dan identitas sebelum menyimpan.
+4. **Lengkapi** map dengan foto SPPD, kuitansi, dan laporan.
+5. **Ekspor** atau **cetak** sesuai filter tahun, bidang, dan bulan.
+
+---
+
+## 🚀 Mulai cepat
+
+Butuh **Node.js 24** dan sebuah database **PostgreSQL** yang bisa dijangkau.
+
+```bash
+git clone https://github.com/bbreezyX/arsipesdm.git
+cd arsipesdm
 npm ci
 cp .env.example .env.local
-# Isi DATABASE_URL dan ADMIN_PASSWORD yang unik sebelum menjalankan aplikasi.
+```
+
+Isi `.env.local`:
+
+| Variabel | Wajib | Keterangan |
+|---|:---:|---|
+| `DATABASE_URL` | ✅ | URL koneksi PostgreSQL. Tabel dibuat otomatis saat pertama jalan. |
+| `ADMIN_EMAIL` | ✅ | Email administrator pertama. |
+| `ADMIN_PASSWORD` | ✅ | Hanya dipakai saat database masih kosong. Mengubahnya kemudian tidak mengganti sandi yang sudah ada. |
+| `DEMO_ENABLED` | | `true` untuk mengaktifkan ruang contoh berisi data fiktif. |
+| `APP_ORIGIN` | | URL publik aplikasi, misalnya `https://arsipesdm.up.railway.app`. |
+| `TEST_DATABASE_URL` | | Database terpisah untuk uji integrasi. Setiap uji memakai schema `test_*` sekali pakai. |
+
+Lalu jalankan:
+
+```bash
 npm run dev
 ```
 
-Buka http://127.0.0.1:3107. Pada workspace ini konfigurasi dan akun administrator lokal sudah dibuat. Kredensial disimpan di `.local-access.txt` yang diabaikan Git. Jangan menimpa `.env.local` yang sudah ada.
+Buka **http://127.0.0.1:3107** dan masuk dengan akun administrator dari `.env.local`.
 
-Untuk menjalankan hasil build: `npm run build`, lalu `npm start` setelah menghentikan development server. Server secara default hanya mendengarkan di 127.0.0.1.
+<details>
+<summary><b>Perintah lain</b></summary>
+<br>
 
-## Alur penggunaan
+| Perintah | Fungsi |
+|---|---|
+| `npm run build` lalu `npm start` | Jalankan hasil build produksi di `0.0.0.0:$PORT`. |
+| `npm run typecheck` | Pemeriksaan tipe TypeScript. |
+| `npm test` | Unit test dan uji integrasi database. |
+| `node --env-file=.env.local scripts/integration.mjs` | Uji HTTP terhadap server yang sedang berjalan. |
+| `node --env-file=.env.local scripts/backup-postgres.mjs backups/<nama>.json` | Backup JSON konsisten, lampiran disertakan. |
 
-1. Saat aplikasi dibuka, halaman **Masuk ke arsip kantor** langsung ditampilkan. Masuk menggunakan akun operator atau administrator. Sesi yang masih aktif langsung membuka arsip kantor.
-2. Mode contoh dinonaktifkan (`DEMO_ENABLED=false`). Administrator dapat menambah operator melalui Pengaturan.
-3. Pilih **Impor Excel** untuk XLSX/XLS/CSV. Format **Rekap perjalanan dinas per pegawai** dikenali otomatis, dengan satu entri per pegawai dan perjalanan. Baris lanjutan biaya digabungkan ke pegawai terkait; sel gabungan mengikuti penggabungan eksplisit pada sumber. Tinjau catatan tanggal, rumus, dan identitas sebelum menyimpan. Untuk format umum, baris judul kolom dikenali otomatis (termasuk hasil ekspor aplikasi yang berkop) dan tetap dapat diubah, lalu periksa pemetaan kolom; baris "Jumlah" di bawah tabel dilewati; beberapa peserta dalam satu perjalanan dipisahkan titik koma. Maksimal 1.000 entri per impor dan 20 MB per file.
-4. Gunakan **Tambah arsip** untuk memasukkan rekap kertas. Pilih **Satu pegawai** atau **Beberapa pegawai**. Pada mode beberapa pegawai, isi perjalanan sekali, pilih pegawai melalui pencarian/checkbox, lalu isi SPPD dan biaya masing-masing. Pada tahap **Biaya per pegawai**, pilih nama pada daftar di kiri (atau pemilih pegawai di layar kecil). Gunakan **Pegawai berikutnya** untuk melanjutkan tanpa kehilangan isian; bagian Biaya utama, Penginapan, Kendaraan/BBM, atau Biaya lain tetap terbuka saat berpindah orang. **Identitas & arsip** membuka data lengkap pegawai. **Salin biaya** menampilkan komponen, nominal sumber, dan penerima yang dipilih sebelum diterapkan. Jumlah pada bukti hotel/kendaraan dapat digunakan untuk mengganti nominal komponen terkait, tanpa menjumlahkan bukti dua kali. Tinjau seluruh rekap sebelum menyimpan; setiap pegawai memperoleh arsip terpisah dan seluruhnya disimpan dalam satu transaksi. Duplikat membatalkan penambahan seluruh kelompok. Pergantian mode mempertahankan isian; hanya pegawai yang dipilih pada mode aktif yang disimpan. **Arsip gabungan** tetap tersedia untuk satu arsip berisi beberapa peserta. Tanggal diketik DD/MM/YYYY. Semua perjalanan harus sudah selesai.
-5. Buka detail → **Dokumen** untuk unggah PDF/JPG/PNG (maksimal 10 MB), atau tandai berkas fisik setelah memeriksa lokasi penyimpanannya.
-6. Cari dan filter menurut tahun pelaksanaan, bidang, bulan, kelengkapan, atau teks; ekspor mengikuti filter/pilihan. Hasil Excel berkop Dinas ESDM dengan judul di tengah, judul kolom berkelompok, baris jumlah, panel beku, dan pengaturan cetak; lembar rekap, rincian biaya, dan daftar dokumen dipisahkan, dan lembar rekap sumber untuk perjalanan dalam dan luar Provinsi Jambi ditambahkan bila terdapat entri tersebut. Cetak ringkasan untuk hasil administrasi yang dapat disimpan sebagai PDF lewat browser.
+</details>
 
-Biaya kosong berarti belum diketahui; angka 0 berarti nihil. Biaya bersama dihitung sekali. Pembayaran dan kelengkapan tidak otomatis dianggap selesai setelah impor. Koreksi arsip memerlukan alasan dan dicatat dalam riwayat. Arsip yang dihapus masuk Sampah dan dapat dipulihkan. Pemeriksaan duplikat menggunakan identitas perjalanan; variasi ejaan tetap perlu diperiksa operator.
+---
 
-**Daftar perjalanan:** satu baris mengelompokkan seluruh rekap dengan nomor ST yang sama. Tahun dalam nomor ST menjadi acuan; bila nomor tidak memuat tahun, pengelompokan memakai tahun keberangkatan. Arsip tanpa nomor ST tampil sendiri. Pegawai dihitung unik, biaya setiap rekap dihitung sekali, dan total yang belum lengkap ditandai sementara. Pencarian dan filter mempertahankan seluruh anggota ST yang cocok; status Lengkap berarti semua rekap dalam kelompok lengkap. Pilihan dan ekspor dari daftar mencakup seluruh rekap kelompok tersebut. Buka Lihat rincian untuk SPPD, biaya, dokumen, serta tindakan per rekap.
+## ☁️ Deploy ke Railway
 
-**CRUD arsip:** gunakan Tambah arsip untuk membuat data, lalu tombol Detail, Edit, atau Hapus di setiap baris/kartu. Detail arsip juga menyediakan Edit dan Hapus. Data terbaru diambil sebelum membuka tindakan; penyimpanan dan penghapusan memeriksa versi agar perubahan operator lain tidak tertimpa. Hapus memerlukan konfirmasi, lalu Pulihkan tersedia di Sampah. Perubahan tahun atau filter setelah koreksi disesuaikan bila diperlukan agar arsip yang disimpan tetap terlihat. API menyediakan `POST /api/archives`, `GET /api/archives/:id`, `PATCH /api/archives/:id`, serta `DELETE /api/archives/:id` dengan versi arsip dalam body. Penghapusan menyimpan dokumen dan riwayat untuk pemulihan.
+Repositori ini sudah membawa `railway.json`. Cukup buat satu service dari repo dan satu service PostgreSQL, lalu sambungkan:
 
-Total menurut sumber dan total kuitansi rekap perjalanan dinas disimpan terpisah dari pembayaran. Rincian hotel, kendaraan, dan tiket menjadi bukti pendukung; nominalnya tidak dijumlahkan lagi ke komponen biaya. Perbedaan total dan rujukan rumus lintas pegawai ditandai untuk ditinjau. NIP yang sama dengan nama berbeda tetap dipertahankan dengan catatan pemeriksaan. File Excel sumber tidak diubah, dan pratinjau belum menyimpan data sampai tombol impor dipilih.
+```
+DATABASE_URL = ${{Postgres.DATABASE_URL}}
+```
 
-PDF/foto disimpan sebagai lampiran. Aplikasi belum membaca isi scan secara otomatis (OCR).
+Railway akan menjalankan `npm run build`, memulai dengan `npm start`, dan memeriksa kesehatan lewat `/api/health`. Berikan volume persisten pada PostgreSQL, dan pastikan backup terjadwal dengan `pg_dump --format=custom` karena lampiran juga tersimpan di database.
 
-## Penyimpanan dan pencadangan
+---
 
-Data disimpan di **PostgreSQL** melalui `DATABASE_URL`. Arsip, pegawai, honorarium, akun, pengaturan, dan file digital (kolom `bytea`, maksimal 10 MB per file) berada di database yang sama. Transaksi menyimpan lampiran dan metadata secara atomik. Pool dibatasi 10 koneksi per proses; transaksi penulisan memakai advisory lock agar penomoran dan pemeriksaan versi konsisten antarreplika. Ruang contoh dan kantor tetap terpisah; unduhan lampiran memeriksa sesi dan ruang kerja.
+## 🧠 Di balik layar
 
-Di Railway, service `arsipesdm` memakai referensi `DATABASE_URL=${{Postgres.DATABASE_URL}}` melalui jaringan privat. PostgreSQL mempunyai volume persisten. `npm start` mendengarkan `0.0.0.0:$PORT`, dan `/api/health` memeriksa koneksi database. `railway.json` mengatur build, start, dan health check.
+```mermaid
+flowchart TB
+    subgraph Browser
+        UI[React 19 · Radix UI · Tailwind 4]
+    end
+    subgraph Server["Next.js 16 · App Router"]
+        API[/api/archives · documents · employees · honorariums · users · session/]
+        LIB[src/lib · zod · exceljs · SheetJS]
+    end
+    DB[(PostgreSQL 18<br>arsip · pegawai · honor · dokumen bytea)]
+    UI <--> API
+    API --> LIB
+    LIB <--> DB
+```
 
-### Migrasi dan backup
+| Lapisan | Pilihan | Kenapa |
+|---|---|---|
+| Kerangka | Next.js 16 App Router, React 19 | Satu codebase untuk halaman dan API, rendering server untuk halaman cetak. |
+| Bahasa | TypeScript 5.9 + zod 4 | Setiap payload arsip divalidasi ketat sebelum masuk database. |
+| Tampilan | Tailwind CSS 4, Radix UI, lucide-react | Komponen aksesibel dengan gaya buku register yang konsisten. |
+| Data | PostgreSQL via `pg` | Transaksi atomik, advisory lock untuk penomoran, lampiran sebagai `bytea` maksimal 10 MB. |
+| Excel | exceljs untuk ekspor, SheetJS untuk impor | Ekspor berkop dan berformat, impor toleran terhadap sel gabungan dan rumus. |
+| Tipografi | Instrument Sans Variable | Satu keluarga, dua suara: lebar normal untuk teks, condensed untuk angka dan tab tahun. |
 
-Simpan salinan konsisten SQLite dengan SQLite backup API, direktori `attachments`, dan konfigurasi lokal sebelum migrasi. Semua backup berada di `backups/` yang diabaikan Git. Jalankan:
+<details>
+<summary><b>Struktur folder</b></summary>
+<br>
+
+```
+src/
+├── app/
+│   ├── [section]/        # Halaman utama: arsip, surat tugas, honorarium, dokumen, pegawai, pengaturan
+│   ├── api/              # Route handler REST
+│   ├── cetak/[id]/       # Ringkasan cetak per arsip
+│   ├── globals.css       # Fondasi tampilan
+│   └── *.css             # Satu berkas gaya per register (arsip, surat-tugas, honorarium, dokumen, ...)
+├── components/           # Komponen React per fitur
+└── lib/                  # Model, validasi, impor/ekspor Excel, akses database, dan unit test
+scripts/                  # Backup, migrasi, dan uji integrasi
+docs/                     # Panduan operasional dan catatan desain
+```
+
+</details>
+
+<details>
+<summary><b>Ringkasan API</b></summary>
+<br>
+
+Semua endpoint memerlukan sesi login dan bekerja di dalam ruang kerja pengguna.
+
+| Endpoint | Metode | Keterangan |
+|---|---|---|
+| `/api/session` | `POST` `DELETE` | Masuk dan keluar. |
+| `/api/archives` | `GET` `POST` | Daftar dan buat arsip. |
+| `/api/archives/:id` | `GET` `PATCH` `DELETE` | Detail, koreksi dengan alasan, hapus dengan pemeriksaan versi. |
+| `/api/archives/batch` | `POST` | Simpan beberapa pegawai dalam satu transaksi. |
+| `/api/archives/import` | `POST` | Simpan baris hasil pratinjau impor Excel, maksimal 1.000 entri. |
+| `/api/documents` `/api/documents/:id` | `POST` `GET` `DELETE` | Lampiran PDF, JPG, PNG. |
+| `/api/employees` `/api/employees/:id` | `GET` `POST` `PATCH` `DELETE` | Direktori pegawai. |
+| `/api/honorariums` `/api/honorariums/:id` | `GET` `POST` `PATCH` `DELETE` | Buku honor. |
+| `/api/users` | `GET` `POST` | Akun operator, khusus administrator. |
+| `/api/settings` | `PATCH` | Daftar bidang. |
+| `/api/health` | `GET` | Cek koneksi database untuk pemantau. |
+
+</details>
+
+---
+
+## 🎨 Bahasa visual
+
+Satu buku register: kanvas abu lembut, lembar putih, sidebar navy yang diambil dari lambang Jambi, dan emas lambang yang hanya dipakai untuk penanda posisi.
+
+![navy](https://img.shields.io/badge/navy-%23122744-122744?style=flat-square)
+![action](https://img.shields.io/badge/action-%231F4B75-1F4B75?style=flat-square)
+![gold](https://img.shields.io/badge/crest%20gold-%23D9A53A-D9A53A?style=flat-square)
+![complete](https://img.shields.io/badge/lengkap-%232E6B4F-2E6B4F?style=flat-square)
+![draft](https://img.shields.io/badge/belum-%239B6A10-9B6A10?style=flat-square)
+![canvas](https://img.shields.io/badge/kanvas-%23EEF1F4-EEF1F4?style=flat-square)
+
+Hijau dan amber hanya berarti kelengkapan, tidak pernah dipakai untuk hal lain. Penjelasan lengkapnya ada di [DESIGN.md](DESIGN.md).
+
+---
+
+## 🧪 Pengujian
 
 ```bash
-node --env-file=.env.postgres-migration --import tsx scripts/migrate-sqlite-to-postgres.ts backups/<backup>/archive.sqlite
-```
-
-Migrasi mempertahankan ID, nilai data, riwayat, dan hash kata sandi. Proses berada dalam satu transaksi dan menolak konflik dengan data tujuan. Menjalankan ulang hanya diterima bila seluruh data identik. Argumen ketiga opsional menunjuk backup awal untuk sinkronisasi akhir: perubahan dan penghapusan di sumber hanya diterapkan bila baris tujuan masih sama persis dengan backup awal. Sesi login lama tidak dipindahkan; pengguna masuk kembali. SQLite lama tetap disimpan sebagai backup, bukan fallback runtime.
-
-Backup JSON konsisten dapat dibuat dengan `node --env-file=.env.local scripts/backup-postgres.mjs backups/<nama-unik>.json`. File lampiran disertakan sebagai base64. Untuk format pemulihan standar, gunakan `pg_dump --format=custom` versi yang sama atau lebih baru dari server (saat migrasi: PostgreSQL 18). Simpan hasil di tempat aman di luar container aplikasi; backup mencakup lampiran. Pemulihan memakai `pg_restore` ke database kosong, lalu arahkan `DATABASE_URL` ke hasil pemulihan.
-
-### Pengujian PostgreSQL
-
-Set `TEST_DATABASE_URL` sebelum `npm test`. Pengujian database membuat schema `test_*` unik dan menghapusnya setelah selesai; tidak memakai tabel aplikasi. Jalankan `node scripts/check-init-concurrency.mjs` untuk menguji inisialisasi lima proses bersamaan. Pengujian HTTP `scripts/integration.mjs` harus diarahkan ke server uji dengan schema `test_*`, `DEMO_ENABLED=true`, serta akun bootstrap uji.
-
-Untuk backup konsisten: hentikan server, lalu salin **seluruh folder data**, termasuk SQLite, file WAL/SHM bila ada, dan attachments, ke folder backup bertanggal. Simpan `.env.local` secara aman terpisah. Untuk memulihkan, hentikan server, cadangkan kondisi saat ini, lalu kembalikan seluruh folder data dari satu backup yang sama. Ekspor Excel tidak menggantikan backup karena tidak menyertakan file lampiran atau akun.
-
-Konfigurasi administrator pada env hanya dipakai saat belum ada akun. Mengubah env sesudah akun dibuat tidak mengganti sandinya.
-
-## Verifikasi
-
-```sh
-npm test
 npm run typecheck
-npm run build
-# Server lokal dan .env.local harus tersedia untuk uji API berikut:
-node --env-file=.env.local scripts/integration.mjs
+npm test
 ```
 
-Uji mencakup tanggal arsip, biaya bersama, kosong versus nol, pemetaan Excel, hasil XLSX, CRUD, konflik versi, duplikat, riwayat, lampiran, pemulihan, login, dan isolasi ruang kantor. Uji API membersihkan hanya fixture buatannya sendiri.
+Uji mencakup tanggal arsip, biaya bersama, kosong versus nol, pemetaan Excel, hasil XLSX, CRUD, konflik versi, duplikat, riwayat, lampiran, pemulihan, login, dan isolasi ruang kerja. Uji database membuat schema `test_*` unik dan menghapusnya sendiri; tabel aplikasi tidak pernah disentuh.
 
-Dibangun dengan Next.js, React, TypeScript, Tailwind CSS, komponen shadcn/ui, dan SQLite. Versi ini siap dicoba secara lokal. Pemakaian bersama melalui jaringan/server masih memerlukan pengaturan hosting dengan penyimpanan persisten, HTTPS, dan backup terjadwal. Tidak ada deployment publik yang dilakukan.
+---
 
-### Data pegawai
+## 🧭 Batasan yang perlu diketahui
 
-Menu **Pegawai** mendukung tambah, lihat detail dan riwayat, edit, serta hapus untuk operator dan administrator. Data awal diambil dari peserta arsip, lalu disimpan sebagai direktori pegawai tersendiri. Nama, NIP opsional, jabatan, golongan, dan bidang tersedia untuk pengisian arsip baru. Edit identitas tidak mengubah salinan identitas dalam arsip lama. Identitas lama tetap digunakan untuk menampilkan riwayat. Pegawai yang dihapus tidak muncul sebagai pilihan arsip baru dan dapat dipulihkan melalui **Pegawai terhapus**. Data pegawai dipisahkan per workspace; duplikasi identitas dan perubahan bersamaan diperiksa saat menyimpan.
+- Foto dan PDF disimpan sebagai lampiran. Isinya belum dibaca otomatis (belum ada OCR).
+- Pemeriksaan duplikat memakai identitas perjalanan. Variasi ejaan nama tetap perlu dilihat operator.
+- Ekspor Excel bukan pengganti backup karena tidak memuat lampiran dan akun.
 
-Golongan pegawai dapat diisi, diubah, atau dikosongkan melalui form pegawai dan ditampilkan pada tabel serta detail. Pilihan golongan memakai combobox yang tetap menerima input manual. Saat memilih pegawai pada rekap per pegawai, golongan ikut terisi. Entri lama yang belum memiliki kolom golongan diisi sekali dari arsip perjalanan terbaru yang memuatnya; nilai yang kemudian dikosongkan tidak diisi ulang otomatis. Perubahan golongan master tidak mengubah arsip perjalanan sebelumnya.
+---
 
-### Perjalanan luar Provinsi Jambi
+## 🙏 Kredit
 
-Rekap per pegawai mendukung tujuan domestik di luar Jambi pada mode satu maupun banyak pegawai. Pilih cakupan dan provinsi tujuan pada rute perjalanan; nama kota/instansi tetap dapat diketik bebas. Uang harian otomatis memakai tarif provinsi tujuan dari Perpres 72/2025, Lampiran I, Tabel 1.2. Untuk beberapa provinsi, pilih opsi Beberapa provinsi dan isi tarif/total manual sesuai pembagian hari.
+- Lambang Provinsi Jambi dari [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Coat_of_arms_of_Jambi.svg), domain publik.
+- Tarif uang harian luar provinsi mengikuti Perpres 72/2025, Lampiran I, Tabel 1.2.
 
-Tab Penerbangan pada biaya per pegawai mencatat tiket pergi dan pulang, rute, tanggal, maskapai, booking, nomor tiket, pemesanan, serta harga aktual. Tombol Gunakan jumlah tiket mengganti biaya udara; bukti tidak dijumlahkan dua kali. Ekspor memisahkan sheet dalam/luar provinsi dan mempertahankan cakupan serta provinsi tujuan saat diimpor kembali.
+<div align="center">
+<sub>Dibuat untuk Dinas ESDM Provinsi Jambi. Panduan operasional lengkap ada di <a href="docs/panduan-operasional.md">docs/panduan-operasional.md</a>.</sub>
+</div>
