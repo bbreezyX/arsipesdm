@@ -10,6 +10,7 @@ type EditorElement = HTMLInputElement | HTMLTextAreaElement;
 type Props = Omit<InputHTMLAttributes<EditorElement>, "value" | "onChange" | "list" | "children"> & {
   value: string;
   onValueChange: (value: string) => void;
+  onOptionSelect?: (option: ComboboxOption) => void;
   options: ComboboxOption[];
   emptyMessage?: string;
   multiline?: boolean;
@@ -17,7 +18,7 @@ type Props = Omit<InputHTMLAttributes<EditorElement>, "value" | "onChange" | "li
 };
 
 /** Editable suggestions: typing a new value remains valid, as with the original fields. */
-export function Combobox({value, onValueChange, options, className, emptyMessage = "Tidak ada pilihan yang cocok.", onKeyDown, disabled, multiline = false, rows = 3, ...inputProps}: Props) {
+export function Combobox({value, onValueChange, onOptionSelect, options, className, emptyMessage = "Tidak ada pilihan yang cocok.", onKeyDown, disabled, multiline = false, rows = 3, ...inputProps}: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [active, setActive] = useState(-1);
@@ -34,6 +35,7 @@ export function Combobox({value, onValueChange, options, className, emptyMessage
   }, [activeIndex, open]);
   function choose(option: ComboboxOption) {
     onValueChange(option.value);
+    onOptionSelect?.(option);
     setOpen(false); setSearch(""); setActive(-1);
     input.current?.focus();
   }

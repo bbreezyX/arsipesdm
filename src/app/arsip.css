@@ -2489,7 +2489,7 @@
 .cost-people-list > button[aria-current="true"] {
   background: var(--ledger-action-soft);
   border-color: transparent;
-  box-shadow: inset 3px 0 var(--ledger-gold);
+  box-shadow: none;
 }
 .cost-people-list > button[aria-current="true"] > strong {
   text-decoration: none;

@@ -4175,10 +4175,19 @@ table td {
   font-size: var(--type-input);
   line-height: 20px;
 }
-.lampiran-dialog .field input[type="number"] {
+.lampiran-dialog .field input[type="number"],
+.field input.decimal-input {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.vehicle-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.lampiran-dialog .vehicle-save-row .field-hint { margin: 0; flex: 1 1 240px; }
 .lampiran-dialog .field textarea {
   min-height: 96px;
   font-size: var(--type-input);
