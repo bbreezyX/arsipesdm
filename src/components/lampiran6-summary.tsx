@@ -1,5 +1,6 @@
 import { money, dateText, type Trip } from "@/lib/model";
 import { lampiranReview } from "@/lib/lampiran6-schema";
+import { lodgingAllowanceDescription } from "@/lib/lodging-allowance";
 
 const date = (value: string) => (value ? dateText(value) : "Belum dicatat");
 const hasValues = (value: object) =>
@@ -62,7 +63,16 @@ export default function Lampiran6Summary({ trip }: { trip: Trip }) {
           menyatakan status pembayaran.
         </p>
       </section>
-      {d.lodgings.filter(hasValues).map((hotel, i) => (
+      {d.lodgingMode === "thirty-percent" && <section>
+        <h3 className="subheading">Penginapan 30% (lumpsum)</h3>
+        <Facts rows={[
+          ["Tarif dasar per malam", money(d.lodgingBaseRate)],
+          ["Jumlah malam", d.lodgingNights],
+          ["Perhitungan", lodgingAllowanceDescription(d)],
+          ["Total penginapan", money(d.lodgingCost)],
+        ]} />
+      </section>}
+      {d.lodgingMode !== "thirty-percent" && d.lodgings.filter(hasValues).map((hotel, i) => (
         <section key={`hotel-${i}`}>
           <h3 className="subheading">Penginapan {i + 1}</h3>
           <Facts

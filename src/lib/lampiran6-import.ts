@@ -78,6 +78,9 @@ export function convertLampiran6(
   const hasScope = normalized(sheet[`BN${headerRow}`]?.v) === "cakupan perjalanan";
   const hasProvince = normalized(sheet[`BO${headerRow}`]?.v) === "provinsi tujuan";
   const hasDestinations = normalized(sheet[`BL${headerRow}`]?.v) === "rincian tujuan (satu per baris)";
+  const hasLodgingMode = normalized(sheet[`BP${headerRow}`]?.v) === "perhitungan penginapan";
+  const hasLodgingBaseRate = normalized(sheet[`BQ${headerRow}`]?.v) === "tarif dasar penginapan (rp)";
+  const hasLodgingNights = normalized(sheet[`BR${headerRow}`]?.v) === "jumlah malam penginapan 30%";
   const vehicleColumns = ([
     ["BI", "Jenis mobil"], ["BJ", "Jenis BBM"], ["BK", "Harga BBM per liter (Rp)"], ["BM", "Jumlah liter BBM"],
   ] as const).filter(([col, label]) => normalized(sheet[`${col}${headerRow}`]?.v) === normalized(label)).map(([col]) => col);
@@ -259,6 +262,9 @@ export function convertLampiran6(
         representationRate: money("T"),
         representationTotal: money("U"),
         lodgingCost: money("V"),
+        lodgingMode: hasLodgingMode ? text("BP") === "30%" ? "thirty-percent" : normalized(text("BP")) === "manual" || !text("BP") ? "manual" : text("BP") : "manual",
+        lodgingBaseRate: hasLodgingBaseRate ? money("BQ") : null,
+        lodgingNights: hasLodgingNights ? money("BR") : null,
         landCost: money("W"),
         waterCost: money("X"),
         airCost: money("Y"),

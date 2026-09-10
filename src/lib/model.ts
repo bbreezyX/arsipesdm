@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { lampiran6Schema, lampiranCosts } from "./lampiran6-schema";
+import { calculateLodgingAllowance } from "./lodging-allowance";
 import { destinationKey, formatDestinations } from "./destinations";
 
 export const departments = [
@@ -105,6 +106,8 @@ export const tripSchema = z
         ctx.addIssue({code: "custom", path: ["destinations"], message: "Rincian tujuan tidak sesuai dengan kolom Tujuan."});
     }
     if (v.lampiran6) {
+      if (v.lampiran6.lodgingMode === "thirty-percent" && v.lampiran6.lodgingCost !== calculateLodgingAllowance(v.lampiran6.lodgingBaseRate, v.lampiran6.lodgingNights))
+        ctx.addIssue({ code: "custom", path: ["lampiran6", "lodgingCost"], message: "Biaya penginapan harus sesuai dengan 30% × tarif dasar × jumlah malam." });
       if (v.lampiran6.format === "luar-provinsi" && (!v.lampiran6.destinationProvince || v.lampiran6.destinationProvince === "Jambi"))
         ctx.addIssue({ code: "custom", path: ["lampiran6", "destinationProvince"], message: "Pilih provinsi tujuan di luar Jambi." });
       if (v.participants.length !== 1)

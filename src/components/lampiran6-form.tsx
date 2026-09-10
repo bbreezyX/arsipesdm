@@ -9,6 +9,8 @@ import RecapEntryMode from "./recap-entry-mode";
 import AdditionalCostFields from "./additional-cost-fields";
 import DecimalField from "./decimal-field";
 import VehicleIdentityFields from "./vehicle-identity-fields";
+import LodgingAllowanceFields from "./lodging-allowance-fields";
+import { applyLodgingAllowance, lodgingAllowanceDescription } from "@/lib/lodging-allowance";
 import { formatDestinations, tripDestinations } from "@/lib/destinations";
 import { automaticDailyAllowance, applyDailyAllowance } from "@/lib/daily-allowance";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
@@ -183,6 +185,7 @@ export default function Lampiran6Form({
       if ("origin" in p || "claimedDays" in p || "dailyRateMode" in p || "format" in p || "destinationProvince" in p) {
         next = applyDailyAllowance(next, tripDestinations(f));
       }
+      next = applyLodgingAllowance(next);
       return {
         ...f,
         lampiran6: next,
@@ -601,13 +604,14 @@ export default function Lampiran6Form({
                       ] as const
                     ).map(([key, label]) => (
                       <div className="lampiran-cost-row" key={key}>
-                        <strong>{label}</strong>
+                        <strong>{label}{key === "lodgingCost" && data.lodgingMode === "thirty-percent" && <button type="button" className="cost-daily-setup" onClick={() => goStep("hotel")}>{lodgingAllowanceDescription(data)}</button>}</strong>
                         <span className="muted cost-no-rate" aria-hidden="true">
                           —
                         </span>
                         <NumberField
                           compact
                           label={`Biaya ${label.toLowerCase()}`}
+                          readOnly={key === "lodgingCost" && data.lodgingMode === "thirty-percent"}
                           value={data[key]}
                           onChange={(value) => patchData({ [key]: value })}
                         />
@@ -656,6 +660,8 @@ export default function Lampiran6Form({
               </TabsContent>
               <TabsContent value="hotel">
                 <section className="form-section">
+                  <LodgingAllowanceFields data={data} onChange={patchData} />
+                  {data.lodgingMode !== "thirty-percent" && <>
                   <div className="section-heading">
                     <div>
                       <h3>Data penginapan</h3>
@@ -702,6 +708,7 @@ export default function Lampiran6Form({
                       />
                     </EvidenceBlock>
                   ))}
+                  </>}
                 </section>
               </TabsContent>
               <TabsContent value="transport">

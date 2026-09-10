@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { applyDailyAllowance } from "./daily-allowance";
+import { applyLodgingAllowance } from "./lodging-allowance";
 import { tripDestinations } from "./destinations";
 import { employeeIdentity, type Employee } from "./employees";
 import { lampiran6Schema, lampiranCosts, type Lampiran6 } from "./lampiran6-schema";
@@ -33,7 +34,8 @@ export function sharedJourney(input: TripInput): SharedJourney {
 }
 
 export function prepareRecap(input: TripInput): TripInput {
-  return { ...input, costs: lampiranCosts(input.lampiran6!, input.participants[0].id) };
+  const data = applyLodgingAllowance(input.lampiran6!);
+  return { ...input, lampiran6: data, costs: lampiranCosts(data, input.participants[0].id) };
 }
 
 /** Change only fields edited in the common section, keeping individual exceptions. */
@@ -101,6 +103,7 @@ export function setRecapAmount(input: TripInput, field: BatchCostField, amount: 
     ...input.lampiran6!, [field]: amount,
     ...(field === "dailyTotal" ? { dailyRateMode: "manual" as const, dailyRate: null } : {}),
     ...(field === "representationTotal" ? { representationRate: null } : {}),
+    ...(field === "lodgingCost" ? { lodgingMode: "manual" as const } : {}),
   } });
 }
 

@@ -2543,6 +2543,11 @@
 .cost-people-list > button[data-error="true"] {
   outline-color: var(--ledger-danger);
 }
+.lodging-allowance-fields { display: grid; gap: 12px; margin-bottom: 20px; }
+.lodging-allowance-fields .field-hint { margin: 0; }
+.lodging-allowance-fields a { text-decoration: underline; text-underline-offset: 3px; }
+.lodging-allowance-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 14px; background: var(--ledger-action-soft); border-radius: 8px; font-size: var(--type-meta); }
+.lodging-allowance-result strong { color: var(--ledger-ink); font-size: var(--type-data); font-variant-numeric: tabular-nums; }
 .cost-nav-total {
   color: var(--ledger-text);
   font-weight: 600;
@@ -2729,6 +2734,11 @@
 }
 
 /* Tinjau rekap. */
+.batch-recap-dialog .form-action-buttons .batch-save-draft {
+  width: 40px;
+  min-width: 40px;
+  padding-inline: 0;
+}
 .batch-journey-summary {
   padding: 16px 18px;
   margin-bottom: 20px;
@@ -2749,6 +2759,39 @@
   font-size: var(--type-body);
   font-weight: 600;
   color: var(--ledger-ink);
+}
+.batch-review-card .batch-review-heading {
+  align-items: flex-start;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.batch-review-identity {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.batch-review-card .batch-review-identity .field-hint {
+  margin: 0;
+}
+.batch-review-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 2px 0 0;
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+.batch-review-account dt {
+  color: var(--ledger-muted);
+}
+.batch-review-account dd {
+  min-width: 0;
+  color: var(--ledger-text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .batch-review-costs dt {
   font-size: var(--type-micro);

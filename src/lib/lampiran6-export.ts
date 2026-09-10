@@ -6,7 +6,7 @@ import type {
   Flight,
 } from "./lampiran6-schema";
 type SheetJS = typeof import("xlsx");
-const empty = () => Array.from({ length: 67 }, () => null as unknown);
+const empty = () => Array.from({ length: 70 }, () => null as unknown);
 const date = (v: string) => (v ? new Date(`${v}T00:00:00`) : null);
 const filled = (value: object) =>
   Object.values(value).some((v) => v !== null && v !== "");
@@ -61,6 +61,7 @@ const columnWidths: Record<string, number> = {
   AP: 14, AQ: 16, AR: 11, AS: 14, AT: 14, AU: 14, AV: 12, AW: 16, AX: 13,
   AY: 14, AZ: 16, BA: 11, BB: 14, BC: 14, BD: 14, BE: 12, BF: 16, BG: 13,
   BH: 22, BI: 16, BJ: 10, BK: 12, BL: 26, BM: 8, BN: 18, BO: 16,
+  BP: 22, BQ: 18, BR: 14,
 };
 
 /** Source-shaped export. Evidence amounts stay evidence, never another expense. */
@@ -111,6 +112,9 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
     BM: "Jumlah liter BBM",
     BN: "Cakupan perjalanan",
     BO: "Provinsi tujuan",
+    BP: "Perhitungan penginapan",
+    BQ: "Tarif dasar penginapan (Rp)",
+    BR: "Jumlah malam penginapan 30%",
     BL: "Rincian tujuan (satu per baris)",
   };
   const middle: Record<string, string> = {
@@ -218,6 +222,9 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
     row[59] = trip.department;
     row[65] = d.format;
     row[66] = d.format === "luar-provinsi" ? d.destinationProvince : "Jambi";
+    row[67] = d.lodgingMode === "thirty-percent" ? "30%" : "Manual";
+    row[68] = d.lodgingBaseRate ?? null;
+    row[69] = d.lodgingNights ?? null;
     row[63] = trip.destinations?.join("\n") ?? "";
     rows.push(row);
     for (const cost of d.additionalCosts) {
@@ -282,6 +289,9 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
       "BM",
       "BN",
       "BO",
+      "BP",
+      "BQ",
+      "BR",
     ].map((col) => `${col}4:${col}6`),
     "G4:H4",
     "G5:G6",
@@ -314,7 +324,7 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
     "AY5:AZ5",
     "BA5:BG5",
   ].map((range) => XLSX.utils.decode_range(range));
-  sheet["!cols"] = Array.from({ length: 67 }, (_, col) => ({
+  sheet["!cols"] = Array.from({ length: 70 }, (_, col) => ({
     wch: columnWidths[XLSX.utils.encode_col(col)] ?? 14,
   }));
   for (let row = 9; row <= rows.length; row++) {
@@ -339,6 +349,7 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
       "AX",
       "BG",
       "BK",
+      "BQ",
     ]) {
       const cell = sheet[`${col}${row}`];
       if (cell?.t === "n") cell.z = "#,##0";

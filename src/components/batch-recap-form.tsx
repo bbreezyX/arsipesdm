@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, FileSpreadsheet, LoaderCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileSpreadsheet, LoaderCircle, Save } from "lucide-react";
 import {
   batchCostColumns, batchRecapSchema, isBatchEmpty, newBatchRow, prepareRecap,
   sharedJourney, updateSharedJourney,
@@ -20,6 +20,7 @@ import RecapEntryMode from "./recap-entry-mode";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/tooltip";
 
 const steps = ["Perjalanan & pegawai", "Biaya per pegawai", "Tinjau rekap"];
 
@@ -38,6 +39,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
   const [error, setError] = useState("");
   const [errorKey, setErrorKey] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [savingDirectly, setSavingDirectly] = useState(false);
   const saving = useRef(false);
   const [editing, setEditing] = useState<string>();
   const [editingStep, setEditingStep] = useState<"journey" | "costs">("costs");
@@ -97,13 +99,13 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
     }
     return parsed.data;
   }
-  async function save(event: React.FormEvent) {
+  async function save(event: React.SyntheticEvent, directly = false) {
     event.preventDefault();
     if (saving.current) return;
     const parsed = validate();
     if (!parsed) return;
-    if (step < 2) { go(step + 1); return; }
-    saving.current = true; setBusy(true); setError("");
+    if (!directly && step < 2) { go(step + 1); return; }
+    saving.current = true; setBusy(true); setSavingDirectly(directly); setError("");
     try {
       const response = await fetch("/api/archives/batch", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed),
@@ -118,7 +120,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
-      saving.current = false; setBusy(false);
+      saving.current = false; setBusy(false); setSavingDirectly(false);
     }
   }
   function close() {
@@ -178,9 +180,15 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
                 const reviews = lampiranReview(input.lampiran6!, input.startDate, input.endDate);
                 const individualJourney = JSON.stringify(sharedJourney(input)) !== JSON.stringify(shared);
                 return <article key={row.key} className="batch-review-card" data-error={errorKey === row.key}>
-                  <div className="section-heading"><div><strong>{input.participants[0].name}</strong><p className="field-hint">SPPD: {input.sppdNo || "Belum dicatat"} · {input.department}</p></div><Button type="button" variant="outline" size="sm" aria-label={`Ubah biaya ${input.participants[0].name}`} onClick={() => { setActiveCostKey(row.key); go(1); }}>Ubah biaya</Button></div>
+                  <div className="section-heading batch-review-heading">
+                    <div className="batch-review-identity">
+                      <strong>{input.participants[0].name}</strong>
+                      <p className="field-hint">SPPD: {input.sppdNo || "Belum dicatat"} · {input.department}</p>
+                      <dl className="batch-review-account"><dt>Kode rekening</dt><dd>{input.account || "Belum dicatat"}</dd></dl>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" aria-label={`Ubah biaya ${input.participants[0].name}`} onClick={() => { setActiveCostKey(row.key); go(1); }}>Ubah biaya</Button>
+                  </div>
                   {individualJourney && <p className="field-hint">Perjalanan disesuaikan: {input.title} · ST {input.sptNo || "—"} · {input.lampiran6!.origin || "—"} → {input.destination} · {dateText(input.startDate)} – {dateText(input.endDate)} · {input.lampiran6!.claimedDays ?? "—"} hari.</p>}
-                  <p className="field-hint break-all">Kode rekening: {input.account || "Belum dicatat"}</p>
                   <dl className="batch-review-costs">{batchCostColumns.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{money(input.lampiran6![key])}</dd></div>)}
                     {input.lampiran6!.additionalCosts.map((cost, index) => <div key={`additional-${index}`}><dt>{cost.label || "Biaya tambahan"}</dt><dd>{money(cost.amount)}</dd></div>)}
                     <div className="batch-review-total"><dt>Total pegawai</dt><dd>{money(totalCost(input))}</dd></div>
@@ -199,7 +207,17 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
             <div className="form-action-buttons">
               <Button type="button" variant="ghost" disabled={busy} onClick={close}>Batal</Button>
               {step > 0 && <Button type="button" variant="outline" disabled={busy} onClick={() => go(step - 1)}><ArrowLeft />Kembali</Button>}
-              <Button type="submit" disabled={busy} className="save-archive-button">{busy ? <><LoaderCircle className="animate-spin" />Menyimpan…</> : step === 2 ? `Simpan ${selected.length} rekap` : <>{step === 1 ? "Tinjau rekap" : "Lanjut ke biaya"}<ArrowRight /></>}</Button>
+              {step < 2 && <TooltipProvider><Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" variant="outline" size="icon" className="batch-save-draft" disabled={busy || selected.length === 0}
+                    aria-label={unknown === selected.length ? "Simpan draft" : "Simpan isian sekarang"}
+                    onClick={event => void save(event, true)}>
+                    {busy && savingDirectly ? <LoaderCircle className="animate-spin" /> : <Save />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{unknown === selected.length ? "Simpan draft" : "Simpan isian sekarang"} · dapat dilengkapi nanti</TooltipContent>
+              </Tooltip></TooltipProvider>}
+              <Button type="submit" disabled={busy} className="save-archive-button">{busy && !savingDirectly ? <><LoaderCircle className="animate-spin" />Menyimpan…</> : step === 2 ? `Simpan ${selected.length} rekap` : <>{step === 1 ? "Tinjau rekap" : "Lanjut ke biaya"}<ArrowRight /></>}</Button>
             </div>
           </div>
         </div>

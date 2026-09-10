@@ -9,6 +9,7 @@ import { EvidenceBlock, GroundFields, LodgingFields, NumberField } from "./lampi
 import { Button } from "./ui/button";
 import { evidenceVisualState, recapSectionStates } from "@/lib/recap-visual-state";
 import { RecapStatus } from "./recap-status";
+import LodgingAllowanceFields from "./lodging-allowance-fields";
 
 function evidenceTotal(items: Array<Lampiran6["lodgings"][number] | Lampiran6["groundTransports"][number]>) {
   const filled = items.filter(item => Object.values(item).some(value => value !== "" && value !== null));
@@ -24,17 +25,21 @@ export default function RecapCostDetails({ data, personName, section, onChange }
   onChange: (changes: Partial<Lampiran6>) => void;
 }) {
   const hotelTotal = evidenceTotal(data.lodgings);
+  const percentageLodging = data.lodgingMode === "thirty-percent";
   const vehicleTotal = evidenceTotal(data.groundTransports);
   const status = recapSectionStates(data)[section];
   return <div className="recap-cost-details">
     {section !== "flight" && <div className="recap-detail-status" data-recap-tone={status.tone}><RecapStatus tone={status.tone}>{status.label}</RecapStatus><span>{status.description}</span></div>}
     {section === "flight" && <FlightCostFields data={data} onChange={onChange} />}
     {section === "hotel" && <section className="recap-cost-section">
-      <div className="cost-detail-heading"><div><h4>Penginapan</h4><p>Nama hotel, lama menginap, dan bukti biaya pegawai ini.</p></div>
-        <Button type="button" variant="outline" size="sm" disabled={data.lodgings.length >= 30} onClick={() => onChange({ lodgings: [...data.lodgings, lodgingSchema.parse({})] })}><Plus size={14} />Tambah hotel</Button>
+      <div className="cost-detail-heading"><div><h4>Penginapan</h4><p>Pilih nominal sesuai bukti atau perhitungan penginapan 30% untuk pegawai ini.</p></div>
+        {!percentageLodging && <Button type="button" variant="outline" size="sm" disabled={data.lodgings.length >= 30} onClick={() => onChange({ lodgings: [...data.lodgings, lodgingSchema.parse({})] })}><Plus size={14} />Tambah hotel</Button>}
       </div>
       <div className="recap-cost-section-body">
-        <NumberField label="Biaya penginapan pegawai (Rp)" value={data.lodgingCost} onChange={lodgingCost => onChange({ lodgingCost })} />
+        <LodgingAllowanceFields data={data} onChange={onChange} />
+        <NumberField label="Biaya penginapan pegawai (Rp)" readOnly={percentageLodging} value={data.lodgingCost} onChange={lodgingCost => onChange({ lodgingCost })} />
+        {percentageLodging && <p className="field-hint">Total 30% otomatis masuk ke komponen Penginapan pegawai ini.</p>}
+        {!percentageLodging && <>
         <p className="field-hint">Masuk ke kolom Penginapan dan total pegawai. Rincian hotel di bawah menjadi bukti pendukung.</p>
         {data.lodgings.length === 0 && <div className="cost-evidence-empty">Belum ada rincian hotel. Nominal penginapan boleh diisi lebih dulu.</div>}
         {data.lodgings.map((hotel, index) => { const visual = evidenceVisualState(hotel, hotel.total); return <div key={index} className="recap-evidence-status" data-recap-tone={visual.tone}><EvidenceBlock title={`Penginapan ${index + 1}`} status={<RecapStatus tone={visual.tone} description={visual.description}>{visual.label}</RecapStatus>} onRemove={() => onChange({ lodgings: data.lodgings.filter((_, current) => current !== index) })}>
@@ -44,6 +49,7 @@ export default function RecapCostDetails({ data, personName, section, onChange }
           {hotelTotal !== null && <Button type="button" variant="outline" size="sm" onClick={() => onChange({ lodgingCost: hotelTotal })}>Gunakan jumlah bukti: {money(hotelTotal)}</Button>}
         </div>
         {hotelTotal !== null && <p className="field-hint">Gunakan jumlah bukti untuk mengganti nominal pada kolom Penginapan.</p>}
+        </>}
       </div>
     </section>}
     {section === "vehicle" && <section className="recap-cost-section">

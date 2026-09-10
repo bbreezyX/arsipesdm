@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Search, ArrowLeft } from "lucide-react";
 import { batchCostColumns, copyRecapAmount, prepareRecap, setRecapAmount, type BatchCostField, type BatchRow, type SharedJourney } from "@/lib/batch-recap";
 import { applyDailyAllowance, automaticDailyAllowance } from "@/lib/daily-allowance";
+import { changeLodgingMode, lodgingAllowanceDescription } from "@/lib/lodging-allowance";
 import { tripDestinations } from "@/lib/destinations";
 import { lampiranReview, type Lampiran6 } from "@/lib/lampiran6-schema";
 import { money, totalCost, type TripInput } from "@/lib/model";
@@ -142,8 +143,12 @@ export default function EmployeeCostWorkspace({ rows, onChange, onEditArchive, e
             <div className="cost-sppd-fields"><Field label="Nomor SPPD"><input aria-label={`SPPD ${person.name}`} value={input.sppdNo} maxLength={250} placeholder="Isi nomor SPPD pegawai ini" onChange={event => { const sppdNo = event.target.value; patch(current => ({ ...current, sppdNo })); }} /></Field><Field label="Tanggal SPPD"><ArchiveDateInput value={data.sppdDate} onChange={sppdDate => patchData({ sppdDate })} /></Field></div>
             <div className="cost-amount-heading"><h4>Komponen biaya</h4><span>Rupiah · kosong = belum dicatat · 0 = nihil</span></div>
             <div className="cost-amount-grid">{batchCostColumns.map(([field, label]) => <div key={field} className="cost-amount-cell" data-recap-tone={data[field] === null ? "empty" : varied.has(field) ? "different" : "filled"}>
-              <NumberField label={field === "landCost" ? "Transport darat / BBM" : field === "waterCost" ? "Transport air" : field === "airCost" ? "Transport udara" : label} readOnly={field === "dailyTotal" && data.dailyRateMode !== "manual"} value={data[field]} onChange={amount => patch(current => setRecapAmount(current, field, amount))} />
-              <span className="cost-amount-caption">{field === "dailyTotal" && data.dailyRateMode !== "manual" ? daily.rate === null ? daily.reason : data.claimedDays === null ? "Isi jumlah hari untuk menghitung total uang harian." : daily.rate === 0 ? daily.reason : `${money(daily.rate)} × ${data.claimedDays} hari` : data[field] === null ? "Belum dicatat" : money(data[field])}</span>
+              <NumberField label={field === "landCost" ? "Transport darat / BBM" : field === "waterCost" ? "Transport air" : field === "airCost" ? "Transport udara" : label} readOnly={(field === "dailyTotal" && data.dailyRateMode !== "manual") || (field === "lodgingCost" && data.lodgingMode === "thirty-percent")} value={data[field]} onChange={amount => patch(current => setRecapAmount(current, field, amount))} />
+              <span className="cost-amount-caption">{field === "lodgingCost" && data.lodgingMode === "thirty-percent" ? lodgingAllowanceDescription(data) : field === "dailyTotal" && data.dailyRateMode !== "manual" ? daily.rate === null ? daily.reason : data.claimedDays === null ? "Isi jumlah hari untuk menghitung total uang harian." : daily.rate === 0 ? daily.reason : `${money(daily.rate)} × ${data.claimedDays} hari` : data[field] === null ? "Belum dicatat" : money(data[field])}</span>
+              {field === "lodgingCost" && <button type="button" className="cost-daily-setup" onClick={() => {
+                patch(current => prepareRecap({ ...current, lampiran6: changeLodgingMode(current.lampiran6!, "thirty-percent") }));
+                setSection("hotel");
+              }}>{data.lodgingMode === "thirty-percent" ? "Atur penginapan 30%" : "Pakai penginapan 30%"}</button>}
               {data[field] !== null && <RecapStatus tone={varied.has(field) ? "different" : "filled"} description={varied.has(field) ? "Nominal terisi pada komponen ini bervariasi antarpegawai terpilih. Nilai kosong tidak dibandingkan." : undefined}>{varied.has(field) ? "Bervariasi antarpegawai" : data[field] === 0 ? "Nihil dicatat" : field === "dailyTotal" && data.dailyRateMode !== "manual" ? "Dihitung otomatis" : "Nominal dicatat"}</RecapStatus>}
               {field === "dailyTotal" && data.dailyRateMode !== "manual" && data.dailyTotal === null && <button className="cost-daily-setup" type="button" onClick={onEditJourney}>Atur perjalanan & kategori bersama</button>}
             </div>)}</div>

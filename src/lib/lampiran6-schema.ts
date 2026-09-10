@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { destinationProvinces } from "./travel-provinces";
+import { calculateLodgingAllowance, lodgingAllowanceDescription } from "./lodging-allowance";
 
 const text = z.string().trim().max(1000).default("");
 const amount = z.number().int().min(0).max(1e12).nullable().default(null);
@@ -65,6 +66,9 @@ export const lampiran6Schema = z.object({
   representationRate: amount,
   representationTotal: amount,
   lodgingCost: amount,
+  lodgingMode: z.enum(["manual", "thirty-percent"]).default("manual"),
+  lodgingBaseRate: amount,
+  lodgingNights: days,
   landCost: amount,
   waterCost: amount,
   airCost: amount,
@@ -120,7 +124,8 @@ export function lampiranCosts(data: Lampiran6, participantId: string) {
             {
               id: `lampiran-${key}`,
               category,
-              label,
+              label: key === "lodgingCost" && data.lodgingMode === "thirty-percent"
+                ? `Penginapan 30% — ${lodgingAllowanceDescription(data)}` : label,
               amount: data[key],
               participantId,
             },
@@ -197,6 +202,14 @@ export function lampiranReview(
       issues.push(
         "Tanggal check-out mendahului check-in. Periksa data penginapan.",
       );
+  }
+  if (data.lodgingMode === "thirty-percent") {
+    if (data.lodgingBaseRate == null || data.lodgingNights == null)
+      issues.push("Lengkapi tarif dasar dan jumlah malam untuk menghitung penginapan 30%.");
+    else if (data.lodgingCost !== calculateLodgingAllowance(data.lodgingBaseRate, data.lodgingNights))
+      issues.push("Biaya penginapan tidak sesuai dengan 30% × tarif dasar × jumlah malam.");
+    if (data.lodgingNights !== null && Number.isFinite(calendarDays) && data.lodgingNights > calendarDays - 1)
+      issues.push("Jumlah malam penginapan 30% melebihi selisih tanggal perjalanan. Periksa hak penginapan pada dokumen sumber.");
   }
   return [...new Set(issues)];
 }

@@ -2,6 +2,7 @@ import { batchCostColumns, type BatchCostField, type BatchRow, type SharedJourne
 import { tripDestinations } from "./destinations";
 import type { Lampiran6 } from "./lampiran6-schema";
 import type { TripInput } from "./model";
+import { calculateLodgingAllowance, lodgingAllowanceDescription } from "./lodging-allowance";
 
 export type RecapTone = "empty" | "filled" | "details" | "different";
 export type RecapSectionState = { tone: RecapTone; label: string; description: string; count: number };
@@ -33,7 +34,13 @@ export function recapSectionStates(data: Lampiran6): Record<"main" | "hotel" | "
   const pending = additional.filter(item => item.amount === null).length;
   return {
     main: { tone: amounts ? "filled" : "empty", label: `${amounts}/${batchCostColumns.length} nominal`, description: `${amounts} komponen memiliki nominal, termasuk nilai nol. Ini bukan penanda kelengkapan arsip.`, count: amounts },
-    hotel: evidence(data.lodgings, data.lodgingCost),
+    hotel: data.lodgingMode === "thirty-percent"
+      ? data.lodgingBaseRate == null || data.lodgingNights == null
+        ? { tone: "different", label: "30% · belum lengkap", description: "Lengkapi tarif dasar dan jumlah malam penginapan.", count: 1 }
+        : data.lodgingCost !== calculateLodgingAllowance(data.lodgingBaseRate, data.lodgingNights)
+          ? { tone: "different", label: "30% · periksa total", description: "Nominal penginapan belum sesuai perhitungan 30%.", count: 1 }
+          : { tone: "filled", label: "Penginapan 30%", description: lodgingAllowanceDescription(data), count: 1 }
+      : evidence(data.lodgings, data.lodgingCost),
     vehicle: evidence(data.groundTransports, data.landCost),
     flight: evidence([data.outbound, data.inbound].filter(hasRecapDetail).map(item => ({ ...item, total: item.price })), data.airCost),
     additional: pending ? { tone: "different", label: `${pending} tanpa nominal`, description: "Biaya tambahan yang belum memiliki nominal belum masuk total pegawai.", count: additional.length }
