@@ -3357,3 +3357,113 @@
     box-shadow: 0 1px 2px rgba(12, 26, 47, 0.24);
   }
 }
+
+/* Rincian rekap pegawai: buku kecil di akhir langkah Penginapan dan Transportasi,
+   supaya total dan bukti pendukung terlihat tanpa kembali ke langkah Biaya. */
+.recap-ledger-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 18px 0 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--ledger-tint);
+}
+.recap-ledger-facts dt {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.recap-ledger-facts dd {
+  margin: 2px 0 0;
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  overflow-wrap: anywhere;
+}
+.recap-ledger-title {
+  margin: 22px 0 8px;
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.recap-ledger-rows {
+  margin: 0;
+  border-top: 1px solid var(--ledger-line);
+}
+.recap-ledger-rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-data);
+}
+.recap-ledger-rows dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  color: var(--ledger-ink);
+}
+.recap-ledger-rows dt small {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.recap-ledger-rows dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ledger-ink);
+}
+.recap-ledger-rows > div[data-empty] dt,
+.recap-ledger-rows > div[data-empty] dd {
+  color: var(--ledger-muted);
+  font-weight: 400;
+}
+.recap-ledger .cost-total {
+  margin: 14px 0 0;
+}
+.recap-ledger-evidence {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recap-ledger-evidence li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--ledger-tint);
+  font-size: var(--type-meta);
+  color: var(--ledger-ink);
+}
+.recap-ledger-evidence li[data-recap-tone="different"] {
+  background: #fffaee;
+}
+.recap-ledger-evidence li > span:first-child {
+  font-weight: 600;
+}
+.recap-ledger-evidence small {
+  flex-basis: 100%;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  line-height: 1.6;
+}
+.form-step-total {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .recap-ledger-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

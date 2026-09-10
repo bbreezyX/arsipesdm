@@ -1,6 +1,7 @@
 "use client";
 
 import FlightCostFields from "./flight-cost-fields";
+import RecapLedger from "./recap-ledger";
 import TravelScopeFields from "./travel-scope-fields";
 import { Combobox } from "./ui/combobox";
 import DestinationFields from "./destination-fields";
@@ -40,6 +41,7 @@ import ArchiveDateInput from "./archive-date-input";
 import {
   tripSchema,
   totalCost,
+  dateText,
   money,
   isComplete,
   type Trip,
@@ -63,6 +65,7 @@ const steps = [
   ["hotel", "Penginapan"],
   ["transport", "Transportasi"],
   ["archive", "Arsip"],
+  ["review", "Ringkasan"],
 ] as const;
 type Step = (typeof steps)[number][0];
 const numberValue = (value: string) => (value === "" ? null : Number(value));
@@ -825,6 +828,19 @@ export default function Lampiran6Form({
                   </details>
                 )}
               </TabsContent>
+              <TabsContent value="review">
+                <RecapLedger
+                  data={data}
+                  total={totalCost(form)}
+                  facts={[
+                    ["Pegawai", person.name],
+                    ["Nomor ST", form.sptNo],
+                    ["Pelaksanaan", form.startDate && form.endDate ? `${dateText(form.startDate)} – ${dateText(form.endDate)}` : ""],
+                    ["Tujuan", form.destination],
+                  ]}
+                />
+                <ReviewNotes notes={reviews} />
+              </TabsContent>
             </div>
           </Tabs>
           <div className="form-footer">
@@ -835,9 +851,10 @@ export default function Lampiran6Form({
                   Bagian {stepIndex + 1} dari {steps.length}
                 </strong>
                 <span>
+                  <b className="form-step-total">Total {money(totalCost(form))}</b>
                   {dirty
-                    ? "Perubahan belum disimpan"
-                    : "Kolom bertanda * wajib diisi"}
+                    ? " · Perubahan belum disimpan"
+                    : " · Kolom bertanda * wajib diisi"}
                 </span>
               </div>
               <div className="form-action-buttons">
