@@ -1,4 +1,5 @@
 import type { Trip } from "./model";
+import { flightLegs } from "./flight-legs";
 import type {
   Lampiran6,
   Lodging,
@@ -257,11 +258,13 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
       rows.push(extra);
     }
     // Transit legs follow the source convention: one continuation row per extra flight, in the same columns.
-    const transitRows = Math.max(d.outbound.transits.length, d.inbound.transits.length);
+    const outboundTransits = flightLegs(d.outbound).slice(1);
+    const inboundTransits = flightLegs(d.inbound).slice(1);
+    const transitRows = Math.max(outboundTransits.length, inboundTransits.length);
     for (let i = 0; i < transitRows; i++) {
       const extra = empty();
-      if (d.outbound.transits[i]) placeFlight(extra, d.outbound.transits[i], 41);
-      if (d.inbound.transits[i]) placeFlight(extra, d.inbound.transits[i], 50);
+      if (outboundTransits[i]) placeFlight(extra, outboundTransits[i], 41);
+      if (inboundTransits[i]) placeFlight(extra, inboundTransits[i], 50);
       rows.push(extra);
     }
   }

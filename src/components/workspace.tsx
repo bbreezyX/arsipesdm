@@ -1,5 +1,7 @@
 "use client";
 import { NavbarClock } from "./navbar-clock";
+import EntryPeriodFilter from "./entry-period-filter";
+import { useJakartaDay } from "./use-jakarta-day";
 import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
@@ -70,7 +72,10 @@ import {
   type Trip,
   type User,
   type Filters,
-    defaultFilters,
+  defaultFilters,
+  entryFilterOptions,
+  matchesEntry,
+  type EntryFilter,
   filterTrips,
   totalCost,
   dateText,
@@ -127,6 +132,7 @@ export default function Workspace({
   initialSection = "archives",
   initialHonorariums = [],
   initialNow = new Date().toISOString(),
+  initialEntry = "all",
   session = null,
 }: {
   initialTrips: Trip[];
@@ -137,11 +143,13 @@ export default function Workspace({
   initialSection?: Section;
   initialHonorariums?: Honorarium[];
   initialNow?: string;
+  initialEntry?: EntryFilter;
   session?: SessionInfo | null;
 }) {
   const [employees, setEmployees] = useState(initialEmployees);
   const refreshEmployees = useRef<() => void>(() => {});
   const [trips, setTrips] = useState(initialTrips);
+  const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
   const pathname = usePathname();
   const section = sectionFromPath(pathname) ?? initialSection;
@@ -196,21 +204,17 @@ export default function Workspace({
   const allDepartments = [
     ...new Set([...departments, ...active.map((t) => t.department)]),
   ];
-  const filtered = useMemo(() => filterTrips(trips, filters), [trips, filters]);
-  const yearTrips = useMemo(
-    () => filterTrips(trips, { ...defaultFilters, year: filters.year }),
-    [trips, filters.year],
-  );
+  const filtered = useMemo(() => filterTrips(trips, filters, today), [trips, filters, today]);
+  const todayRecaps = useMemo(() => active.filter(trip => matchesEntry(trip.createdAt, "today", today)).length, [active, today]);
   const detail = trips.find((t) => t.id === detailId);
   const archiveGroups = useMemo(() => groupArchives(active), [active]);
-  const filteredGroups = useMemo(() => filterArchiveGroups(archiveGroups, filters), [archiveGroups, filters]);
-  const yearGroups = useMemo(() => archiveGroupsForYear(archiveGroups, filters.year), [archiveGroups, filters.year]);
+  const filteredGroups = useMemo(() => filterArchiveGroups(archiveGroups, filters, today), [archiveGroups, filters, today]);
   const yearCounts = useMemo(() => new Map(years.map(year => [year, archiveGroupsForYear(archiveGroups, year).length])), [archiveGroups, years]);
   const archiveExportRows = useMemo(() => archivesForExport(filteredGroups), [filteredGroups]);
   const selectedGroups = filteredGroups.filter(group => selected.has(group.key));
-  const statusGroups = useMemo(() => filterArchiveGroups(archiveGroups, { ...filters, status: "all" }), [archiveGroups, filters]);
-  const total = yearTrips.reduce((s, t) => s + (totalCost(t) ?? 0), 0);
-  const unknown = yearTrips.filter((t) => totalCost(t) === null).length;
+  const statusGroups = useMemo(() => filterArchiveGroups(archiveGroups, { ...filters, status: "all" }, today), [archiveGroups, filters, today]);
+  const total = archiveExportRows.reduce((s, t) => s + (totalCost(t) ?? 0), 0);
+  const unknown = archiveExportRows.filter((t) => totalCost(t) === null).length;
   const people = useMemo(() => employees.filter(p => !p.deletedAt), [employees]);
   const editorOpen = editor !== null;
   useEffect(() => {
@@ -243,13 +247,16 @@ export default function Workspace({
     setSelected(new Set());
   };
   const go = (s: Section, nextFilters?: Partial<Filters>) => {
-    if (s === "honorarium" && section !== "honorarium") { window.location.assign("/honorarium"); return; }
+    if (s === "honorarium" && section !== "honorarium") {
+      window.location.assign(nextFilters?.entry ? `/honorarium?entry=${nextFilters.entry}` : "/honorarium");
+      return;
+    }
     if (section === "honorarium" && s !== "honorarium") { window.location.assign(sectionPaths[s]); return; }
     if (s !== section) {
       window.history.pushState(null, "", sectionPaths[s]);
       window.scrollTo({ top: 0 });
     }
-    if (nextFilters) setFilters((f) => ({ ...f, ...nextFilters }));
+    if (nextFilters) setFilters({ ...defaultFilters, ...nextFilters });
     setNavOpen(false);
     setSelected(new Set());
   };
@@ -294,7 +301,8 @@ export default function Workspace({
         demo ? "contoh" : filters.year === "all" ? "semua-tahun" : filters.year,
       );
       setToast(`${rows.length} rekap diekspor ke Excel.`);
-    } catch {
+    } catch (error) {
+      console.error("Ekspor arsip perjalanan gagal:", error);
       setToast("Ekspor belum berhasil. Silakan coba lagi.");
     } finally {
       setBusy(false);
@@ -329,6 +337,7 @@ export default function Workspace({
     }
   }
   const filterCount = [
+    filters.entry !== "all",
     filters.department !== "all",
     filters.month !== "all",
     filters.status !== "all",
@@ -552,12 +561,17 @@ export default function Workspace({
                 </button>
               </nav>
               <section className="ledger-sheet">
+                <EntryPeriodFilter value={filters.entry} todayCount={todayRecaps}
+                  onChange={entry => patchFilters({ entry })}
+                  onToday={() => patchFilters({ ...defaultFilters, entry: "today" })} />
                 <YearSummary
                   year={filters.year}
-                  groups={yearGroups}
-                  trips={yearTrips}
+                  groups={filteredGroups}
+                  trips={archiveExportRows}
                   total={total}
                   unknown={unknown}
+                  entry={filters.entry}
+                  filtered={filterCount > 0}
                 />
                 <ArchiveGroups
                   groups={filteredGroups}
@@ -668,7 +682,7 @@ export default function Workspace({
             />
           )}
           {section === "taskLetters" && <TaskLetters trips={active} onOpen={(id) => openArchive(id)} />}
-          {section === "honorarium" && <HonorariumWorkspace initialRecords={initialHonorariums} employees={people} onToast={setToast} />}
+          {section === "honorarium" && <HonorariumWorkspace initialRecords={initialHonorariums} employees={people} onToast={setToast} initialEntry={initialEntry} today={today} />}
           {section === "reports" && (
             <Laporan
               trips={active}
@@ -927,8 +941,9 @@ export default function Workspace({
   );
 }
 
-function YearSummary({ year, groups, trips, total, unknown }: {
+function YearSummary({ year, groups, trips, total, unknown, entry, filtered }: {
   year: string; groups: ArchiveGroup[]; trips: Trip[]; total: number; unknown: number;
+  entry: EntryFilter; filtered: boolean;
 }) {
   const complete = groups.filter(group => group.complete).length;
   const draft = groups.length - complete;
@@ -939,7 +954,8 @@ function YearSummary({ year, groups, trips, total, unknown }: {
   return (
     <section className="ledger-summary" aria-label={`Ringkasan ${scope}`}>
       <div>
-        <span className="ledger-summary-label">Realisasi biaya perjalanan {scope}</span>
+        <span className="ledger-summary-label">{filtered ? "Realisasi biaya hasil filter" : "Realisasi biaya perjalanan"} · {scope}</span>
+        {entry !== "all" && <span className="entry-summary-note">Ditambahkan {entryFilterOptions.find(([key]) => key === entry)?.[1].toLowerCase()} · hanya rekap pada periode ini</span>}
         {known ? (
           <strong className="ledger-figure"><small>Rp</small>{total.toLocaleString("id-ID")}</strong>
         ) : (
@@ -947,7 +963,7 @@ function YearSummary({ year, groups, trips, total, unknown }: {
         )}
         <div className="ledger-summary-facts">
           <span><strong>{groups.length}</strong> perjalanan</span>
-          <span><strong>{trips.length}</strong> rekap</span>
+          <span className="entry-recap-count"><strong>{trips.length}</strong> rekap</span>
           <span><strong>{people}</strong> pegawai</span>
           {unknown > 0 && <span className="is-warning"><strong>{unknown}</strong> rekap belum bernominal</span>}
         </div>

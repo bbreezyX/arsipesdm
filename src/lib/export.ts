@@ -265,6 +265,20 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
 function styleLampiranSheet(sheet: Worksheet) {
   const width = sheet.columnCount;
   const lastRow = sheet.rowCount;
+  // Keep related extension columns in the same colour family without moving their source addresses.
+  const sections = [
+    { ranges: [["R", "AA"]], header: "FF285E8C", body: "FFEDF4FB" }, // Biaya perjalanan dan total
+    { ranges: [["AC", "AL"], ["BP", "BR"]], header: "FF326C50", body: "FFEDF7F0" }, // Penginapan
+    { ranges: [["AM", "AO"], ["BI", "BI"]], header: "FF9A4F2F", body: "FFFCF0E8" }, // Transport darat dan mobil
+    { ranges: [["AP", "BG"]], header: "FF695096", body: "FFF3EFFA" }, // Transport udara
+    { ranges: [["BJ", "BK"], ["BM", "BM"]], header: "FF87620D", body: "FFFFF7DC" }, // BBM; BL tetap rincian tujuan
+  ];
+  const columnColors = new Map<number, (typeof sections)[number]>();
+  for (const section of sections) {
+    for (const [first, last] of section.ranges) {
+      for (let c = sheet.getColumn(first).number; c <= sheet.getColumn(last).number; c++) columnColors.set(c, section);
+    }
+  }
   const heading = { bold: true, color: palette.black };
   const titleFonts = [font(14, heading), font(11, heading), font(10, { color: palette.black })];
   titleFonts.forEach((style, index) => {
@@ -280,7 +294,7 @@ function styleLampiranSheet(sheet: Worksheet) {
     for (let c = 1; c <= width; c++) {
       const cell = row.getCell(c);
       cell.font = font(10, { bold: true, color: palette.white });
-      cell.fill = solid(palette.navy);
+      cell.fill = solid(columnColors.get(c)?.header ?? palette.navy);
       cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = thinBorder();
     }
@@ -292,6 +306,8 @@ function styleLampiranSheet(sheet: Worksheet) {
     for (let c = 1; c <= width; c++) {
       const cell = row.getCell(c);
       cell.font = font(10);
+      const colors = columnColors.get(c);
+      if (colors) cell.fill = solid(colors.body);
       cell.border = thinBorder();
       const numeric = typeof cell.value === "number";
       cell.alignment = {

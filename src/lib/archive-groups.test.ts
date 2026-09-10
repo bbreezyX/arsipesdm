@@ -64,6 +64,27 @@ test("mixed completion stays Draft, unknown costs stay unknown and zero stays co
   assert.equal(filterArchiveGroups(groups, { ...defaultFilters, status: "incomplete" }).length, 2);
 });
 
+test("entry period excludes older members of an ST from totals, status and exports", () => {
+  const groups = groupArchives([
+    trip("old", null, { createdAt: "2026-09-09T16:59:59.999Z", updatedAt: "2026-09-10T03:00:00Z" }),
+    trip("new", 125, { createdAt: "2026-09-09T17:00:00.000Z" }),
+    trip("zero", 0, { createdAt: "2026-09-10T16:59:59.999Z" }),
+    trip("future", 900, { createdAt: "2026-09-10T17:00:00.000Z" }),
+    trip("deleted", 500, { createdAt: "2026-09-10T03:00:00Z", deletedAt: "2026-09-10T04:00:00Z" }),
+  ]);
+  const found = filterArchiveGroups(groups, { ...defaultFilters, entry: "today" }, "2026-09-10");
+  assert.equal(found.length, 1);
+  assert.equal(found[0].key, groups[0].key);
+  assert.equal(found[0].total, 125);
+  assert.equal(found[0].participants.length, 2);
+  assert.equal(found[0].complete, true);
+  assert.deepEqual(archivesForExport(found).map(t => t.id).sort(), ["new", "zero"]);
+  assert.equal(filterArchiveGroups(groups, { ...defaultFilters, entry: "today", status: "incomplete" }, "2026-09-10").length, 0);
+  assert.equal(filterArchiveGroups(groups, { ...defaultFilters, entry: "today", search: "Pegawai old" }, "2026-09-10").length, 0);
+  assert.equal(filterArchiveGroups(groups, defaultFilters, "2026-09-10")[0].trips.length, 4);
+  assert.equal(groups[0].trips.length, 4);
+});
+
 test("cost sorting uses group totals, with unknown amounts after zero", () => {
   const groups = groupArchives([trip("a", 70), trip("b", 70), trip("c", 100, { sptNo: "ST/02/2026" }),
     trip("d", null, { sptNo: "ST/03/2026" }), trip("e", 0, { sptNo: "ST/04/2026" })]);

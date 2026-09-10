@@ -1,4 +1,4 @@
-import { defaultFilters, filterTrips, isComplete, type Filters, type Participant, type Trip } from "./model";
+import { defaultFilters, filterTrips, isComplete, jakartaDay, matchesEntry, type Filters, type Participant, type Trip } from "./model";
 import { groupTaskLetters, summarizeTripCosts } from "./task-letters";
 import { tripDestinations } from "./destinations";
 
@@ -29,11 +29,15 @@ export function groupArchives(trips: Trip[]) {
   });
 }
 
-/** Match an intact group; searching one employee must retain the whole ST. */
-export function filterArchiveGroups(groups: ArchiveGroup[], filters: Filters) {
+/** Entry periods restrict the ledgers first; other searches retain the remaining ST members. */
+export function filterArchiveGroups(groups: ArchiveGroup[], filters: Filters, today = jakartaDay()) {
+  if (filters.entry !== "all") {
+    groups = groups.flatMap(group => groupArchives(group.trips.filter(trip => matchesEntry(trip.createdAt, filters.entry, today)))
+      .map(scoped => ({ ...scoped, key: group.key })));
+  }
   const matching = new Set(filterTrips(groups.flatMap(group => group.trips), {
-    ...filters, status: "all",
-  }).map(trip => trip.id));
+    ...filters, status: "all", entry: "all",
+  }, today).map(trip => trip.id));
   return groups.filter(group =>
     group.trips.some(trip => matching.has(trip.id)) &&
     (filters.status === "all" ||

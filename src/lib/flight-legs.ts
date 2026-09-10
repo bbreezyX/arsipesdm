@@ -17,7 +17,8 @@ const legHasDetail = (leg: FlightLeg) => flightLegKeys.some((key) => leg[key].tr
 
 /** Leg 1 is stored in the legacy flat columns so older archives and the source XLSX layout keep working; transits follow it. */
 export function flightLegs(flight: Flight): FlightLeg[] {
-  return [pickLeg(flight), ...flight.transits.map(pickLeg)];
+  // Stored archives from before transit support have only the first flight's flat fields.
+  return [pickLeg(flight), ...(flight.transits ?? []).map(pickLeg)];
 }
 
 export function withFlightLegs(flight: Flight, legs: FlightLeg[]): Flight {

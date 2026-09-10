@@ -176,3 +176,22 @@ test("relative time speaks Indonesian", () => {
   assert.equal(relativeTime("2026-09-04T09:00:00.000Z", now), "5 hari lalu");
   assert.equal(relativeTime("2026-07-04T09:00:00.000Z", now), "4 Jul 2026");
 });
+
+test("today's entries count what was recorded today in Jakarta time, with their totals", () => {
+  const trips = [
+    trip("a", 1_500_000, { createdAt: "2026-09-08T23:30:00.000Z" }), // 09 Sep 06:30 WIB
+    trip("b", null, { createdAt: "2026-09-09T02:00:00.000Z" }),
+    trip("c", 800_000, { createdAt: "2026-09-08T10:00:00.000Z" }),
+    trip("d", 500_000, { createdAt: "2026-09-09T05:00:00.000Z", deletedAt: "2026-09-09T06:00:00.000Z" }),
+  ];
+  const honorariums = [
+    { ...honorarium("h1", 2026), createdAt: "2026-09-09T01:00:00.000Z" },
+    { ...honorarium("h2", 2026), createdAt: "2026-09-01T01:00:00.000Z" },
+  ];
+  const { today: entries } = berandaSummary({ trips, employees: [], honorariums, today });
+  assert.equal(entries.recaps, 2);
+  assert.equal(entries.unknown, 1);
+  assert.equal(entries.total, 1_500_000);
+  assert.equal(entries.honorariums, 1);
+  assert.equal(entries.honorariumNet, 11_400_000);
+});

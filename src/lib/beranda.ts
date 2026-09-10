@@ -1,4 +1,4 @@
-import { dateText, isComplete, missingDocs, totalCost, type EventItem, type Trip } from "./model";
+import { dateText, isComplete, jakartaDay, missingDocs, totalCost, type EventItem, type Trip } from "./model";
 import type { Employee } from "./employees";
 import { honorariumTotals, type Honorarium } from "./honorarium";
 import { groupArchives } from "./archive-groups";
@@ -141,10 +141,22 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
     people: { active: employees.filter(p => !p.deletedAt).length, travelled: people },
   };
 
+  // What was recorded today, across every travel year: the operator's own day's work.
+  const todayTrips = active.filter(t => jakartaDay(t.createdAt) === today);
+  const todayHonorariums = honorariums.filter(h => !h.deletedAt && jakartaDay(h.createdAt) === today);
+  const todayEntries = {
+    recaps: todayTrips.length,
+    journeys: groupArchives(todayTrips).length,
+    unknown: todayTrips.filter(t => totalCost(t) === null).length,
+    total: todayTrips.reduce((sum, t) => sum + (totalCost(t) ?? 0), 0),
+    honorariums: todayHonorariums.length,
+    honorariumNet: todayHonorariums.reduce((sum, h) => sum + honorariumTotals(h).net, 0),
+  };
+
   const activity: ActivityItem[] = trips
     .flatMap(trip => trip.history.map(event => ({ ...event, tripId: trip.id, code: trip.code, title: trip.title })))
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 8);
 
-  return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity };
+  return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity, today: todayEntries };
 }

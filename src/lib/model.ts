@@ -301,6 +301,8 @@ export type Filters = {
   department: string;
   status: string;
   sort: string;
+  /** When the archive was recorded (Jakarta day), independent of the travel date. */
+  entry: EntryFilter;
 };
 export const defaultFilters: Filters = {
   search: "",
@@ -309,13 +311,51 @@ export const defaultFilters: Filters = {
   department: "all",
   status: "all",
   sort: "newest",
+  entry: "all",
 };
-export function filterTrips(trips: Trip[], f: Filters) {
+export const entryFilterOptions = [
+  ["all", "Semua waktu"],
+  ["today", "Hari ini"],
+  ["week", "7 hari terakhir"],
+  ["month", "30 hari terakhir"],
+] as const;
+export type EntryFilter = (typeof entryFilterOptions)[number][0];
+export function parseEntryFilter(value: unknown): EntryFilter {
+  return entryFilterOptions.find(([key]) => key === value)?.[0] ?? "all";
+}
+const jakartaDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Jakarta",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+/** The calendar day in Jakarta on which a timestamp falls, as YYYY-MM-DD. */
+export function jakartaDay(at: string | Date = new Date()) {
+  const date = typeof at === "string" ? new Date(at) : at;
+  return Number.isNaN(date.getTime()) ? "" : jakartaDayFormat.format(date);
+}
+/** Entry-date windows count whole Jakarta days back from today: 1, 7 or 30 days. */
+export function matchesEntry(createdAt: string, entry: string, today = jakartaDay()) {
+  const period = parseEntryFilter(entry);
+  if (period === "all") return true;
+  const day = jakartaDay(createdAt);
+  if (!day) return false;
+  const age = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000);
+  const window = period === "today" ? 1 : period === "week" ? 7 : 30;
+  return age >= 0 && age < window;
+}
+export function entryDateText(createdAt: string) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "Tanggal pencatatan tidak tersedia";
+  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+}
+export function filterTrips(trips: Trip[], f: Filters, today = jakartaDay()) {
   return trips
     .filter(
       (t) =>
         !t.deletedAt &&
         (f.year === "all" || t.startDate.startsWith(f.year)) &&
+        matchesEntry(t.createdAt, f.entry, today) &&
         (f.month === "all" || t.startDate.slice(5, 7) === f.month) &&
         (f.department === "all" || t.department === f.department) &&
         (f.status === "all" ||

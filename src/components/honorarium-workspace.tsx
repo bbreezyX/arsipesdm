@@ -12,7 +12,8 @@ import {
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
 import { exportHonorariums } from "@/lib/honorarium-export";
-import { money } from "@/lib/model";
+import { entryDateText, entryFilterOptions, matchesEntry, money, type EntryFilter } from "@/lib/model";
+import EntryPeriodFilter from "./entry-period-filter";
 import { api, Empty, ErrorMessage } from "./fields";
 import HonorariumForm from "./honorarium-form";
 import { Button } from "./ui/button";
@@ -58,12 +59,14 @@ const Figure = ({ value }: { value: number }) => <><small>Rp</small>{value.toLoc
 const updatedText = (record: Honorarium) =>
   new Date(record.updatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
 
-export default function HonorariumWorkspace({ initialRecords, employees, onToast }: {
+export default function HonorariumWorkspace({ initialRecords, employees, onToast, initialEntry = "all", today }: {
   initialRecords: Honorarium[]; employees: Employee[]; onToast: (message: string) => void;
+  initialEntry?: EntryFilter; today: string;
 }) {
   const [records, setRecords] = useState(initialRecords);
   const years = useMemo(() => [...new Set(records.map(record => String(record.year)))].sort().reverse(), [records]);
-  const [year, setYear] = useState<string>(() => years[0] ?? "all");
+  const [year, setYear] = useState<string>(() => initialEntry !== "all" ? "all" : years[0] ?? "all");
+  const [entry, setEntry] = useState<EntryFilter>(initialEntry);
   const [category, setCategory] = useState<"all" | Category>("all");
   const [deleted, setDeleted] = useState(false);
   const [sk, setSk] = useState("all");
@@ -85,13 +88,15 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   }, []);
 
   const activeCount = records.filter(record => !record.deletedAt).length;
+  const todayCount = records.filter(record => !record.deletedAt && matchesEntry(record.createdAt, "today", today)).length;
   const yearCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const record of records) if (!record.deletedAt) counts.set(String(record.year), (counts.get(String(record.year)) ?? 0) + 1);
     return counts;
   }, [records]);
   /* Kumpulan sesuai tahun dan daftar (aktif/terhapus): dasar rel jenis dan pita ringkasan. */
-  const pool = useMemo(() => records.filter(record => Boolean(record.deletedAt) === deleted && (year === "all" || String(record.year) === year)), [records, deleted, year]);
+  const pool = useMemo(() => records.filter(record => Boolean(record.deletedAt) === deleted && (year === "all" || String(record.year) === year)
+    && matchesEntry(record.createdAt, entry, today)), [records, deleted, year, entry, today]);
   const kindFacts = useMemo(() => {
     const facts = new Map<Category, { count: number; net: number }>();
     for (const record of pool) {
@@ -101,10 +106,6 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
     return facts;
   }, [pool]);
   const scoped = useMemo(() => pool.filter(record => category === "all" || record.category === category), [pool, category]);
-  const summary = useMemo(() => ({
-    ...sumTotals(scoped), count: scoped.length,
-    recipients: new Set(scoped.map(recipientKey)).size, decrees: new Set(scoped.map(skKey)).size,
-  }), [scoped]);
   const skOptions = useMemo(() => [...new Set(scoped.map(skKey))].sort((a, b) => a.localeCompare(b, "id")), [scoped]);
   useEffect(() => { if (sk !== "all" && !skOptions.includes(sk)) setSk("all"); }, [skOptions, sk]);
   const visible = useMemo(() => {
@@ -112,12 +113,17 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
     return scoped.filter(record => (sk === "all" || skKey(record) === sk) && (!search || searchable(record).includes(search)));
   }, [scoped, sk, query]);
   const foot = useMemo(() => sumTotals(visible), [visible]);
+  const summary = useMemo(() => ({
+    ...foot, count: visible.length,
+    recipients: new Set(visible.map(recipientKey)).size, decrees: new Set(visible.map(skKey)).size,
+  }), [visible, foot]);
   const kindLabel = category === "all" ? "semua jenis" : kinds.find(kind => kind.key === category)?.short ?? "";
-  const scopeLabel = `${kindLabel}, ${year === "all" ? "seluruh tahun" : `tahun ${year}`}`;
-  const filtered = query.trim() !== "" || sk !== "all";
+  const entryLabel = entryFilterOptions.find(([key]) => key === entry)?.[1].toLowerCase();
+  const scopeLabel = `${kindLabel}, ${year === "all" ? "seluruh tahun" : `tahun ${year}`}${entry !== "all" ? ` · ditambahkan ${entryLabel}` : ""}`;
+  const filtered = query.trim() !== "" || sk !== "all" || entry !== "all";
   const taxShare = summary.gross ? Math.round(summary.tax / summary.gross * 1000) / 10 : 0;
 
-  function reset() { setQuery(""); setSk("all"); }
+  function reset() { setQuery(""); setSk("all"); setEntry("all"); }
   function chooseYear(next: string) { setYear(next); setSk("all"); }
   const update = useCallback((record: Honorarium) => {
     setRecords(current => current.some(r => r.id === record.id) ? current.map(r => r.id === record.id ? record : r) : [record, ...current]);
@@ -194,6 +200,8 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
         </button>
       </nav>
       <section className="ledger-sheet honor-sheet" aria-label="Buku honorarium">
+        <EntryPeriodFilter value={entry} todayCount={todayCount} onChange={setEntry}
+          onToday={() => { reset(); setYear("all"); setCategory("all"); setDeleted(false); setEntry("today"); }} />
         <div className="honor-index" role="group" aria-label="Jenis honorarium">
           <button className="honor-index-all" aria-pressed={category === "all"} onClick={() => setCategory("all")}>
             <strong>Semua jenis</strong><span>{pool.length} rekap</span>
@@ -578,7 +586,7 @@ function HonorDetail({ record, busy, onEdit, onCopy, onRemove, onRestore }: {
         </div>
       </div>
       <div className="honor-detail-foot">
-        <span>Versi {record.version}, diperbarui {updatedText(record)}</span>
+        <span>Ditambahkan {entryDateText(record.createdAt)} · Versi {record.version}, diperbarui {updatedText(record)}</span>
         <div className="honor-detail-actions">
           {record.deletedAt ? (
             <Button variant="outline" size="sm" disabled={busy} onClick={onRestore}><RotateCcw /> Pulihkan honorarium</Button>

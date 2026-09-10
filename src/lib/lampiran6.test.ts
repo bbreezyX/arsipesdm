@@ -313,6 +313,25 @@ test("legacy flight records parse with no transits and empty tickets are never r
   assert.equal(lampiran6Schema.safeParse({ outbound: { transits: Array.from({ length: 6 }, () => ({})) } }).success, false);
 });
 
+test("raw stored archives from before flight transits still export without changing source data", async () => {
+  const imported = convertLampiran6(sourceSheet(), "legacy.xlsx", "Luar Daerah (Dalam Provinsi)");
+  const trips: Trip[] = imported.map((row, i) => ({
+    ...row.trip!, id: `legacy-${i}`, code: `PD/2025/${i}`, version: 1, createdAt: "2025-03-14", updatedAt: "2025-03-14",
+    history: [], documents: [], source: row.source, deletedAt: null,
+  }));
+  // getTrips/getTrip read JSON directly. Older payloads never went through the new schema defaults.
+  const stored: Trip[] = JSON.parse(JSON.stringify(trips, (key, value) => key === "transits" ? undefined : value));
+  const before = JSON.stringify(stored);
+  const book = await createTripWorkbook(stored);
+  const reopened = XLSX.read(Buffer.from(await book.xlsx.writeBuffer()), { type: "buffer", cellDates: true });
+  const again = convertLampiran6(reopened.Sheets["Luar Daerah (Dalam Provinsi)"], "export.xlsx", "Luar Daerah (Dalam Provinsi)");
+  assert.deepEqual(again.map(row => row.errors), [[], []]);
+  assert.deepEqual(again.map(row => totalCost(row.trip!)), stored.map(totalCost));
+  assert.deepEqual(again.map(row => row.trip!.lampiran6!.outbound), trips.map(trip => trip.lampiran6!.outbound));
+  assert.deepEqual(again.map(row => row.trip!.lampiran6!.inbound), trips.map(trip => trip.lampiran6!.inbound));
+  assert.equal(JSON.stringify(stored), before);
+});
+
 test("transit legs survive the XLSX round trip as continuation rows", async () => {
   const rows = convertLampiran6(sourceSheet(), "test.xlsx", "Luar Daerah (Dalam Provinsi)");
   const trips: Trip[] = rows.map((row, i) => ({

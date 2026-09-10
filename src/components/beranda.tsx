@@ -5,7 +5,7 @@ import {
   Archive, ArrowRight, ArrowUpRight, CheckCircle2, ClipboardList, FileSpreadsheet, FileText, Users, Wallet, Sparkles,
 } from "lucide-react";
 import { berandaSummary, greeting, relativeTime, type AttentionId } from "@/lib/beranda";
-import { shortMoney, type Filters, type Trip, type User } from "@/lib/model";
+import { money, shortMoney, type Filters, type Trip, type User } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import type { Honorarium } from "@/lib/honorarium";
 import type { Section } from "@/lib/workspace-navigation";
@@ -50,7 +50,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   const date = new Date(now);
   const today = jakartaDate.format(date);
   const summary = useMemo(() => berandaSummary({ trips, employees, honorariums, today }), [trips, employees, honorariums, today]);
-  const { year, hero, monthlyDetails, calendar, attention, registers, activity } = summary;
+  const { year, hero, monthlyDetails, calendar, attention, registers, activity, today: entries } = summary;
   const firstName = (user?.name ?? (demo ? "Operator contoh" : "Operator")).split(",")[0].trim();
   const registerItems: { section: Section; icon: typeof Archive; name: string; figure: ReactNode; unit?: string; detail: string }[] = [
     { section: "archives", icon: Archive, name: "Arsip perjalanan", figure: <AnimatedNumber value={registers.archives.journeys} duration={900} />, unit: "perjalanan",
@@ -118,6 +118,26 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
           </button>
         ))}
       </nav>
+
+      <section className="beranda-panel beranda-entries" aria-labelledby="beranda-entries-title">
+        <header className="beranda-panel-head">
+          <div><h2 id="beranda-entries-title">Ditambahkan hari ini</h2><p>Tanggal pencatatan dalam WIB · seluruh tahun anggaran</p></div>
+          <span>{entries.recaps + entries.honorariums} rekap</span>
+        </header>
+        <div className="beranda-entry-links">
+          <button type="button" onClick={() => onGo("archives", { year: "all", entry: "today" })}>
+            <span>Arsip perjalanan<strong>{entries.recaps} rekap <small>· {entries.journeys} perjalanan</small></strong></span>
+            <span className="beranda-entry-total">{entries.recaps && entries.unknown === entries.recaps ? "Belum bernominal" : money(entries.total)}
+              {entries.unknown > 0 && <small>{entries.unknown} rekap belum bernominal</small>}</span>
+            <ArrowRight size={16} aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => onGo("honorarium", { entry: "today" })}>
+            <span>Honorarium<strong>{entries.honorariums} rekap</strong></span>
+            <span className="beranda-entry-total">{money(entries.honorariumNet)}<small>Honor neto</small></span>
+            <ArrowRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
 
       <section className="beranda-panel beranda-calendar" aria-labelledby="beranda-calendar-title">
         <header className="beranda-panel-head">

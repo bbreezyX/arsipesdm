@@ -36,7 +36,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import type { ArchiveGroup } from "@/lib/archive-groups";
-import { dateText, isComplete, money, totalCost, type Trip } from "@/lib/model";
+import { dateText, entryDateText, isComplete, money, totalCost, type Trip } from "@/lib/model";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import {
@@ -718,6 +718,7 @@ function GroupDetails({
               <span>
                 {trip.code}, {trip.department}
               </span>
+              <span>Ditambahkan <time dateTime={trip.createdAt}>{entryDateText(trip.createdAt)}</time></span>
               {group.titles.length > 1 && <span>{trip.title}</span>}
               <span>
                 {trip.destination}, {dateRange(trip.startDate, trip.endDate)}

@@ -5,6 +5,9 @@ import {
   totalCost,
   fingerprint,
   filterTrips,
+  jakartaDay,
+  matchesEntry,
+  parseEntryFilter,
   defaultFilters,
   paymentLabel,
   isComplete,
@@ -164,6 +167,34 @@ test("year filter follows travel date rather than entry date", () => {
     filterTrips([trip({ deletedAt: "2026-01-01" })], defaultFilters).length,
     0,
   );
+});
+test("entry filter follows the Jakarta day the archive was recorded, not the travel date", () => {
+  const recorded = (createdAt: string) => trip({ createdAt });
+  const today = "2026-09-10";
+  // 23:30 UTC on the 9th is already the 10th in Jakarta.
+  assert.equal(filterTrips([recorded("2026-09-09T23:30:00.000Z")], { ...defaultFilters, entry: "today" }, today).length, 1);
+  assert.equal(filterTrips([recorded("2026-09-09T12:00:00.000Z")], { ...defaultFilters, entry: "today" }, today).length, 0);
+  assert.equal(filterTrips([recorded("2026-09-04T12:00:00.000Z")], { ...defaultFilters, entry: "week" }, today).length, 1);
+  assert.equal(filterTrips([recorded("2026-09-03T12:00:00.000Z")], { ...defaultFilters, entry: "week" }, today).length, 0);
+  assert.equal(filterTrips([recorded("2026-08-12T12:00:00.000Z")], { ...defaultFilters, entry: "month" }, today).length, 1);
+  assert.equal(filterTrips([recorded("2026-08-11T12:00:00.000Z")], { ...defaultFilters, entry: "month" }, today).length, 0);
+  assert.equal(filterTrips([recorded("2020-01-01T00:00:00.000Z")], { ...defaultFilters, entry: "all" }, today).length, 1);
+  assert.equal(jakartaDay("2026-09-09T23:30:00.000Z"), "2026-09-10");
+});
+test("entry windows handle missing timestamps, future dates and WIB midnight", () => {
+  const today = "2026-01-01";
+  assert.equal(matchesEntry("2025-12-31T16:59:59.999Z", "today", today), false);
+  assert.equal(matchesEntry("2025-12-31T17:00:00.000Z", "today", today), true);
+  assert.equal(matchesEntry("2026-01-01T16:59:59.999Z", "today", today), true);
+  assert.equal(matchesEntry("2026-01-01T17:00:00.000Z", "today", today), false);
+  assert.equal(matchesEntry("", "today", today), false);
+  assert.equal(matchesEntry("invalid", "month", today), false);
+  assert.equal(matchesEntry("", "all", today), true);
+  assert.equal(matchesEntry("2025-12-26", "week", today), true);
+  assert.equal(matchesEntry("2025-12-25", "week", today), false);
+  assert.equal(parseEntryFilter(["today"]), "all");
+  assert.equal(parseEntryFilter("invalid"), "all");
+  assert.equal(parseEntryFilter("today"), "today");
 });
 test("supporting documents are optional; completeness requires known costs including zero", () => {
   const docs = input.requiredDocs.map((type) => ({
