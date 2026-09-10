@@ -1,4 +1,4 @@
-import { dateText, isComplete, jakartaDay, missingDocs, totalCost, type EventItem, type Trip } from "./model";
+import { dateText, isComplete, jakartaDay, missingDocs, totalCost, type EntryFilter, type EventItem, type Trip } from "./model";
 import type { Employee } from "./employees";
 import { honorariumTotals, type Honorarium } from "./honorarium";
 import { groupArchives } from "./archive-groups";
@@ -141,16 +141,24 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
     people: { active: employees.filter(p => !p.deletedAt).length, travelled: people },
   };
 
-  // What was recorded today, across every travel year: the operator's own day's work.
-  const todayTrips = active.filter(t => jakartaDay(t.createdAt) === today);
-  const todayHonorariums = honorariums.filter(h => !h.deletedAt && jakartaDay(h.createdAt) === today);
-  const todayEntries = {
-    recaps: todayTrips.length,
-    journeys: groupArchives(todayTrips).length,
-    unknown: todayTrips.filter(t => totalCost(t) === null).length,
-    total: todayTrips.reduce((sum, t) => sum + (totalCost(t) ?? 0), 0),
-    honorariums: todayHonorariums.length,
-    honorariumNet: todayHonorariums.reduce((sum, h) => sum + honorariumTotals(h).net, 0),
+  // The latest recording day, across every travel year: today's work when there is any,
+  // otherwise the last day the operator recorded something. Its filter opens the registers.
+  const activeHonorariums = honorariums.filter(h => !h.deletedAt);
+  const latestDay = [...active, ...activeHonorariums].map(item => jakartaDay(item.createdAt))
+    .filter(Boolean).reduce<string | null>((latest, day) => (latest && latest >= day ? latest : day), null);
+  const isToday = latestDay === today;
+  const latestTrips = active.filter(t => jakartaDay(t.createdAt) === latestDay);
+  const latestHonorariums = activeHonorariums.filter(h => jakartaDay(h.createdAt) === latestDay);
+  const latest = {
+    day: latestDay,
+    isToday,
+    filter: (isToday || !latestDay ? "today" : latestDay) as EntryFilter,
+    recaps: latestTrips.length,
+    journeys: groupArchives(latestTrips).length,
+    unknown: latestTrips.filter(t => totalCost(t) === null).length,
+    total: latestTrips.reduce((sum, t) => sum + (totalCost(t) ?? 0), 0),
+    honorariums: latestHonorariums.length,
+    honorariumNet: latestHonorariums.reduce((sum, h) => sum + honorariumTotals(h).net, 0),
   };
 
   const activity: ActivityItem[] = trips
@@ -158,5 +166,5 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 8);
 
-  return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity, today: todayEntries };
+  return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity, latest };
 }

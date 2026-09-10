@@ -23,6 +23,11 @@ const attentionCopy: Record<AttentionId, { title: (year: string) => string; hint
   honorarium: { title: year => `Honorarium ${year} belum dicatat`, hint: "Buka buku honorarium tahun ini", section: "honorarium" },
 };
 
+const entryDayFormat = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+function entryDayText(day: string) {
+  return entryDayFormat.format(new Date(`${day}T12:00:00`));
+}
+
 export default function Beranda({ trips, employees, honorariums, user, demo, initialNow, onGo, onOpen, onAdd, onImport }: {
   trips: Trip[];
   employees: Employee[];
@@ -50,7 +55,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   const date = new Date(now);
   const today = jakartaDate.format(date);
   const summary = useMemo(() => berandaSummary({ trips, employees, honorariums, today }), [trips, employees, honorariums, today]);
-  const { year, hero, monthlyDetails, calendar, attention, registers, activity, today: entries } = summary;
+  const { year, hero, monthlyDetails, calendar, attention, registers, activity, latest: entries } = summary;
   const firstName = (user?.name ?? (demo ? "Operator contoh" : "Operator")).split(",")[0].trim();
   const registerItems: { section: Section; icon: typeof Archive; name: string; figure: ReactNode; unit?: string; detail: string }[] = [
     { section: "archives", icon: Archive, name: "Arsip perjalanan", figure: <AnimatedNumber value={registers.archives.journeys} duration={900} />, unit: "perjalanan",
@@ -121,17 +126,23 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
 
       <section className="beranda-panel beranda-entries" aria-labelledby="beranda-entries-title">
         <header className="beranda-panel-head">
-          <div><h2 id="beranda-entries-title">Ditambahkan hari ini</h2><p>Tanggal pencatatan dalam WIB · seluruh tahun anggaran</p></div>
+          <div>
+            <h2 id="beranda-entries-title">Pencatatan terakhir</h2>
+            <p>
+              {entries.day ? <><b>{entries.isToday ? "Hari ini" : entryDayText(entries.day)}</b> · </> : null}
+              {entries.day ? "tanggal pencatatan dalam WIB · seluruh tahun anggaran" : "Belum ada rekap yang dicatat"}
+            </p>
+          </div>
           <span>{entries.recaps + entries.honorariums} rekap</span>
         </header>
         <div className="beranda-entry-links">
-          <button type="button" onClick={() => onGo("archives", { year: "all", entry: "today" })}>
+          <button type="button" onClick={() => onGo("archives", { year: "all", entry: entries.filter })}>
             <span>Arsip perjalanan<strong>{entries.recaps} rekap <small>· {entries.journeys} perjalanan</small></strong></span>
             <span className="beranda-entry-total">{entries.recaps && entries.unknown === entries.recaps ? "Belum bernominal" : money(entries.total)}
               {entries.unknown > 0 && <small>{entries.unknown} rekap belum bernominal</small>}</span>
             <ArrowRight size={16} aria-hidden="true" />
           </button>
-          <button type="button" onClick={() => onGo("honorarium", { entry: "today" })}>
+          <button type="button" onClick={() => onGo("honorarium", { entry: entries.filter })}>
             <span>Honorarium<strong>{entries.honorariums} rekap</strong></span>
             <span className="beranda-entry-total">{money(entries.honorariumNet)}<small>Honor neto</small></span>
             <ArrowRight size={16} aria-hidden="true" />

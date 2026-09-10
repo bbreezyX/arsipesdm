@@ -73,7 +73,7 @@ import {
   type User,
   type Filters,
   defaultFilters,
-  entryFilterOptions,
+  entryFilterPhrase,
   matchesEntry,
   type EntryFilter,
   filterTrips,
@@ -955,7 +955,7 @@ function YearSummary({ year, groups, trips, total, unknown, entry, filtered }: {
     <section className="ledger-summary" aria-label={`Ringkasan ${scope}`}>
       <div>
         <span className="ledger-summary-label">{filtered ? "Realisasi biaya hasil filter" : "Realisasi biaya perjalanan"} · {scope}</span>
-        {entry !== "all" && <span className="entry-summary-note">Ditambahkan {entryFilterOptions.find(([key]) => key === entry)?.[1].toLowerCase()} · hanya rekap pada periode ini</span>}
+        {entry !== "all" && <span className="entry-summary-note">Ditambahkan {entryFilterPhrase(entry)} · hanya rekap pada periode ini</span>}
         {known ? (
           <strong className="ledger-figure"><small>Rp</small>{total.toLocaleString("id-ID")}</strong>
         ) : (

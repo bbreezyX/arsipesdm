@@ -177,7 +177,7 @@ test("relative time speaks Indonesian", () => {
   assert.equal(relativeTime("2026-07-04T09:00:00.000Z", now), "4 Jul 2026");
 });
 
-test("today's entries count what was recorded today in Jakarta time, with their totals", () => {
+test("the latest entries describe today when something was recorded today, in Jakarta time", () => {
   const trips = [
     trip("a", 1_500_000, { createdAt: "2026-09-08T23:30:00.000Z" }), // 09 Sep 06:30 WIB
     trip("b", null, { createdAt: "2026-09-09T02:00:00.000Z" }),
@@ -188,10 +188,38 @@ test("today's entries count what was recorded today in Jakarta time, with their 
     { ...honorarium("h1", 2026), createdAt: "2026-09-09T01:00:00.000Z" },
     { ...honorarium("h2", 2026), createdAt: "2026-09-01T01:00:00.000Z" },
   ];
-  const { today: entries } = berandaSummary({ trips, employees: [], honorariums, today });
+  const { latest: entries } = berandaSummary({ trips, employees: [], honorariums, today });
+  assert.equal(entries.day, today);
+  assert.equal(entries.isToday, true);
+  assert.equal(entries.filter, "today");
   assert.equal(entries.recaps, 2);
   assert.equal(entries.unknown, 1);
   assert.equal(entries.total, 1_500_000);
   assert.equal(entries.honorariums, 1);
   assert.equal(entries.honorariumNet, 11_400_000);
+});
+
+test("without entries today, the latest recording day across archives and honorariums is shown", () => {
+  const trips = [
+    trip("a", 1_500_000, { createdAt: "2026-09-01T02:00:00.000Z" }),
+    trip("b", 200_000, { createdAt: "2026-09-04T17:30:00.000Z" }), // 05 Sep 00:30 WIB
+    trip("c", 300_000, { createdAt: "2026-09-04T09:00:00.000Z" }),
+    trip("d", 900_000, { createdAt: "2026-09-08T05:00:00.000Z", deletedAt: "2026-09-08T06:00:00.000Z" }),
+  ];
+  const honorariums = [{ ...honorarium("h1", 2026), createdAt: "2026-09-05T01:00:00.000Z" }];
+  const { latest: entries } = berandaSummary({ trips, employees: [], honorariums, today });
+  assert.equal(entries.day, "2026-09-05");
+  assert.equal(entries.isToday, false);
+  assert.equal(entries.filter, "2026-09-05");
+  assert.equal(entries.recaps, 1);
+  assert.equal(entries.total, 200_000);
+  assert.equal(entries.honorariums, 1);
+});
+
+test("with nothing recorded, the latest entries have no day", () => {
+  const { latest: entries } = berandaSummary({ trips: [], employees: [], honorariums: [], today });
+  assert.equal(entries.day, null);
+  assert.equal(entries.filter, "today");
+  assert.equal(entries.recaps, 0);
+  assert.equal(entries.honorariums, 0);
 });

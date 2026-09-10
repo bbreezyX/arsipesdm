@@ -7,6 +7,8 @@ import {
   filterTrips,
   jakartaDay,
   matchesEntry,
+  entryFilterLabel,
+  entryFilterPhrase,
   parseEntryFilter,
   defaultFilters,
   paymentLabel,
@@ -195,6 +197,19 @@ test("entry windows handle missing timestamps, future dates and WIB midnight", (
   assert.equal(parseEntryFilter(["today"]), "all");
   assert.equal(parseEntryFilter("invalid"), "all");
   assert.equal(parseEntryFilter("today"), "today");
+});
+test("a specific Jakarta day is an entry filter too", () => {
+  assert.equal(parseEntryFilter("2026-09-09"), "2026-09-09");
+  assert.equal(parseEntryFilter("2026-9-9"), "all");
+  assert.equal(parseEntryFilter("2026-13-40"), "all");
+  assert.equal(matchesEntry("2026-09-08T23:30:00.000Z", "2026-09-09", "2026-09-10"), true);
+  assert.equal(matchesEntry("2026-09-09T17:00:00.000Z", "2026-09-09", "2026-09-10"), false);
+  assert.equal(matchesEntry("", "2026-09-09", "2026-09-10"), false);
+  assert.equal(entryFilterLabel("all"), "Semua waktu");
+  assert.equal(entryFilterLabel("today"), "Hari ini");
+  assert.equal(entryFilterLabel("2026-09-09"), "9 Sep 2026");
+  assert.equal(entryFilterPhrase("2026-09-09"), "tanggal 9 Sep 2026");
+  assert.equal(entryFilterPhrase("week"), "7 hari terakhir");
 });
 test("supporting documents are optional; completeness requires known costs including zero", () => {
   const docs = input.requiredDocs.map((type) => ({

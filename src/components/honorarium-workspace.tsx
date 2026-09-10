@@ -12,7 +12,7 @@ import {
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
 import { exportHonorariums } from "@/lib/honorarium-export";
-import { entryDateText, entryFilterOptions, matchesEntry, money, type EntryFilter } from "@/lib/model";
+import { entryDateText, entryFilterPhrase, matchesEntry, money, type EntryFilter } from "@/lib/model";
 import EntryPeriodFilter from "./entry-period-filter";
 import { api, Empty, ErrorMessage } from "./fields";
 import HonorariumForm from "./honorarium-form";
@@ -118,7 +118,7 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
     recipients: new Set(visible.map(recipientKey)).size, decrees: new Set(visible.map(skKey)).size,
   }), [visible, foot]);
   const kindLabel = category === "all" ? "semua jenis" : kinds.find(kind => kind.key === category)?.short ?? "";
-  const entryLabel = entryFilterOptions.find(([key]) => key === entry)?.[1].toLowerCase();
+  const entryLabel = entryFilterPhrase(entry);
   const scopeLabel = `${kindLabel}, ${year === "all" ? "seluruh tahun" : `tahun ${year}`}${entry !== "all" ? ` · ditambahkan ${entryLabel}` : ""}`;
   const filtered = query.trim() !== "" || sk !== "all" || entry !== "all";
   const taxShare = summary.gross ? Math.round(summary.tax / summary.gross * 1000) / 10 : 0;

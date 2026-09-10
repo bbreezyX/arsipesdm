@@ -1,6 +1,6 @@
 "use client";
 
-import { entryFilterOptions, parseEntryFilter, type EntryFilter } from "@/lib/model";
+import { entryFilterLabel, entryFilterOptions, isEntryDay, parseEntryFilter, type EntryFilter } from "@/lib/model";
 import { CustomSelect, SelectOption } from "./ui/select";
 
 export default function EntryPeriodFilter({ value, todayCount, onChange, onToday }: {
@@ -15,6 +15,7 @@ export default function EntryPeriodFilter({ value, todayCount, onChange, onToday
       <CustomSelect aria-label="Waktu ditambahkan" className="ledger-select" value={value}
         onValueChange={next => onChange(parseEntryFilter(next))}>
         {entryFilterOptions.map(([key, label]) => <SelectOption key={key} value={key}>{label}</SelectOption>)}
+        {isEntryDay(value) && <SelectOption value={value}>Tanggal {entryFilterLabel(value)}</SelectOption>}
       </CustomSelect>
       <button type="button" className="entry-today" onClick={onToday}
         title="Tampilkan seluruh rekap yang ditambahkan hari ini, dari semua tahun">

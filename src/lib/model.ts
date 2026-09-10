@@ -319,9 +319,24 @@ export const entryFilterOptions = [
   ["week", "7 hari terakhir"],
   ["month", "30 hari terakhir"],
 ] as const;
-export type EntryFilter = (typeof entryFilterOptions)[number][0];
+/** A single Jakarta calendar day, YYYY-MM-DD: the Beranda "Pencatatan terakhir" link uses it. */
+export type EntryDay = `${number}-${number}-${number}`;
+export type EntryFilter = (typeof entryFilterOptions)[number][0] | EntryDay;
+const entryDayPattern = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+export function isEntryDay(value: unknown): value is EntryDay {
+  return typeof value === "string" && entryDayPattern.test(value);
+}
 export function parseEntryFilter(value: unknown): EntryFilter {
+  if (isEntryDay(value)) return value;
   return entryFilterOptions.find(([key]) => key === value)?.[0] ?? "all";
+}
+export function entryFilterLabel(entry: EntryFilter) {
+  if (isEntryDay(entry)) return dateText(entry);
+  return entryFilterOptions.find(([key]) => key === entry)?.[1] ?? "Semua waktu";
+}
+/** The label as it reads after "ditambahkan": "hari ini", "tanggal 9 Sep 2026". */
+export function entryFilterPhrase(entry: EntryFilter) {
+  return isEntryDay(entry) ? `tanggal ${entryFilterLabel(entry)}` : entryFilterLabel(entry).toLowerCase();
 }
 const jakartaDayFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Jakarta",
@@ -334,12 +349,13 @@ export function jakartaDay(at: string | Date = new Date()) {
   const date = typeof at === "string" ? new Date(at) : at;
   return Number.isNaN(date.getTime()) ? "" : jakartaDayFormat.format(date);
 }
-/** Entry-date windows count whole Jakarta days back from today: 1, 7 or 30 days. */
+/** Entry-date windows count whole Jakarta days back from today (1, 7 or 30 days) or name one day. */
 export function matchesEntry(createdAt: string, entry: string, today = jakartaDay()) {
   const period = parseEntryFilter(entry);
   if (period === "all") return true;
   const day = jakartaDay(createdAt);
   if (!day) return false;
+  if (isEntryDay(period)) return day === period;
   const age = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000);
   const window = period === "today" ? 1 : period === "week" ? 7 : 30;
   return age >= 0 && age < window;
