@@ -1,6 +1,7 @@
 import { money, dateText, type Trip } from "@/lib/model";
 import { lampiranReview } from "@/lib/lampiran6-schema";
 import { lodgingAllowanceDescription } from "@/lib/lodging-allowance";
+import { flightHasDetail, flightLegs, flightRoute } from "@/lib/flight-legs";
 
 const date = (value: string) => (value ? dateText(value) : "Belum dicatat");
 const hasValues = (value: object) =>
@@ -106,29 +107,32 @@ export default function Lampiran6Summary({ trip }: { trip: Trip }) {
           />
         </section>
       ))}
-      {(
-        [
-          ["Pergi", d.outbound],
-          ["Pulang", d.inbound],
-        ] as const
-      )
-        .filter(([, flight]) => hasValues(flight))
+      {([["Pergi", d.outbound], ["Pulang", d.inbound]] as const)
+        .filter(([, flight]) => flightHasDetail(flight))
         .map(([label, flight]) => (
           <section key={label}>
             <h3 className="subheading">Penerbangan {label.toLowerCase()}</h3>
             <Facts
               rows={[
-                ["Tanggal", date(flight.date)],
-                ["Maskapai", flight.airline],
-                ["Kota asal", flight.origin],
-                ["Kota tujuan", flight.destination],
+                ["Rute", flightRoute(flight)],
                 ["Tempat pemesanan", flight.application],
                 ["Order ID / PO", flight.orderId],
-                ["Kode booking", flight.bookingCode],
-                ["Nomor tiket", flight.ticketNo],
                 ["Harga tiket", money(flight.price)],
               ]}
             />
+            {flightLegs(flight).map((leg, i) => (
+              <div key={i} className="lampiran-flight-leg">
+                <h4>{i === 0 ? "Penerbangan 1" : `Transit ${i}`}{leg.origin || leg.destination ? ` · ${leg.origin || "…"} → ${leg.destination || "…"}` : ""}</h4>
+                <Facts
+                  rows={[
+                    ["Tanggal", date(leg.date)],
+                    ["Maskapai", leg.airline],
+                    ["Kode booking", leg.bookingCode],
+                    ["Nomor tiket", leg.ticketNo],
+                  ]}
+                />
+              </div>
+            ))}
           </section>
         ))}
       {notes.length > 0 && (

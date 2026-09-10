@@ -299,3 +299,64 @@ test("vehicle and fuel fields accept legacy transport records and validate price
   assert.equal(data.groundTransports[0].fuelType, "BBM kustom");
   assert.equal(lampiranCosts(data, "person").reduce((sum, item) => sum + item.amount, 0), 100000);
 });
+
+test("legacy flight records parse with no transits and empty tickets are never reviewed as filled", () => {
+  const data = lampiran6Schema.parse({ outbound: { origin: "Jambi", destination: "Jakarta", price: 1000000 } });
+  assert.deepEqual(data.outbound.transits, []);
+  assert.deepEqual(data.inbound.transits, []);
+  // No ticket detail at all: the review must not ask for air cost or ticket prices.
+  const blank = lampiran6Schema.parse({});
+  assert.equal(lampiranReview(blank, "2025-03-12", "2025-03-14").some((note) => /tiket/i.test(note)), false);
+  // A transit-only detail still counts as ticket detail.
+  const transitOnly = lampiran6Schema.parse({ outbound: { transits: [{ origin: "Jakarta", destination: "Makassar" }] } });
+  assert(lampiranReview(transitOnly, "2025-03-12", "2025-03-14").some((note) => note.includes("biaya transport udara")));
+  assert.equal(lampiran6Schema.safeParse({ outbound: { transits: Array.from({ length: 6 }, () => ({})) } }).success, false);
+});
+
+test("transit legs survive the XLSX round trip as continuation rows", async () => {
+  const rows = convertLampiran6(sourceSheet(), "test.xlsx", "Luar Daerah (Dalam Provinsi)");
+  const trips: Trip[] = rows.map((row, i) => ({
+    ...row.trip!, id: `test-${i}`, code: `PD/2025/${i}`, version: 1, createdAt: "2026-01-01", updatedAt: "2026-01-01",
+    history: [], documents: [], source: row.source, deletedAt: null,
+  }));
+  const legTemplate = { date: "", airline: "", origin: "", destination: "", bookingCode: "", ticketNo: "" };
+  trips[0].lampiran6!.airCost = 3500000;
+  trips[0].lampiran6!.outbound = {
+    application: "Traveloka", orderId: "ORD-1", date: "2025-03-12", airline: "Garuda", origin: "Jambi", destination: "Jakarta",
+    bookingCode: "ABC123", ticketNo: "126-1", price: 2000000,
+    transits: [
+      { ...legTemplate, date: "2025-03-12", airline: "Lion", origin: "Jakarta", destination: "Makassar", bookingCode: "DEF456", ticketNo: "990-2" },
+      { ...legTemplate, date: "2025-03-13", airline: "Wings", origin: "Makassar", destination: "Kendari", bookingCode: "GHI789", ticketNo: "990-3" },
+    ],
+  };
+  trips[0].lampiran6!.inbound = {
+    application: "Traveloka", orderId: "ORD-2", date: "2025-03-14", airline: "Wings", origin: "Kendari", destination: "Makassar",
+    bookingCode: "JKL", ticketNo: "990-4", price: 1500000,
+    transits: [{ ...legTemplate, date: "2025-03-14", airline: "Garuda", origin: "Makassar", destination: "Jambi", bookingCode: "MNO", ticketNo: "126-5" }],
+  };
+  trips[0].costs = lampiranCosts(trips[0].lampiran6!, trips[0].participants[0].id);
+  const book = await createTripWorkbook(trips);
+  const reopened = XLSX.read(Buffer.from(await book.xlsx.writeBuffer()), { type: "buffer", cellDates: true });
+  const again = convertLampiran6(reopened.Sheets["Luar Daerah (Dalam Provinsi)"], "export.xlsx", "Luar Daerah (Dalam Provinsi)");
+  assert.deepEqual(again.map((row) => row.errors), [[], []]);
+  assert.deepEqual(again[0].trip?.lampiran6?.outbound, trips[0].lampiran6?.outbound);
+  assert.deepEqual(again[0].trip?.lampiran6?.inbound, trips[0].lampiran6?.inbound);
+  assert.deepEqual(again.map((row) => totalCost(row.trip!)), trips.map(totalCost));
+  assert.equal(again[0].warnings?.some((note) => /tiket|penerbangan/i.test(note)), false);
+});
+
+test("a source continuation row with a flight becomes a transit leg instead of an import error", () => {
+  const sheet = sourceSheet();
+  const set = (address: string, value: string | number) => { sheet[address] = { t: typeof value === "number" ? "n" : "s", v: value }; };
+  set("AT10", "Jambi"); set("AU10", "Jakarta"); set("AS10", "Garuda"); set("AR10", "12/03/2025"); set("AX10", 1500000); set("Y10", 1500000);
+  set("AT11", "Jakarta"); set("AU11", "Makassar"); set("AS11", "Lion"); set("AR11", "12/03/2025"); set("AW11", "990-2"); set("AX11", 500000);
+  const row = convertLampiran6(sheet, "test.xlsx", "Sheet").find((item) => item.row === 10)!;
+  assert.deepEqual(row.errors, []);
+  const outbound = row.trip!.lampiran6!.outbound;
+  assert.equal(outbound.origin, "Jambi");
+  assert.equal(outbound.transits.length, 1);
+  assert.equal(outbound.transits[0].destination, "Makassar");
+  assert.equal(outbound.transits[0].ticketNo, "990-2");
+  assert.equal(outbound.price, 1500000);
+  assert(row.warnings?.some((note) => note.includes("AX11")));
+});

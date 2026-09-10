@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { destinationProvinces } from "./travel-provinces";
 import { calculateLodgingAllowance, lodgingAllowanceDescription } from "./lodging-allowance";
+import { flightHasDetail } from "./flight-legs";
 
 const text = z.string().trim().max(1000).default("");
 const amount = z.number().int().min(0).max(1e12).nullable().default(null);
@@ -38,16 +39,20 @@ export const groundTransportSchema = z.object({
   fuelLiters: z.number().min(0).max(1e6).nullable().default(null),
   total: amount,
 });
-export const flightSchema = z.object({
-  application: text,
-  orderId: text,
+/** One flight of an itinerary. A transit ticket is several legs under one booking and one price. */
+export const flightLegSchema = z.object({
   date: optionalDate,
   airline: text,
   origin: text,
   destination: text,
   bookingCode: text,
   ticketNo: text,
+});
+export const flightSchema = flightLegSchema.extend({
+  application: text,
+  orderId: text,
   price: amount,
+  transits: z.array(flightLegSchema).max(5).default([]),
 });
 export const lampiran6Schema = z.object({
   format: z.enum(["dalam-provinsi", "luar-provinsi"]).default("dalam-provinsi"),
@@ -104,6 +109,7 @@ export type Lampiran6 = z.infer<typeof lampiran6Schema>;
 export type Lodging = z.infer<typeof lodgingSchema>;
 export type GroundTransport = z.infer<typeof groundTransportSchema>;
 export type Flight = z.infer<typeof flightSchema>;
+export type FlightLeg = z.infer<typeof flightLegSchema>;
 
 export const lampiranCostFields = [
   ["dailyTotal", "Uang harian", "Uang harian"],
@@ -189,8 +195,7 @@ export function lampiranReview(
         `Total ${label} berbeda dari tarif per hari × jumlah hari pada rekap.`,
       );
   }
-  const tickets = [data.outbound, data.inbound].filter(ticket =>
-    Object.values(ticket).some(value => typeof value === "string" ? Boolean(value.trim()) : value !== null));
+  const tickets = [data.outbound, data.inbound].filter(flightHasDetail);
   if (tickets.length) {
     if (data.airCost === null) issues.push("Rincian tiket sudah diisi, tetapi biaya transport udara belum masuk total pegawai.");
     if (tickets.some(ticket => ticket.price === null)) issues.push("Harga pada rincian tiket belum lengkap. Periksa bukti penerbangan.");

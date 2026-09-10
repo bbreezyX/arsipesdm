@@ -55,7 +55,6 @@ import {
   type Lampiran6,
   type Lodging,
   type GroundTransport,
-  type Flight,
 } from "@/lib/lampiran6-schema";
 
 const steps = [
@@ -855,9 +854,10 @@ export default function Lampiran6Form({
                     type="button"
                     variant="outline"
                     disabled={busy}
+                    aria-label="Sebelumnya"
                     onClick={() => goStep(previous)}
                   >
-                    <ArrowLeft /> Sebelumnya
+                    <ArrowLeft /> <span className="form-action-label">Sebelumnya</span>
                   </Button>
                 )}
                 {next && (
@@ -865,9 +865,10 @@ export default function Lampiran6Form({
                     type="button"
                     variant="outline"
                     disabled={busy}
+                    aria-label="Lanjut"
                     onClick={() => goStep(next)}
                   >
-                    Lanjut <ArrowRight />
+                    <span className="form-action-label">Lanjut</span> <ArrowRight />
                   </Button>
                 )}
                 <Button
@@ -1071,53 +1072,6 @@ export function GroundFields({
         hint="BBM: harga per liter × jumlah liter, dibulatkan ke rupiah. Transport tanpa BBM dapat diisi sesuai bukti."
         value={value.total}
         onChange={(v) => onChange({ total: v })}
-      />
-    </div>
-  );
-}
-export function FlightFields({
-  value,
-  onChange,
-  direction,
-}: {
-  value: Flight;
-  onChange: (value: Partial<Flight>) => void;
-  direction: string;
-}) {
-  return (
-    <div className="form-grid">
-      {(
-        [
-          ["origin", "Kota asal"],
-          ["destination", "Kota tujuan"],
-          ["airline", "Maskapai"],
-          ["date", "Tanggal penerbangan"],
-          ["bookingCode", "Kode booking"],
-          ["ticketNo", "Nomor tiket"],
-          ["application", "Aplikasi / tempat pemesanan"],
-          ["orderId", "Order ID / PO"],
-        ] as const
-      ).map(([key, label]) => (
-        <Field key={key} label={`${label} ${direction}`}>
-          {key === "date" ? (
-            <ArchiveDateInput
-              value={value.date}
-              onChange={(v) => onChange({ date: v })}
-            />
-          ) : (
-            <input
-              value={value[key]}
-              maxLength={1000}
-              onChange={(e) => onChange({ [key]: e.target.value })}
-            />
-          )}
-        </Field>
-      ))}
-      <NumberField
-        className="span-2"
-        label={`Harga tiket ${direction}`}
-        value={value.price}
-        onChange={(v) => onChange({ price: v })}
       />
     </div>
   );

@@ -8,9 +8,11 @@ export type RecapTone = "empty" | "filled" | "details" | "different";
 export type RecapSectionState = { tone: RecapTone; label: string; description: string; count: number };
 
 /** A blank evidence row is not content; an explicitly entered zero is. */
-export function hasRecapDetail(item: Record<string, unknown>) {
+export function hasRecapDetail(item: Record<string, unknown>): boolean {
   return Object.entries(item).some(([key, value]) => key !== "category" &&
-    (typeof value === "string" ? value.trim().length > 0 : typeof value === "number" && Number.isFinite(value)));
+    (typeof value === "string" ? value.trim().length > 0
+      : Array.isArray(value) ? value.some(entry => hasRecapDetail(entry as Record<string, unknown>))
+      : typeof value === "number" && Number.isFinite(value)));
 }
 
 export function evidenceVisualState(item: Record<string, unknown>, amount: number | null): RecapSectionState {

@@ -2,11 +2,14 @@ import type { CellObject, WorkSheet } from "xlsx";
 import { parseDate, parseMoney, type ImportRow } from "./import";
 import { tripSchema, type TripInput } from "./model";
 import {
+  flightSchema,
   lampiran6Schema,
   lampiranCosts,
   lampiranReview,
+  type FlightLeg,
   type Lampiran6,
 } from "./lampiran6-schema";
+import { withFlightLegs } from "./flight-legs";
 
 const normalized = (v: unknown) =>
   String(v ?? "")
@@ -272,11 +275,12 @@ export function convertLampiran6(
         receiptTotal: money("AA"),
         sourceRows: [group.row, ...group.following],
       });
-      const hasColumnData = (columns: string[], row: number) =>
+      const hasColumnData = (columns: readonly string[], row: number) =>
         columns.some((col) => {
           const value = read(col, row);
           return value !== undefined && value !== null && value !== "";
         });
+      const transits: Record<"outbound" | "inbound", FlightLeg[]> = { outbound: [], inbound: [] };
       for (const row of [group.row, ...group.following]) {
         if (
           hasColumnData(
@@ -324,58 +328,50 @@ export function convertLampiran6(
                 amount,
               });
           }
-          if (
-            hasColumnData(
-              [
-                "AP",
-                "AQ",
-                "AR",
-                "AS",
-                "AT",
-                "AU",
-                "AV",
-                "AW",
-                "AX",
-                "AY",
-                "AZ",
-                "BA",
-                "BB",
-                "BC",
-                "BD",
-                "BE",
-                "BF",
-                "BG",
-              ],
-              row,
-            )
-          )
-            errors.push(
-              `Baris ${row}: terdapat penerbangan tambahan. Pisahkan atau periksa manual sebelum impor.`,
-            );
+          // Extra flights on continuation rows are transit legs of the same ticket. Their booking
+          // references and price are not summed, so any value there is surfaced for review.
+          for (const [key, columns] of [
+            ["outbound", ["AP", "AQ", "AR", "AS", "AT", "AU", "AV", "AW", "AX"]],
+            ["inbound", ["AY", "AZ", "BA", "BB", "BC", "BD", "BE", "BF", "BG"]],
+          ] as const) {
+            if (!hasColumnData(columns, row)) continue;
+            const [application, orderId, dateCol, airline, origin, destination, bookingCode, ticketNo, price] = columns;
+            transits[key].push({
+              date: date(dateCol, row),
+              airline: text(airline, row),
+              origin: text(origin, row),
+              destination: text(destination, row),
+              bookingCode: text(bookingCode, row),
+              ticketNo: text(ticketNo, row),
+            });
+            for (const col of [application, orderId])
+              if (text(col, row))
+                warnings.add(`${col}${row}: pemesanan pada baris lanjutan dicatat sebagai transit; aplikasi dan order ID mengikuti tiket utama.`);
+            if (money(price, row) !== null)
+              warnings.add(`${price}${row}: harga pada baris lanjutan tidak dijumlahkan ke harga tiket. Cocokkan biaya transport udara dengan bukti penerbangan.`);
+          }
         }
       }
-      detail.outbound = {
-        application: text("AP"),
-        orderId: text("AQ"),
-        date: date("AR"),
-        airline: text("AS"),
-        origin: text("AT"),
-        destination: text("AU"),
-        bookingCode: text("AV"),
-        ticketNo: text("AW"),
-        price: money("AX"),
-      };
-      detail.inbound = {
-        application: text("AY"),
-        orderId: text("AZ"),
-        date: date("BA"),
-        airline: text("BB"),
-        origin: text("BC"),
-        destination: text("BD"),
-        bookingCode: text("BE"),
-        ticketNo: text("BF"),
-        price: money("BG"),
-      };
+      for (const [key, [application, orderId, dateCol, airline, origin, destination, bookingCode, ticketNo, price]] of [
+        ["outbound", ["AP", "AQ", "AR", "AS", "AT", "AU", "AV", "AW", "AX"]],
+        ["inbound", ["AY", "AZ", "BA", "BB", "BC", "BD", "BE", "BF", "BG"]],
+      ] as const) {
+        const first = {
+          date: date(dateCol),
+          airline: text(airline),
+          origin: text(origin),
+          destination: text(destination),
+          bookingCode: text(bookingCode),
+          ticketNo: text(ticketNo),
+        };
+        const legs = [...(hasColumnData([dateCol, airline, origin, destination, bookingCode, ticketNo], group.row) ? [first] : []), ...transits[key]];
+        detail[key] = withFlightLegs(
+          { ...flightSchema.parse({}), application: text(application), orderId: text(orderId), price: money(price) },
+          legs.slice(0, 6),
+        );
+        if (legs.length > 6)
+          errors.push(`Baris ${group.row}: lebih dari 6 penerbangan pada satu arah. Pisahkan atau periksa manual sebelum impor.`);
+      }
       if (typeof read("C") === "number")
         warnings.add(
           `C${group.row}: NIP disimpan sebagai angka di Excel; cocokkan seluruh digit dengan identitas asli.`,

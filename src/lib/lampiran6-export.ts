@@ -4,6 +4,7 @@ import type {
   Lodging,
   GroundTransport,
   Flight,
+  FlightLeg,
 } from "./lampiran6-schema";
 type SheetJS = typeof import("xlsx");
 const empty = () => Array.from({ length: 70 }, () => null as unknown);
@@ -34,19 +35,19 @@ function placeGround(row: unknown[], transport: GroundTransport) {
   row[62] = transport.fuelPricePerLiter ?? null;
   row[64] = transport.fuelLiters ?? null;
 }
-function placeFlight(row: unknown[], flight: Flight, offset: number) {
+function placeFlight(row: unknown[], flight: Partial<Flight> & FlightLeg, offset: number) {
   row.splice(
     offset,
     9,
-    flight.application,
-    flight.orderId,
+    flight.application ?? "",
+    flight.orderId ?? "",
     date(flight.date),
     flight.airline,
     flight.origin,
     flight.destination,
     flight.bookingCode,
     flight.ticketNo,
-    flight.price,
+    flight.price ?? null,
   );
 }
 
@@ -253,6 +254,14 @@ export function createLampiran6Sheet(trips: Trip[], XLSX: SheetJS, scope?: Lampi
     for (const transport of ground.slice(1)) {
       const extra = empty();
       placeGround(extra, transport);
+      rows.push(extra);
+    }
+    // Transit legs follow the source convention: one continuation row per extra flight, in the same columns.
+    const transitRows = Math.max(d.outbound.transits.length, d.inbound.transits.length);
+    for (let i = 0; i < transitRows; i++) {
+      const extra = empty();
+      if (d.outbound.transits[i]) placeFlight(extra, d.outbound.transits[i], 41);
+      if (d.inbound.transits[i]) placeFlight(extra, d.inbound.transits[i], 50);
       rows.push(extra);
     }
   }

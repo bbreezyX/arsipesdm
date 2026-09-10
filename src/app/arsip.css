@@ -2110,34 +2110,6 @@
 .form-dialog .evidence-block > .form-grid {
   padding: 18px;
 }
-/* Folded flight tickets follow the same ledger card as the other evidence blocks. */
-.form-dialog .flight-ticket,
-.lampiran-dialog .flight-ticket {
-  margin-top: 16px;
-  border: 1px solid var(--ledger-line);
-  border-radius: 12px;
-  background: #fff;
-  overflow: hidden;
-}
-.form-dialog .flight-ticket > summary,
-.lampiran-dialog .flight-ticket > summary {
-  padding: 12px 14px 12px 18px;
-  background: var(--ledger-tint);
-  color: var(--ledger-ink);
-}
-.form-dialog .flight-ticket-body,
-.lampiran-dialog .flight-ticket-body {
-  padding: 18px;
-  border-top: 1px solid var(--ledger-line-soft);
-}
-.form-dialog .flight-ticket[data-recap-tone="filled"] > summary,
-.lampiran-dialog .flight-ticket[data-recap-tone="filled"] > summary {
-  background: var(--ledger-success-soft);
-}
-.form-dialog .flight-ticket[data-recap-tone="details"] > summary,
-.lampiran-dialog .flight-ticket[data-recap-tone="details"] > summary {
-  background: var(--ledger-action-soft);
-}
 .recap-evidence-status[data-recap-tone="details"] .evidence-block,
 .recap-evidence-status[data-recap-tone="filled"] .evidence-block {
   background: var(--ledger-surface);
@@ -2151,6 +2123,205 @@
 }
 .recap-cost-section {
   border-bottom: 0;
+}
+/* Penerbangan: dua arah sebagai tab buku dengan penanda emas, penerbangan berurutan
+   sebagai daftar rute bernomor, dan satu blok pemesanan per arah. */
+.flight-directions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.flight-direction {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  background: var(--ledger-tint);
+  color: var(--ledger-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.flight-direction::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: transparent;
+}
+.flight-direction:hover {
+  border-color: #c9d3de;
+  color: var(--ledger-ink);
+}
+.flight-direction[aria-selected="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  box-shadow: 0 1px 2px rgba(18, 39, 68, 0.06);
+}
+.flight-direction[aria-selected="true"]::before {
+  background: var(--ledger-gold);
+}
+.flight-direction:focus-visible {
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 2px;
+}
+.flight-direction-label {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.flight-direction-route {
+  font-size: var(--type-data);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.flight-direction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.flight-pane {
+  margin-top: 12px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  background: var(--ledger-surface);
+  overflow: hidden;
+}
+.flight-legs {
+  padding: 4px 18px 18px;
+}
+.flight-leg {
+  position: relative;
+  padding: 14px 0 0 36px;
+}
+.flight-leg::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 42px;
+  bottom: -14px;
+  border-left: 2px dashed var(--ledger-line);
+}
+/* The route line only joins a flight to the one after it. */
+.flight-leg:not(:has(+ .flight-leg))::before {
+  display: none;
+}
+.flight-leg-no {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ledger-navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.flight-leg-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  margin-bottom: 10px;
+}
+.flight-leg-title {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+.flight-leg-title strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.flight-leg-title span {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  overflow-wrap: anywhere;
+}
+.flight-pane .form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.flight-leg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-left: 36px;
+}
+.flight-booking {
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--ledger-line-soft);
+  background: var(--ledger-tint);
+}
+.flight-booking > h5 {
+  margin: 0 0 12px;
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.flight-booking .recap-evidence-actions {
+  margin-top: 12px;
+}
+.lampiran-flight-leg {
+  margin-top: 10px;
+}
+.lampiran-flight-leg > h4 {
+  margin: 0 0 4px;
+  font-size: var(--type-meta);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+@media (max-width: 900px) {
+  .flight-pane .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .flight-directions {
+    gap: 8px;
+  }
+  .flight-direction {
+    padding: 10px 12px 10px 14px;
+  }
+  .flight-legs {
+    padding: 2px 14px 14px;
+  }
+  .flight-leg {
+    padding-left: 32px;
+  }
+  .flight-leg-actions {
+    padding-left: 0;
+  }
+  .flight-booking {
+    padding: 14px;
+  }
+  .flight-pane .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .cost-detail-heading h4,
 .cost-amount-heading h4,
@@ -3125,5 +3296,64 @@
   }
   .ledger-mobile-all {
     padding: 10px 16px;
+  }
+}
+
+/* Kaki dialog rekap di ponsel: satu baris ringkas. Nomor bagian di kiri, panah
+   langkah hanya ikon, tombol simpan selebar isinya. Batal disembunyikan karena
+   tombol tutup di kepala dialog melakukan hal yang sama. */
+@media (max-width: 700px) {
+  .lampiran-dialog .form-footer {
+    padding: 0;
+  }
+  .lampiran-dialog .form-footer > .error-message {
+    margin: 10px var(--form-inset) 0;
+  }
+  .lampiran-dialog .footer-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px var(--form-inset);
+  }
+  .lampiran-dialog .footer-actions > .form-step-meta {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+  }
+  .lampiran-dialog .footer-actions > .form-action-buttons {
+    display: flex;
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0 0 0 auto;
+    gap: 6px;
+  }
+  .lampiran-dialog .form-action-buttons [data-slot="button"] {
+    height: 38px;
+    min-height: 38px;
+    padding-inline: 14px;
+    border-radius: 9px;
+  }
+  .lampiran-dialog .form-action-buttons [data-variant="ghost"] {
+    display: none;
+  }
+  .lampiran-dialog .form-action-buttons [data-variant="outline"] {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+  .lampiran-dialog .form-action-buttons [data-variant="outline"] svg {
+    display: inline-block;
+    width: 17px;
+    height: 17px;
+  }
+  .lampiran-dialog .form-action-buttons .form-action-label {
+    display: none;
+  }
+  .lampiran-dialog .save-archive-button {
+    grid-column: auto;
+    box-shadow: 0 1px 2px rgba(12, 26, 47, 0.24);
   }
 }

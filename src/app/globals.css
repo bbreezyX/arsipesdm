@@ -3929,55 +3929,6 @@ table td {
   font-weight: 600;
   color: #456078;
 }
-/* Outbound and return tickets stay folded until the operator opens them. */
-.flight-ticket {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  margin-top: 12px;
-}
-.flight-ticket > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: #456078;
-  cursor: pointer;
-  list-style: none;
-}
-.flight-ticket > summary::-webkit-details-marker {
-  display: none;
-}
-.flight-ticket > summary::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(-45deg);
-  transition: transform 0.15s;
-  flex-shrink: 0;
-}
-.flight-ticket[open] > summary::before {
-  transform: rotate(45deg);
-}
-.flight-ticket > summary > span:first-of-type {
-  margin-right: auto;
-}
-.flight-ticket-body {
-  padding: 4px 14px 14px;
-  border-top: 1px solid var(--line);
-}
-.flight-ticket[data-recap-tone="details"] {
-  border-color: #d7e4ee;
-  background: #f8fbfd;
-}
-.flight-ticket[data-recap-tone="filled"] {
-  border-color: #d5e5da;
-  background: #f8fcf9;
-}
 .additional-costs {
   margin: 22px 0 14px;
 }
