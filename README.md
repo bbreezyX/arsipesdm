@@ -218,11 +218,11 @@ docs/                     # Panduan operasional dan catatan desain
 <summary><b>Ringkasan API</b></summary>
 <br>
 
-Semua endpoint memerlukan sesi login dan bekerja di dalam ruang kerja pengguna.
+Semua endpoint memerlukan sesi login dan bekerja di dalam ruang kerja pengguna. Sesi berakhir setelah 30 menit tanpa aktivitas atau 8 jam sejak masuk; browser menampilkan peringatan 2 menit sebelumnya.
 
 | Endpoint | Metode | Keterangan |
 |---|---|---|
-| `/api/session` | `POST` `DELETE` | Masuk dan keluar. |
+| `/api/session` | `POST` `DELETE` `GET` `PATCH` | Masuk, keluar, status sisa waktu sesi (tanpa memperpanjang), dan perpanjangan batas tidak aktif. |
 | `/api/archives` | `GET` `POST` | Daftar dan buat arsip. |
 | `/api/archives/:id` | `GET` `PATCH` `DELETE` | Detail, koreksi dengan alasan, hapus dengan pemeriksaan versi. |
 | `/api/archives/batch` | `POST` | Simpan beberapa pegawai dalam satu transaksi. |

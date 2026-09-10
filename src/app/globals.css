@@ -1510,6 +1510,27 @@ table td {
   margin-left: 8px;
   color: var(--muted);
 }
+/* Layar penutup saat sesi habis; menutupi data sampai halaman login dimuat ulang. */
+.session-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--background, #fff);
+  color: #49637c;
+  font-size: var(--type-meta);
+}
+.session-lock p {
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.7;
+}
 .detail-dialog[data-slot="dialog-content"] {
   max-width: 820px;
   width: calc(100% - 32px);
@@ -1549,11 +1570,16 @@ table td {
   padding: 0 2px;
   box-shadow: none;
   position: relative;
+  /* Bingkai tetap 0 di semua sisi dan garis bawah selalu ada (transparan saat
+     tidak aktif), sehingga pergantian tab hanya menganimasikan warna. Kalau
+     lebar bingkai ikut berubah, bingkai gelap 1px berkedip sesaat saat klik. */
+  border: 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 .detail-tabs [data-state="active"] {
   color: #385e7e;
-  border: 0;
-  border-bottom: 2px solid #3c6a8e;
+  border-bottom-color: #3c6a8e;
   background: transparent;
   box-shadow: none !important;
 }
@@ -2686,6 +2712,17 @@ table td {
   font-size: var(--type-meta);
   line-height: 1.7;
   color: var(--muted);
+}
+/* Alasan pengguna kembali ke halaman login, misalnya sesi habis. */
+.auth-form-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d3dfe9;
+  border-radius: 6px;
+  background: #f4f8fb;
+  font-size: var(--type-meta);
+  line-height: 1.7;
+  color: #49637c;
 }
 .auth-foot {
   display: flex;
@@ -4606,7 +4643,9 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .recap-entry-mode label[data-selected="true"] { background: #fff; border-color: #d8e1e9; color: #254b67; font-weight: 600; }
 .lampiran-dialog .recap-entry-mode input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; padding: 0; margin: 0; border: 0; pointer-events: none; }
 .batch-recap-dialog input[type="checkbox"] { width: 15px; height: 15px; min-height: 0; accent-color: #315d7c; flex-shrink: 0; }
-.recap-entry-mode label:focus-within, .batch-person-option:focus-within { outline: 2px solid #658ca9; outline-offset: 2px; }
+/* Outline pada label hanya untuk kontrol yang inputnya disembunyikan (radio mode isian).
+   Label dengan kotak centang yang terlihat tidak diberi outline agar tidak ada dua penanda fokus. */
+.recap-entry-mode label:focus-within { outline: 2px solid #658ca9; outline-offset: 2px; }
 .batch-mode-fieldset, .batch-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
 .batch-recap-dialog.batch-step-1[data-slot="dialog-content"] { max-width: 1280px; }
 .batch-recap-dialog.batch-step-2[data-slot="dialog-content"] { max-width: 940px; }
@@ -4804,7 +4843,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .additional-entry-status { grid-column: 1 / -1; }
 .journey-entry-section .recap-field-entered input, .journey-entry-section .recap-field-entered textarea, .journey-budget-fields .recap-field-entered input { background: #f6fafd; border-color: #cbdfea; }
 .journey-section-nav button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-.journey-section-nav button[data-filled="true"] { background: #eaf2f8; border-color: #cbdfea; color: #376784; }
 .journey-person-option[data-recap-tone="details"]:has(input:checked) { background: #f0f6fa; border-color: #cbdfea; }
 .journey-person-option[data-recap-tone="different"]:has(input:checked) { background: #fffbf2; border-color: #e8d5b4; }
 .journey-person-option:not(:has(input:checked)) .recap-row-flags { opacity: .65; }
@@ -4884,7 +4922,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .journey-person-option strong { font-size: var(--type-data); font-weight: 600; color: #2d4b64; line-height: 1.6; }
 .journey-person-option small { font-size: var(--type-meta); color: var(--muted); line-height: 1.7; }
 .journey-person-option em { font-size: var(--type-micro); font-style: normal; color: var(--primary); }
-.journey-person-option:focus-within { outline: 2px solid #658ca9; outline-offset: 0; }
 .journey-selection-summary { padding: 12px 0; margin-top: 10px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
 .journey-selection-summary strong { color: #385a74; font-size: var(--type-meta); font-weight: 600; }
 .journey-selection-summary > span { font-size: var(--type-micro); color: var(--muted); line-height: 1.7; }

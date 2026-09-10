@@ -7,6 +7,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-navigation";
+import type { SessionInfo } from "@/lib/session-policy";
+import { takeSessionNotice } from "@/lib/session-client";
+import SessionGuard from "./session-guard";
 export type { Section } from "@/lib/workspace-navigation";
 import {
   Archive,
@@ -45,6 +48,7 @@ import {
   Pencil,
   Eye,
   EyeOff,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -75,6 +79,7 @@ import {
 } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import ArchiveGroups from "./archive-groups";
+import Beranda from "./beranda";
 const Pegawai = dynamic(() => import("./pegawai"));
 import type { Honorarium } from "@/lib/honorarium";
 const HonorariumWorkspace = dynamic(() => import("./honorarium-workspace"));
@@ -87,6 +92,7 @@ const TripDetail = dynamic(() => import("./trip-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
 
 const sectionNames: Record<Section, string> = {
+  home: "Beranda",
   archives: "Arsip perjalanan",
   honorarium: "Honorarium",
   taskLetters: "Surat Tugas",
@@ -119,6 +125,8 @@ export default function Workspace({
   demo,
   initialSection = "archives",
   initialHonorariums = [],
+  initialNow = new Date().toISOString(),
+  session = null,
 }: {
   initialTrips: Trip[];
   initialEmployees: Employee[];
@@ -127,6 +135,8 @@ export default function Workspace({
   demo: boolean;
   initialSection?: Section;
   initialHonorariums?: Honorarium[];
+  initialNow?: string;
+  session?: SessionInfo | null;
 }) {
   const [employees, setEmployees] = useState(initialEmployees);
   const [trips, setTrips] = useState(initialTrips);
@@ -211,10 +221,14 @@ export default function Workspace({
     setFilters((f) => ({ ...f, ...p }));
     setSelected(new Set());
   };
-  const go = (s: Section) => {
+  const go = (s: Section, nextFilters?: Partial<Filters>) => {
     if (s === "honorarium" && section !== "honorarium") { window.location.assign("/honorarium"); return; }
     if (section === "honorarium" && s !== "honorarium") { window.location.assign(sectionPaths[s]); return; }
-    if (s !== section) window.history.pushState(null, "", sectionPaths[s]);
+    if (s !== section) {
+      window.history.pushState(null, "", sectionPaths[s]);
+      window.scrollTo({ top: 0 });
+    }
+    if (nextFilters) setFilters((f) => ({ ...f, ...nextFilters }));
     setNavOpen(false);
     setSelected(new Set());
   };
@@ -300,6 +314,7 @@ export default function Workspace({
     filters.search.trim() !== "",
   ].filter(Boolean).length;
   const navItems = [
+    ["home", LayoutDashboard],
     ["archives", Archive],
     ["taskLetters", FileSpreadsheet],
     ["honorarium", Wallet],
@@ -405,7 +420,7 @@ export default function Workspace({
                 <DropdownMenuItem
                   onSelect={async () => {
                     await api("/api/session", { method: "DELETE" });
-                    window.location.assign(sectionPaths.archives);
+                    window.location.assign(sectionPaths.home);
                   }}
                 >
                   <LogOut size={15} /> Keluar
@@ -457,7 +472,7 @@ export default function Workspace({
             </div>
           </div>
         </header>
-        <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : ""}`}>
+        <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : section === "home" ? "workspace-beranda" : ""}`}>
           {section === "taskLetters" ? (
             <header className="ledger-head">
               <div>
@@ -480,7 +495,7 @@ export default function Workspace({
                 </Button>
               </div>
             </header>
-          ) : section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
+          ) : section === "home" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
           <div className="page-heading">
             <div>
               <h1>{sectionNames[section]}</h1>
@@ -616,6 +631,20 @@ export default function Workspace({
                 </div>
               )}
             </>
+          )}
+          {section === "home" && (
+            <Beranda
+              trips={trips}
+              employees={employees}
+              honorariums={initialHonorariums}
+              user={user}
+              demo={demo}
+              initialNow={initialNow}
+              onGo={go}
+              onOpen={(id) => openArchive(id)}
+              onAdd={() => setEditor("new")}
+              onImport={() => setImporting(true)}
+            />
           )}
           {section === "taskLetters" && <TaskLetters trips={active} onOpen={(id) => openArchive(id)} />}
           {section === "honorarium" && <HonorariumWorkspace initialRecords={initialHonorariums} employees={people} onToast={setToast} />}
@@ -776,6 +805,7 @@ export default function Workspace({
       {login && (
         <Login forced={!user && !demo} onClose={() => setLogin(false)} />
       )}
+      {user && !demo && session && <SessionGuard session={session} />}
       <Dialog
         open={!!trashTrip}
         onOpenChange={(open) => {
@@ -1143,7 +1173,12 @@ function OfficialLetterhead({ compact = false }: { compact?: boolean }) {
 function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    const message = takeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -1163,6 +1198,11 @@ function LoginForm() {
   }
   return (
     <form className="auth-form" onSubmit={submit}>
+      {notice && (
+        <p className="auth-form-notice" role="status">
+          {notice}
+        </p>
+      )}
       <Field label="Email operator">
         <input
           type="email"

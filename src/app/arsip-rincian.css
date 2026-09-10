@@ -182,6 +182,7 @@
   font-weight: 500;
   color: var(--ledger-muted);
   border-radius: 0;
+  border-bottom-width: 3px;
   gap: 6px;
 }
 .rincian-dialog .rincian-tabs [data-slot="tabs-trigger"]:hover {
@@ -190,14 +191,19 @@
 .rincian-dialog .rincian-tabs [data-state="active"] {
   color: var(--ledger-ink);
   font-weight: 600;
-  border: 0;
-  border-bottom: 3px solid var(--ledger-gold);
+  border-bottom-color: var(--ledger-gold);
   background: transparent;
   box-shadow: none !important;
 }
 .rincian-dialog .rincian-tabs [data-slot="tabs-trigger"]:focus-visible {
   outline: 2px solid var(--ledger-action);
   outline-offset: -2px;
+  /* Matikan cincin dan bingkai bawaan komponen agar fokus hanya satu garis. */
+  box-shadow: none;
+  border-color: transparent;
+}
+.rincian-dialog .rincian-tabs [data-state="active"]:focus-visible {
+  border-bottom-color: var(--ledger-gold);
 }
 .rincian-dialog .tiny-count {
   padding: 0 6px;
@@ -890,21 +896,47 @@
     padding: 10px var(--rincian-inset);
     box-shadow: 0 -8px 20px -16px rgba(20, 39, 63, 0.35);
   }
+  /* Kaki ringkas: Hapus dan Cetak menjadi tombol ikon persegi, Edit arsip
+     mengambil sisa lebar. Label teksnya tetap ada untuk pembaca layar. */
   .rincian-footer .detail-action-buttons {
     width: 100%;
     flex-wrap: nowrap;
     gap: 8px;
   }
   .rincian-footer .detail-action-buttons > * {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
   }
   .rincian-footer .detail-action-buttons [data-slot="button"] {
-    height: 40px;
-    padding-inline: 8px;
+    height: 42px;
+    padding-inline: 14px;
     font-size: var(--type-label);
   }
   .rincian-footer .detail-action-buttons svg {
-    display: none;
+    width: 18px;
+    height: 18px;
+  }
+  .rincian-footer .rincian-delete,
+  .rincian-footer .rincian-print {
+    width: 42px;
+    padding-inline: 0;
+    justify-content: center;
+    border: 1px solid #c9d3de;
+    border-radius: 9px;
+  }
+  .rincian-footer .rincian-delete {
+    border-color: #ead3d1;
+  }
+  .rincian-footer .rincian-delete > span,
+  .rincian-footer .rincian-print > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .rincian-footer .rincian-edit {
+    flex: 1 1 auto;
   }
 }

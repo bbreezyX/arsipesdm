@@ -484,15 +484,15 @@ export default function TripDetail({
               onClick={onDelete}
               disabled={busy}
             >
-              <Trash2 /> Hapus arsip
+              <Trash2 /> <span>Hapus arsip</span>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" className="rincian-print" asChild>
               <a href={`/cetak/${trip.id}`} target="_blank" rel="noreferrer">
-                <Printer /> Cetak ringkasan
+                <Printer /> <span>Cetak ringkasan</span>
               </a>
             </Button>
-            <Button onClick={onEdit} disabled={busy}>
-              <Pencil /> Edit arsip
+            <Button className="rincian-edit" onClick={onEdit} disabled={busy}>
+              <Pencil /> <span>Edit arsip</span>
             </Button>
           </div>
         </div>

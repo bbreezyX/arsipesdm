@@ -424,7 +424,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Kepala register: judul, kelengkapan, alat. */
+/* Kepala register: judul dan kelengkapan mengelompok di kiri, alat di kanan. */
 .ledger-register-head {
   display: flex;
   flex-wrap: wrap;
@@ -436,7 +436,6 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-right: auto;
 }
 .ledger-register-title h2,
 .ledger-register-title span {
@@ -1590,6 +1589,11 @@
   gap: 6px;
   background: var(--ledger-navy);
   color: #fff;
+  /* Kepala, fieldset, dan daftar tab adalah tiga blok biru terpisah di atas
+     dialog putih. Saat batasnya jatuh di piksel pecahan, anti-aliasing
+     membuat putih di bawahnya tembus sebagai garis tipis. Bayangan solid
+     1px memperluas cat biru ke blok berikutnya sehingga sambungan tertutup. */
+  box-shadow: 0 1px 0 0 var(--ledger-navy);
 }
 .form-dialog .dialog-kicker,
 .lampiran-heading-row .dialog-kicker {
@@ -1640,8 +1644,13 @@
 /* Mode isian (satu / beberapa pegawai) menempel di bawah judul. */
 .lampiran-dialog .recap-entry-mode,
 .batch-recap-dialog .recap-entry-mode {
-  margin: 0;
-  padding: 0 var(--form-inset) 18px;
+  /* Daftar tab di bawahnya adalah scroll container (overflow-x: auto) yang
+     dikomposisi sebagai layer tersendiri; tepi atasnya di-anti-alias pada
+     posisi sub-piksel sehingga putih dialog tembus sebagai garis tipis.
+     Fieldset sengaja dilebihkan 1px ke bawah (padding +1px, margin -1px)
+     supaya biru laut yang solid berada di bawah tepi tersebut. */
+  margin: 0 0 -1px;
+  padding: 0 var(--form-inset) 19px;
   background: var(--ledger-navy);
 }
 .recap-entry-mode legend {
@@ -1657,7 +1666,7 @@
   padding: 3px;
   gap: 2px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0;
   border-radius: 10px;
 }
 .recap-entry-mode label {
@@ -1697,6 +1706,7 @@
   padding: 6px var(--form-inset) 0;
   gap: 4px;
   background: var(--ledger-navy);
+  border: 0;
   border-radius: 0;
   align-items: flex-end;
   scrollbar-width: none;
@@ -1713,10 +1723,15 @@
   border-radius: 10px 10px 0 0;
   color: #b7c4d4;
   font-size: var(--type-label);
-  font-weight: 500;
+  /* Bobot huruf sama di semua status supaya lebar tab tidak berubah dan
+     tab di sebelahnya tidak bergeser saat berganti. */
+  font-weight: 600;
   background: transparent;
   box-shadow: none;
-  transition: background 0.15s, color 0.15s;
+  /* Tanpa transisi: lidah putih, warna teks, dan penanda emas berpindah
+     pada frame yang sama. Cross-fade membuat tab lama tampak putih dengan
+     teks pucat dan penanda emas melayang di atas biru sesaat. */
+  transition: none;
 }
 .lampiran-dialog .lampiran-step-tabs [data-slot="tabs-trigger"]::after {
   content: none;
@@ -1728,7 +1743,6 @@
 .lampiran-dialog .lampiran-step-tabs [data-slot="tabs-trigger"][data-state="active"] {
   background: var(--ledger-surface);
   color: var(--ledger-ink);
-  font-weight: 600;
   box-shadow: none;
 }
 .lampiran-dialog .lampiran-step-tabs [data-slot="tabs-trigger"][data-state="active"]::before {
@@ -1772,6 +1786,7 @@
   border-top: 1px solid var(--ledger-line-soft);
 }
 .form-dialog .form-body > .form-section:first-child,
+.form-dialog .form-body > fieldset > .form-section:first-child,
 .lampiran-form-body .form-section:first-child,
 .lampiran-form-body [data-slot="tabs-content"] > .form-section:first-child {
   border-top: 0;
@@ -2283,28 +2298,63 @@
   background: var(--ledger-action-soft);
   font-size: var(--type-meta);
 }
+/* Daftar periksa bagian isian: satu indikator per bagian, tanpa pil berwarna.
+   Lingkaran kosong = belum diisi, centang = terisi, merah = perlu diperbaiki. */
 .journey-section-nav {
-  gap: 6px;
+  gap: 4px 22px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--ledger-line-soft);
+  flex-wrap: wrap;
 }
 .journey-section-nav button {
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--ledger-tint);
-  border: 1px solid var(--ledger-line);
-  color: var(--ledger-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ledger-muted);
   font-size: var(--type-label);
   font-weight: 500;
+  white-space: nowrap;
+}
+.journey-section-nav button > i {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  opacity: 0.65;
 }
 .journey-section-nav button:hover {
-  background: var(--ledger-line-soft);
+  background: transparent;
   color: var(--ledger-ink);
 }
-.journey-section-nav button[data-filled="true"] {
-  background: var(--ledger-success-soft);
-  border-color: #c7dfd0;
-  color: var(--ledger-success);
+.journey-section-nav button[data-state="filled"] {
+  color: var(--ledger-ink);
+}
+.journey-section-nav button[data-state="filled"] > i {
+  background: var(--ledger-success);
+  border-color: var(--ledger-success);
+  color: #fff;
+  opacity: 1;
+}
+.journey-section-nav button[data-state="error"] {
+  color: var(--ledger-danger);
+  font-weight: 600;
+}
+.journey-section-nav button[data-state="error"] > i {
+  opacity: 1;
+}
+.journey-fill-count {
+  margin-left: 10px;
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
 }
 .journey-entry-section {
   padding: 22px 0;
@@ -2410,7 +2460,7 @@
 .journey-person-option:has(input:checked) {
   background: var(--ledger-action-soft);
   border-color: transparent;
-  box-shadow: inset 3px 0 var(--ledger-navy);
+  box-shadow: none;
 }
 .journey-person-option[data-recap-tone="details"]:has(input:checked) {
   background: var(--ledger-action-soft);
@@ -2419,16 +2469,12 @@
 .journey-person-option[data-recap-tone="different"]:has(input:checked) {
   background: #fffaee;
   border-color: transparent;
-  box-shadow: inset 3px 0 var(--ledger-gold);
 }
 .journey-person-option strong {
   color: var(--ledger-ink);
 }
 .journey-person-option em {
   color: var(--ledger-action);
-}
-.journey-person-option:focus-within {
-  outline-color: var(--ledger-action);
 }
 .batch-recap-dialog input[type="checkbox"] {
   accent-color: var(--ledger-navy);
@@ -2751,7 +2797,7 @@
   }
   .lampiran-dialog .recap-entry-mode,
   .batch-recap-dialog .recap-entry-mode {
-    padding-bottom: 14px;
+    padding-bottom: 15px; /* 14px + 1px tumpang tindih ke daftar tab */
   }
   .lampiran-dialog .lampiran-step-tabs[data-slot="tabs-list"] {
     padding: 4px var(--form-inset) 0;
@@ -2767,10 +2813,23 @@
   .cost-person-header-right strong {
     font-size: 1.125rem;
   }
+  /* Satu kolom: hilangkan jarak dan garis pemisah dua panel dari tata letak
+     lebar, supaya kolom isian selebar pengalih "Data perjalanan / Pegawai". */
+  .shared-journey-editor {
+    padding: 0;
+    border-right: 0;
+  }
+  .journey-people-picker {
+    padding: 0;
+  }
   .journey-mobile-switch {
     background: var(--ledger-tint);
     border: 1px solid var(--ledger-line-soft);
     border-radius: 10px;
+  }
+  .journey-mobile-switch button {
+    min-width: 0;
+    white-space: nowrap;
   }
   .journey-mobile-switch button[aria-pressed="true"] {
     color: var(--ledger-ink);
@@ -2828,7 +2887,7 @@
   gap: 4px;
 }
 .journey-panel-heading-shared > .journey-section-nav button {
-  padding: 5px 10px;
+  padding: 4px 0;
   font-size: var(--type-micro);
 }
 .journey-panel-heading-shared .recap-status {
@@ -2873,6 +2932,9 @@
   font-size: var(--type-body);
   color: #fff;
 }
+.journey-panel-heading-shared.is-in-dialog-header .journey-fill-count {
+  color: var(--ledger-gold);
+}
 .journey-panel-heading-shared.is-in-dialog-header p {
   margin-top: 2px;
   font-size: var(--type-meta);
@@ -2884,22 +2946,28 @@
   justify-content: flex-start;
   flex-wrap: wrap;
 }
+/* Di atas biru laut: teks pudar untuk yang belum diisi, centang emas untuk
+   yang terisi. Tidak ada latar pil supaya kepala dialog tetap tenang. */
 .journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-  color: #dbe4ef;
+  color: #b7c4d4;
 }
 .journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button:hover {
-  background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
-.journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button[data-filled="true"] {
+.journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button[data-state="filled"] {
+  color: #fff;
+}
+.journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button[data-state="filled"] > i {
   background: var(--ledger-gold);
   border-color: var(--ledger-gold);
   color: var(--ledger-navy-deep);
 }
+.journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button[data-state="error"] {
+  color: #f2b3b3;
+}
 .journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button:focus-visible {
-  outline-color: var(--ledger-gold);
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 2px;
 }
 .journey-panel-heading-shared.is-in-dialog-header .recap-status {
   margin-top: 8px;
@@ -2915,6 +2983,26 @@
     position: static;
     width: 100%;
     margin-top: 14px;
+  }
+}
+@media (max-width: 700px) {
+  /* Layar HP: kepala dialog cukup memuat judul, hitungan terisi, dan daftar
+     periksa; kalimat penjelas disembunyikan agar tidak menumpuk di atas form. */
+  .journey-header-slot {
+    margin-top: 10px;
+  }
+  .journey-panel-heading-shared.is-in-dialog-header {
+    gap: 8px;
+  }
+  .journey-panel-heading-shared.is-in-dialog-header p {
+    display: none;
+  }
+  .journey-section-nav {
+    gap: 2px 22px;
+  }
+  .journey-section-nav button {
+    flex: 0 0 auto;
+    padding-inline: 0;
   }
 }
 

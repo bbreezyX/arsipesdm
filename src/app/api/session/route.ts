@@ -1,7 +1,30 @@
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { db, verifyPassword, publicUser, sessionHash, initializeDatabase } from "@/lib/db";
-import { checkOrigin, apiError } from "@/lib/auth";
+import { checkOrigin, apiError, currentSession } from "@/lib/auth";
+import { ABSOLUTE_LIMIT_MS, IDLE_LIMIT_MS } from "@/lib/session-policy";
+const noStore = { headers: { "Cache-Control": "private, no-store" } };
+/** Status sesi untuk peringatan di browser. Tidak memperpanjang batas tidak aktif. */
+export async function GET() {
+  try {
+    const current = await currentSession({ touch: false });
+    if (!current) throw new Error("UNAUTHORIZED");
+    return Response.json(current.session, noStore);
+  } catch (e) {
+    return apiError(e);
+  }
+}
+/** Tombol "Lanjutkan bekerja" dan aktivitas pengguna: memperpanjang batas tidak aktif jika sesi masih valid. */
+export async function PATCH(req: Request) {
+  try {
+    checkOrigin(req);
+    const current = await currentSession({ touch: true });
+    if (!current) throw new Error("UNAUTHORIZED");
+    return Response.json(current.session, noStore);
+  } catch (e) {
+    return apiError(e);
+  }
+}
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
@@ -35,19 +58,23 @@ export async function POST(req: Request) {
       );
     }
     (await db.prepare("DELETE FROM percobaan_login WHERE key=?").run(key));
-    (await db.prepare("DELETE FROM sesi_login WHERE expires<?").run(Date.now()));
+    const now = Date.now();
+    (await db
+      .prepare("DELETE FROM sesi_login WHERE expires<? OR last_activity+?<?")
+      .run(now, IDLE_LIMIT_MS, now));
     const token = randomBytes(32).toString("hex");
-    (await db.prepare("INSERT INTO sesi_login VALUES(?,?,?)").run(
+    (await db.prepare("INSERT INTO sesi_login(token,user_id,expires,last_activity) VALUES(?,?,?,?)").run(
       sessionHash(token),
       String(row.id),
-      Date.now() + 86400000,
+      now + ABSOLUTE_LIMIT_MS,
+      now,
     ));
     (await cookies()).set("archive-session", token, {
       httpOnly: true,
       sameSite: "lax",
       secure: new URL(req.url).protocol === "https:",
       path: "/",
-      maxAge: 86400,
+      maxAge: Math.floor(ABSOLUTE_LIMIT_MS / 1000),
     });
     return Response.json(publicUser(row));
   } catch (e) {

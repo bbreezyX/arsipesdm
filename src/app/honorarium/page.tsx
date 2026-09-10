@@ -11,7 +11,7 @@ export default async function HonorariumPage() {
     const c = await context();
     return <Workspace initialSection="honorarium" initialHonorariums={(await getHonorariums(c.workspace))}
       initialTrips={(await getTrips(c.workspace))} initialEmployees={(await getEmployees(c.workspace))} departments={(await getDepartments())}
-      user={c.user} demo={c.workspace === "demo"} />;
+      user={c.user} demo={c.workspace === "demo"} session={c.session} />;
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") return <OfficeLogin />;
     throw error;

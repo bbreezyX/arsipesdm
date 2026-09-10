@@ -109,14 +109,28 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
     return issue?.section === section ? <p className="journey-inline-error">{issue.message}</p> : null;
   }
 
+  const filledCount = journeySections.filter(([section]) => sectionFilled[section]).length;
+  const sectionStatus = (section: (typeof journeySections)[number][0]) =>
+    issue?.section === section ? "error" : sectionFilled[section] ? "filled" : "pending";
+  const statusLabel = { filled: "terisi", pending: "belum diisi", error: "perlu diperbaiki" } as const;
   const sharedHeader = <header className={`journey-panel-heading journey-panel-heading-shared${headerSlot ? " is-in-dialog-header" : ""}`}>
     <div className="journey-panel-heading-text">
-      <h3>Perjalanan bersama</h3>
+      <h3>
+        Perjalanan bersama
+        <span className="journey-fill-count" aria-label={`${filledCount} dari ${journeySections.length} bagian terisi`}>{filledCount}/{journeySections.length} terisi</span>
+      </h3>
       <p>Berlaku untuk semua pegawai yang dipilih. Kolom bertanda * wajib diisi.</p>
       {adjusted > 0 && <RecapStatus tone="different" description="Sebagian isian pegawai berbeda dari perjalanan bersama.">{adjusted} pegawai memiliki penyesuaian</RecapStatus>}
     </div>
     <nav className="journey-section-nav" aria-label="Lompat ke isian perjalanan">
-      {journeySections.map(([section, label]) => <button type="button" key={section} data-filled={sectionFilled[section]} title={sectionFilled[section] ? "Isian tersedia; periksa sebelum menyimpan" : "Isian belum lengkap"} onClick={() => jump(section)}>{sectionFilled[section] && <Check size={12} />}{label}</button>)}
+      {journeySections.map(([section, label]) => {
+        const state = sectionStatus(section);
+        return <button type="button" key={section} data-state={state} onClick={() => jump(section)}>
+          <i aria-hidden="true">{state === "filled" && <Check size={10} strokeWidth={3} />}</i>
+          {label}
+          <span className="sr-only">, {statusLabel[state]}</span>
+        </button>;
+      })}
     </nav>
   </header>;
 

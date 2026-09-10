@@ -254,6 +254,15 @@ try {
   });
   assert.equal(r.status, 200);
   const session = r.headers.get("set-cookie").split(";")[0];
+  r = await request("/api/session", "GET", undefined, session);
+  assert.equal(r.status, 200);
+  const status = await r.json();
+  assert(status.idleExpiresAt > status.now && status.absoluteExpiresAt >= status.idleExpiresAt);
+  assert.equal(r.headers.get("cache-control"), "private, no-store");
+  r = await request("/api/session", "PATCH", undefined, session);
+  assert.equal(r.status, 200);
+  assert.equal((await request("/api/session", "GET")).status, 401);
+  checks++;
   r = await request("/api/archives", "GET", undefined, session);
   assert.equal(r.status, 200);
   const office = await r.json();
@@ -278,9 +287,10 @@ try {
   );
   assert.equal(r.status, 404);
   await request("/api/session", "DELETE", undefined, session);
+  assert.equal((await request("/api/session", "GET", undefined, session)).status, 401);
   checks++;
   console.log(
-    `PASS: ${checks} API integration checks (CRUD, validation, duplicate import, shared costs, document upload, recoverable deletion, concurrency, login, workspace isolation).`,
+    `PASS: ${checks} API integration checks (CRUD, validation, duplicate import, shared costs, document upload, recoverable deletion, concurrency, login, session status, workspace isolation).`,
   );
 } finally {
   if (!process.env.DATABASE_SCHEMA?.startsWith("test_")) throw new Error("Integration cleanup requires a disposable test schema.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import {
   Camera, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, FolderOpen, ImagePlus,
   LoaderCircle, MapPin, Search, Trash2, X,
@@ -93,6 +93,12 @@ const tripDates = (t: Trip) => t.startDate === t.endDate
 
 type SlotState = { uploading?: string; error?: string };
 
+/* Lebar map di samping (px): baku 420, dijepit 300–620 dan tidak memakan matriks. */
+const SIDE_DEFAULT = 420;
+const SIDE_MIN = 300;
+const SIDE_MAX = 620;
+const SIDE_KEY = "dokumen-side-width";
+
 export default function Dokumen({ trips, onChange, notify, onOpen }: {
   trips: Trip[];
   onChange: (trip: Trip) => void;
@@ -115,8 +121,36 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
   const [narrow, setNarrow] = useState(false);
   const [phone, setPhone] = useState(false);
   const [slotState, setSlotState] = useState<Record<string, SlotState>>({});
+  const [sideWidth, setSideWidth] = useState(SIDE_DEFAULT);
+  const [splitDragging, setSplitDragging] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const splitStart = useRef({ x: 0, width: SIDE_DEFAULT });
+
+  const clampSide = useCallback((value: number) => {
+    const body = bodyRef.current?.clientWidth ?? 1200;
+    const max = Math.max(SIDE_MIN, Math.min(SIDE_MAX, body - 360));
+    return Math.min(max, Math.max(SIDE_MIN, Math.round(value)));
+  }, []);
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(SIDE_KEY));
+      if (Number.isFinite(saved) && saved > 0) setSideWidth(Math.min(SIDE_MAX, Math.max(SIDE_MIN, Math.round(saved))));
+    } catch { /* abaikan: penyimpanan tidak tersedia */ }
+  }, []);
+  useEffect(() => {
+    try { window.localStorage.setItem(SIDE_KEY, String(Math.round(sideWidth))); } catch { /* abaikan */ }
+  }, [sideWidth]);
+  useEffect(() => {
+    if (!splitDragging) return;
+    const style = document.body.style;
+    const cursor = style.cursor;
+    const select = style.userSelect;
+    style.cursor = "col-resize";
+    style.userSelect = "none";
+    return () => { style.cursor = cursor; style.userSelect = select; };
+  }, [splitDragging]);
 
   useEffect(() => {
     if (year !== "all" && !years.includes(year)) setYear(years[0] ?? "all");
@@ -406,7 +440,11 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
           </div>
         </div>
 
-        <div className={`dokumen-body ${open ? "has-open" : ""}`}>
+        <div
+          ref={bodyRef}
+          className={`dokumen-body ${open ? "has-open" : ""}`}
+          style={!narrow ? ({ "--dokumen-side": `${sideWidth}px` } as CSSProperties) : undefined}
+        >
           {phone && rows.length > 0 && (
             <ul className="dokumen-cards" aria-label="Daftar map">
               {rows.map((f) => (
@@ -504,6 +542,42 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
               />
             )}
           </div>
+          {!narrow && (
+            <div
+              className="dokumen-splitter"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Pengatur lebar map berkas"
+              aria-valuemin={SIDE_MIN}
+              aria-valuemax={SIDE_MAX}
+              aria-valuenow={Math.round(sideWidth)}
+              title="Seret untuk mengatur lebar, klik ganda untuk mengembalikan"
+              tabIndex={0}
+              data-dragging={splitDragging ? "true" : undefined}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch { /* abaikan: tetap seret tanpa tangkapan */ }
+                splitStart.current = { x: event.clientX, width: sideWidth };
+                setSplitDragging(true);
+              }}
+              onPointerMove={(event) => {
+                if (!splitDragging) return;
+                setSideWidth(clampSide(splitStart.current.width + (splitStart.current.x - event.clientX)));
+              }}
+              onPointerUp={() => setSplitDragging(false)}
+              onPointerCancel={() => setSplitDragging(false)}
+              onKeyDown={(event) => {
+                const step = event.shiftKey ? 48 : 16;
+                if (event.key === "ArrowLeft") { event.preventDefault(); setSideWidth(clampSide(sideWidth + step)); }
+                else if (event.key === "ArrowRight") { event.preventDefault(); setSideWidth(clampSide(sideWidth - step)); }
+                else if (event.key === "Home") { event.preventDefault(); setSideWidth(SIDE_MIN); }
+                else if (event.key === "End") { event.preventDefault(); setSideWidth(clampSide(SIDE_MAX)); }
+              }}
+              onDoubleClick={() => setSideWidth(SIDE_DEFAULT)}
+            >
+              <span aria-hidden="true" />
+            </div>
+          )}
           {!narrow && <aside className="dokumen-side" aria-label="Map berkas terbuka">{panel}</aside>}
         </div>
         </div>

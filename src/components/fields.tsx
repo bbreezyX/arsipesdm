@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from "react";
+import { reportSessionResponse } from "@/lib/session-client";
 export function Field({
   label,
   children,
@@ -53,6 +54,7 @@ export function ErrorMessage({ message }: { message: string }) {
 }
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
+  reportSessionResponse(url, response);
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error || "Gagal menyimpan. Silakan coba lagi.");

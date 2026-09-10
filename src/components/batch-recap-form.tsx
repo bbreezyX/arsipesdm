@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, FileSpreadsheet, LoaderCircle } from "lucide-react";
 import {
-  batchCostColumns, batchRecapSchema, newBatchRow, prepareRecap,
+  batchCostColumns, batchRecapSchema, isBatchEmpty, newBatchRow, prepareRecap,
   sharedJourney, updateSharedJourney,
   type BatchRecapState, type SharedJourney,
 } from "@/lib/batch-recap";
@@ -11,6 +11,7 @@ import { lampiranReview } from "@/lib/lampiran6-schema";
 import { dateText, money, totalCost, type Trip, type TripInput } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
+import { reportSessionResponse } from "@/lib/session-client";
 import EmployeeCostWorkspace from "./employee-cost-workspace";
 import { ErrorMessage } from "./fields";
 import Lampiran6Form from "./lampiran6-form";
@@ -107,6 +108,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
       const response = await fetch("/api/archives/batch", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed),
       });
+      reportSessionResponse("/api/archives/batch", response);
       const result = await response.json();
       if (!response.ok) {
         setErrorKey(typeof result.index === "number" ? selected[result.index]?.key : undefined);
@@ -120,7 +122,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
     }
   }
   function close() {
-    if (!saving.current && window.confirm("Abaikan isian rekap yang belum disimpan?")) onClose();
+    if (!saving.current && (isBatchEmpty(state) || window.confirm("Abaikan isian rekap yang belum disimpan?"))) onClose();
   }
 
   const editingRow = state.rows.find(row => row.key === editing);

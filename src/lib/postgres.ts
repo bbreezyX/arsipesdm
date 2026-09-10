@@ -21,8 +21,9 @@ export const schemaSQL = `
 CREATE TABLE IF NOT EXISTS arsip_perjalanan(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS arsip_perjalanan_workspace ON arsip_perjalanan(workspace);
 CREATE TABLE IF NOT EXISTS pengguna(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sesi_login(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS sesi_login(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires BIGINT NOT NULL,last_activity BIGINT);
 CREATE INDEX IF NOT EXISTS sesi_login_expires ON sesi_login(expires);
+ALTER TABLE sesi_login ADD COLUMN IF NOT EXISTS last_activity BIGINT;
 CREATE TABLE IF NOT EXISTS pengaturan(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS percobaan_login(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS pegawai(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,payload TEXT NOT NULL);

@@ -1,20 +1,42 @@
 import { cookies } from "next/headers";
 import { db, publicUser, sessionHash, initializeDatabase } from "./db";
 import type { User } from "./model";
-export async function currentUser(): Promise<User | null> {
+import { evaluateSession, shouldTouch, IDLE_LIMIT_MS, type SessionInfo } from "./session-policy";
+export type CurrentSession = { user: User; session: SessionInfo };
+/**
+ * Membaca sesi dari cookie dan memeriksa batas tidak aktif serta batas absolut di server.
+ * `touch` memperpanjang batas tidak aktif; pemeriksaan status murni memakai `touch: false`.
+ */
+export async function currentSession({ touch = true } = {}): Promise<CurrentSession | null> {
   await initializeDatabase();
   const token = (await cookies()).get("archive-session")?.value;
   if (!token) return null;
+  const hash = sessionHash(token);
+  const now = Date.now();
   const row = (await db
     .prepare(
-      "SELECT pengguna.* FROM sesi_login JOIN pengguna ON pengguna.id=sesi_login.user_id WHERE token=? AND expires>?",
+      "SELECT pengguna.*, sesi_login.expires, sesi_login.last_activity FROM sesi_login JOIN pengguna ON pengguna.id=sesi_login.user_id WHERE token=?",
     )
-    .get(sessionHash(token), Date.now()));
-  return row ? publicUser(row) : null;
+    .get(hash)) as (Record<string, unknown> & { expires: number | string; last_activity: number | string | null }) | undefined;
+  if (!row) return null;
+  let session = evaluateSession(row, now);
+  if (!session) return null;
+  if (touch && shouldTouch(row, now)) {
+    // Hanya memperpanjang sesi yang masih valid saat ditulis; request terlambat tidak menghidupkan sesi yang habis.
+    const { changes } = await db
+      .prepare("UPDATE sesi_login SET last_activity=? WHERE token=? AND expires>? AND last_activity IS NOT NULL AND last_activity+?>?")
+      .run(now, hash, now, IDLE_LIMIT_MS, now);
+    if (!changes) return null;
+    session = { ...session, idleExpiresAt: Math.min(now + IDLE_LIMIT_MS, session.absoluteExpiresAt) };
+  }
+  return { user: publicUser(row), session };
+}
+export async function currentUser(): Promise<User | null> {
+  return (await currentSession())?.user ?? null;
 }
 export async function context() {
-  const user = await currentUser();
-  if (user) return { user, workspace: "office" };
+  const current = await currentSession();
+  if (current) return { user: current.user, workspace: "office", session: current.session };
   if ((await cookies()).has("archive-session")) throw new Error("UNAUTHORIZED");
   if (process.env.DEMO_ENABLED === "true")
     return {
@@ -25,6 +47,7 @@ export async function context() {
         role: "operator",
       } as User,
       workspace: "demo",
+      session: null,
     };
   throw new Error("UNAUTHORIZED");
 }
