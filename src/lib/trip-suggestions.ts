@@ -1,3 +1,4 @@
+import { jambiRegions } from "./destinations";
 import type { Trip } from "./model";
 import { tripDestinations } from "./destinations";
 
@@ -10,13 +11,6 @@ export type TripSuggestions = {
   purposes: Option[];
 };
 
-// Kabupaten/kota: https://jambiprov.go.id/profil-kabupatenkota.html
-const jambiRegions = [
-  "Kota Jambi", "Kota Sungai Penuh", "Kabupaten Batanghari", "Kabupaten Bungo",
-  "Kabupaten Kerinci", "Kabupaten Merangin", "Kabupaten Muaro Jambi",
-  "Kabupaten Sarolangun", "Kabupaten Tanjung Jabung Barat",
-  "Kabupaten Tanjung Jabung Timur", "Kabupaten Tebo",
-];
 
 function uniqueOptions(options: Option[]) {
   const seen = new Set<string>();

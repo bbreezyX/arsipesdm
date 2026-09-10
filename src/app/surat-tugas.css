@@ -122,6 +122,146 @@
   z-index: 1;
 }
 
+/* ----- Rel tujuan: ke mana saja surat dalam cakupan ini ----- */
+.surat-places {
+  display: flex;
+  align-items: stretch;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.surat-places-all {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 148px;
+  padding: 12px 22px 12px 24px;
+  text-align: left;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line);
+  transition: background 0.15s, color 0.15s;
+}
+.surat-places-all strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+}
+.surat-places-all span {
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Selalu satu baris: sel berbagi lebar dan nama panjang dipotong, seperti rel bulan. */
+.surat-place-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  flex: 1;
+  min-width: 0;
+  container: surat-places / inline-size;
+}
+.surat-place {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 3px;
+  min-width: 0;
+  padding: 11px 16px 10px;
+  text-align: left;
+  color: var(--ledger-muted);
+  border-right: 1px solid var(--ledger-line-soft);
+  transition: background 0.15s, color 0.15s;
+}
+.surat-place:last-child {
+  border-right: 0;
+}
+.surat-place > span {
+  grid-column: 1 / -1;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  line-height: 1.3;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.surat-place strong {
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.surat-place-cost {
+  font-style: normal;
+}
+.surat-place small {
+  min-width: 0;
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.surat-place:hover,
+.surat-places-all:hover {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.surat-place[aria-pressed="true"],
+.surat-places-all[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.surat-place[aria-pressed="true"]::after,
+.surat-places-all[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--ledger-gold);
+}
+.surat-places-all[aria-pressed="true"]::after {
+  left: 24px;
+  right: 22px;
+}
+.surat-place:focus-visible,
+.surat-places-all:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+  z-index: 1;
+}
+.surat-place-menu [role="menuitem"] {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.surat-place-menu [role="menuitem"] small {
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.surat-places-compact {
+  display: none;
+}
+.surat-facts dd small {
+  margin-left: 6px;
+  font-size: var(--type-micro);
+  font-weight: 500;
+  font-stretch: normal;
+  letter-spacing: 0;
+  color: var(--ledger-muted);
+}
+
 /* ----- Pita fakta tahun ----- */
 .surat-facts {
   display: flex;
@@ -317,15 +457,46 @@
 
 /* ----- Responsif ----- */
 @media (max-width: 1250px) {
-  .surat-index-all {
+  .surat-index-all,
+  .surat-places-all {
     min-width: 132px;
     padding-inline: 18px;
+  }
+  .surat-place {
+    padding-inline: 12px;
+    column-gap: 6px;
+  }
+  .surat-place strong {
+    font-size: 1.125rem;
   }
   .surat-month strong {
     font-size: 1.0625rem;
   }
 }
+/* Rel sempit (sidebar terbuka di laptop 13"): nominal tidak muat di sel; jumlah surat cukup,
+   nominal tetap ada di tooltip dan menu. Diukur dari lebar rel, bukan viewport, agar zoom tidak mengecoh. */
+@container surat-places (max-width: 1180px) {
+  .surat-place-cost {
+    display: none;
+  }
+}
 @media (max-width: 900px) {
+  .surat-places {
+    flex-direction: column;
+  }
+  .surat-places-all {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 12px 20px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ledger-line);
+  }
+  .surat-places-all[aria-pressed="true"]::after {
+    left: 20px;
+    right: 20px;
+  }
   .surat-index {
     flex-direction: column;
   }
@@ -373,6 +544,60 @@
   /* Kartu sudah memuat uraian; rincian yang terbuka langsung ke roster.
      Berlaku untuk kartu Arsip perjalanan dan Surat Tugas. */
   .ledger-card-detail .ledger-detail-purpose {
+    display: none;
+  }
+
+  /* Rel tujuan disembunyikan; satu baris pilihan menggantikannya. */
+  .surat-places {
+    display: none;
+  }
+  .surat-places-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px 8px 20px;
+    border-bottom: 1px solid var(--ledger-line);
+    background: var(--ledger-tint);
+  }
+  .surat-places-compact > span {
+    font-size: var(--type-micro);
+    font-weight: 500;
+    color: var(--ledger-muted);
+  }
+  .surat-places-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 75%;
+    padding: 6px 10px;
+    border: 1px solid var(--ledger-line);
+    border-radius: 8px;
+    background: var(--ledger-surface);
+    color: var(--ledger-ink);
+    font-size: var(--type-meta);
+  }
+  .surat-places-pick b {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .surat-places-pick[data-chosen] {
+    border-color: var(--ledger-gold);
+  }
+  .surat-places-pick[data-chosen] b {
+    font-weight: 600;
+  }
+  .surat-places-pick svg {
+    flex-shrink: 0;
+    color: var(--ledger-muted);
+  }
+  .surat-place-menu [role="menuitem"][data-active] span {
+    font-weight: 600;
+  }
+  .surat-facts dl > .surat-facts-places {
     display: none;
   }
 
@@ -560,7 +785,8 @@
   }
 }
 @media print {
-  .surat-index {
+  .surat-index,
+  .surat-places {
     display: none;
   }
 }

@@ -1,5 +1,5 @@
 import { totalCost, type Trip } from "./model";
-import { tripDestinations } from "./destinations";
+import { destinationKey, isJambiRegion, tripDestinations } from "./destinations";
 
 export type TaskLetter = {
   key: string;
@@ -82,4 +82,49 @@ export function filterTaskLetters(letters: TaskLetter[], query: string, year: st
       ...letter.trips.flatMap(trip => trip.participants.flatMap(person => [person.name, person.nip])),
     ].join(" ").toLocaleLowerCase("id-ID").includes(search)),
   );
+}
+
+export type DestinationFact = {
+  key: string;
+  name: string;
+  /** Letters with at least one journey to this destination in the scope. */
+  letters: number;
+  trips: number;
+  total: number | null;
+  unknownCount: number;
+  inJambi: boolean;
+};
+
+function tripInYear(trip: Trip, year: string) {
+  return year === "all" || trip.startDate.slice(0, 4) === year;
+}
+
+function tripDestinationKeys(trip: Trip) {
+  return new Map(tripDestinations(trip).map(value => [destinationKey(value), value.trim().replace(/\s+/g, " ")]));
+}
+
+export function letterMatchesDestination(letter: TaskLetter, year: string, destination: string | null) {
+  if (destination === null) return true;
+  return letter.trips.some(trip => tripInYear(trip, year) && tripDestinationKeys(trip).has(destination));
+}
+
+/** Where the letters in scope went: a letter with two destinations counts under both. Busiest first. */
+export function destinationFacts(letters: TaskLetter[], year: string): DestinationFact[] {
+  const places = new Map<string, { name: string; letters: Set<string>; trips: Trip[] }>();
+  for (const letter of letters) {
+    for (const trip of letter.trips) {
+      if (!tripInYear(trip, year)) continue;
+      for (const [key, name] of tripDestinationKeys(trip)) {
+        if (!key) continue;
+        const place = places.get(key) ?? { name, letters: new Set<string>(), trips: [] };
+        place.letters.add(letter.key);
+        place.trips.push(trip);
+        places.set(key, place);
+      }
+    }
+  }
+  return [...places].map(([key, place]) => ({
+    key, name: place.name, letters: place.letters.size, trips: place.trips.length,
+    ...summarizeTripCosts(place.trips), inJambi: isJambiRegion(place.name),
+  })).sort((a, b) => b.letters - a.letters || (b.total ?? -1) - (a.total ?? -1) || a.name.localeCompare(b.name, "id-ID"));
 }

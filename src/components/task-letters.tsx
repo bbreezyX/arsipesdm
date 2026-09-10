@@ -28,11 +28,14 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { dateText, money, totalCost, type Trip } from "@/lib/model";
+import { dateText, money, shortMoney, totalCost, type Trip } from "@/lib/model";
 import {
+  destinationFacts,
   filterTaskLetters,
   groupTaskLetters,
+  letterMatchesDestination,
   summarizeTripCosts,
+  type DestinationFact,
   type TaskLetter,
 } from "@/lib/task-letters";
 import { Button } from "./ui/button";
@@ -52,6 +55,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "./ui/dropdown-menu";
@@ -195,6 +199,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
   const [query, setQuery] = useState("");
   const [year, setYear] = useState<string>(() => years[0] ?? "all");
   const [month, setMonth] = useState<number | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
   const [showUnassigned, setShowUnassigned] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -233,22 +238,34 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
     }
     return counts;
   }, [inYear, year]);
-  const scoped = useMemo(() => inYear.filter((letter) => letterMatchesMonth(letter, year, month)), [inYear, year, month]);
+  const inMonth = useMemo(() => inYear.filter((letter) => letterMatchesMonth(letter, year, month)), [inYear, year, month]);
+  // The destination rail follows the year and month, never its own choice, so every place stays clickable.
+  const places = useMemo(() => destinationFacts(inMonth, year), [inMonth, year]);
+  const placeFact = place === null ? null : places.find((fact) => fact.key === place) ?? null;
+  useEffect(() => {
+    if (place !== null && !places.some((fact) => fact.key === place)) setPlace(null);
+  }, [places, place]);
+  const scoped = useMemo(() => inMonth.filter((letter) => letterMatchesDestination(letter, year, place)), [inMonth, year, place]);
   const summary = useMemo(() => {
     const scopedTrips = scoped.flatMap((letter) =>
       letter.trips.filter((trip) => year === "all" || trip.startDate.slice(0, 4) === year));
     const people = new Set(scopedTrips.flatMap((trip) => trip.participants.map((person) =>
       person.nip.trim() ? `nip:${person.nip.replace(/\s+/g, "")}` : `name:${person.name.trim().toLocaleLowerCase("id-ID")}`)));
-    return { letters: scoped.length, trips: scopedTrips.length, people: people.size, ...summarizeTripCosts(scopedTrips) };
+    const destinations = destinationFacts(scoped, year);
+    return {
+      letters: scoped.length, trips: scopedTrips.length, people: people.size, ...summarizeTripCosts(scopedTrips),
+      places: destinations.length, outside: destinations.filter((fact) => !fact.inJambi).length,
+    };
   }, [scoped, year]);
   const visible = useMemo(() => filterTaskLetters(scoped, query, "all"), [scoped, query]);
-  const scopeLabel = month === null
+  const periodLabel = month === null
     ? year === "all" ? "seluruh tahun" : `tahun ${year}`
     : `${months[month][1]}${year === "all" ? ", seluruh tahun" : ` ${year}`}`;
+  const scopeLabel = placeFact ? `${periodLabel} · ${placeFact.name}` : periodLabel;
 
-  const filtered = query.trim() !== "" || month !== null;
-  function reset() { setQuery(""); setMonth(null); }
-  function chooseYear(next: string) { setYear(next); setMonth(null); }
+  const filtered = query.trim() !== "" || month !== null || place !== null;
+  function reset() { setQuery(""); setMonth(null); setPlace(null); }
+  function chooseYear(next: string) { setYear(next); setMonth(null); setPlace(null); }
 
   return (
     <div className="surat-page">
@@ -308,6 +325,10 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
             <div><dt>Surat tugas</dt><dd>{summary.letters}</dd></div>
             <div><dt>Rekap perjalanan</dt><dd>{summary.trips}</dd></div>
             <div><dt>Pegawai ditugaskan</dt><dd>{summary.people}</dd></div>
+            <div className="surat-facts-places">
+              <dt>Tujuan</dt>
+              <dd>{summary.places}{summary.outside ? <small>{summary.outside} luar provinsi</small> : null}</dd>
+            </div>
           </dl>
           <div className="surat-facts-cost">
             <span>Realisasi biaya {scopeLabel}</span>
@@ -319,6 +340,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
             </small>
           </div>
         </div>
+        <DestinationRail places={places} value={place} onChange={setPlace} />
         <LetterRegister
           letters={visible}
           filtered={filtered}
@@ -377,6 +399,98 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
         </section>
       )}
     </div>
+  );
+}
+
+/* Rel tujuan: tempat yang paling sering dituju di depan; sisanya lewat menu "lainnya". */
+const railLimit = 6;
+/** "Kab. Tanjung Jabung Barat" fits a rail cell; the full name stays in labels and the scope line. */
+function railName(name: string) {
+  return name.replace(/^Kabupaten\s+/i, "Kab. ").replace(/^Provinsi\s+/i, "Prov. ");
+}
+function DestinationRail({ places, value, onChange }: {
+  places: DestinationFact[]; value: string | null; onChange: (next: string | null) => void;
+}) {
+  if (!places.length) return null;
+  const shown = places.slice(0, railLimit);
+  const chosen = value === null ? null : places.find((fact) => fact.key === value) ?? null;
+  if (chosen && !shown.includes(chosen)) shown.push(chosen);
+  const rest = places.filter((fact) => !shown.includes(fact));
+  const outside = places.filter((fact) => !fact.inJambi).length;
+  const current = chosen
+    ? `${chosen.name} · ${chosen.letters} surat`
+    : `Semua tujuan · ${places.length}`;
+  return (
+    <>
+      <div className="surat-places" role="group" aria-label="Tujuan perjalanan">
+        <button className="surat-places-all" aria-pressed={value === null} onClick={() => onChange(null)}>
+          <strong>Semua tujuan</strong>
+          <span>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</span>
+        </button>
+        <div className="surat-place-list">
+          {shown.map((fact) => (
+            <button
+              key={fact.key}
+              className="surat-place"
+              aria-pressed={value === fact.key}
+              aria-label={`${fact.name}, ${fact.letters} surat tugas${fact.total === null ? "" : `, ${money(fact.total)}`}`}
+              title={fact.name}
+              onClick={() => onChange(value === fact.key ? null : fact.key)}
+            >
+              <span>{railName(fact.name)}</span>
+              <strong>{fact.letters}</strong>
+              <small>surat{fact.total === null ? null : <i className="surat-place-cost"> · Rp {shortMoney(fact.total)}</i>}</small>
+            </button>
+          ))}
+          {rest.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="surat-place surat-place-more" aria-label={`${rest.length} tujuan lainnya`}>
+                  <span>Lainnya</span>
+                  <strong>{rest.length}</strong>
+                  <small>tujuan lain</small>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="surat-place-menu">
+                <DropdownMenuLabel>Tujuan lainnya</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {rest.map((fact) => (
+                  <DropdownMenuItem key={fact.key} onSelect={() => onChange(fact.key)}>
+                    <span>{fact.name}</span>
+                    <small>{fact.letters} surat{fact.total === null ? "" : ` · Rp ${shortMoney(fact.total)}`}</small>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+      {/* Ponsel: satu baris pilihan, seluruh tujuan lewat menu; rel lengkap terlalu padat di bawah rel bulan. */}
+      <div className="surat-places-compact">
+        <span>Tujuan</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="surat-places-pick" data-chosen={chosen ? "true" : undefined} aria-label={`Tujuan: ${current}`}>
+              <b>{current}</b>
+              <ChevronDown size={15} aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="surat-place-menu">
+            <DropdownMenuItem onSelect={() => onChange(null)} data-active={value === null ? "true" : undefined}>
+              <span>Semua tujuan</span>
+              <small>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</small>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {places.map((fact) => (
+              <DropdownMenuItem key={fact.key} onSelect={() => onChange(fact.key)} data-active={value === fact.key ? "true" : undefined}>
+                <span>{fact.name}</span>
+                <small>{fact.letters} surat{fact.total === null ? "" : ` · Rp ${shortMoney(fact.total)}`}</small>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
   );
 }
 

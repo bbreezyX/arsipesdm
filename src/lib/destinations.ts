@@ -11,3 +11,18 @@ export function tripDestinations(trip: {destination: string; destinations?: stri
 export function destinationKey(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("id-ID");
 }
+
+// Kabupaten/kota: https://jambiprov.go.id/profil-kabupatenkota.html
+export const jambiRegions = [
+  "Kota Jambi", "Kota Sungai Penuh", "Kabupaten Batanghari", "Kabupaten Bungo",
+  "Kabupaten Kerinci", "Kabupaten Merangin", "Kabupaten Muaro Jambi",
+  "Kabupaten Sarolangun", "Kabupaten Tanjung Jabung Barat",
+  "Kabupaten Tanjung Jabung Timur", "Kabupaten Tebo",
+];
+const jambiRegionKeys = new Set(jambiRegions.map(destinationKey));
+
+/** Whether a destination lies inside Jambi province; "Kab." and "Kab" spellings count too. */
+export function isJambiRegion(value: string) {
+  const key = destinationKey(value).replace(/^kab\.?\s+/, "kabupaten ");
+  return key === "jambi" || key === "provinsi jambi" || jambiRegionKeys.has(key);
+}
