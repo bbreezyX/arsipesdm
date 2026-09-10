@@ -12,6 +12,8 @@ import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-nav
 import type { SessionInfo } from "@/lib/session-policy";
 import { takeSessionNotice } from "@/lib/session-client";
 import SessionGuard from "./session-guard";
+import { can, canAccessSection, roleLabels } from "@/lib/permissions";
+import { downloadArchiveExport } from "@/lib/archive-export-client";
 export type { Section } from "@/lib/workspace-navigation";
 import {
   Archive,
@@ -90,7 +92,7 @@ const Pegawai = dynamic(() => import("./pegawai"));
 import type { Honorarium } from "@/lib/honorarium";
 const HonorariumWorkspace = dynamic(() => import("./honorarium-workspace"));
 import { groupArchives, filterArchiveGroups, archiveGroupsForYear, archivesForExport, type ArchiveGroup } from "@/lib/archive-groups";
-import { exportTrips, downloadTemplate } from "@/lib/export";
+import { downloadTemplate } from "@/lib/export";
 const TaskLetters = dynamic(() => import("./task-letters"));
 const Laporan = dynamic(() => import("./laporan"));
 const TripForm = dynamic(() => import("./trip-form"));
@@ -146,13 +148,21 @@ export default function Workspace({
   initialEntry?: EntryFilter;
   session?: SessionInfo | null;
 }) {
+  const accessUser = user ?? (demo ? { role: "operator" as const } : null);
+  const editable = can(accessUser, "archives:write");
+  const exportable = can(accessUser, "archives:export");
+  const canReadEmployees = can(accessUser, "employees:read");
   const [employees, setEmployees] = useState(initialEmployees);
   const refreshEmployees = useRef<() => void>(() => {});
   const [trips, setTrips] = useState(initialTrips);
   const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
   const pathname = usePathname();
-  const section = sectionFromPath(pathname) ?? initialSection;
+  const requestedSection = sectionFromPath(pathname) ?? initialSection;
+  const section = canAccessSection(accessUser, requestedSection) ? requestedSection : "home";
+  useEffect(() => {
+    if (requestedSection !== section) window.history.replaceState(null, "", sectionPaths[section]);
+  }, [requestedSection, section]);
   const [filters, setFilters] = useState<Filters>({
     ...defaultFilters,
     year: initialTrips.length
@@ -218,6 +228,7 @@ export default function Workspace({
   const people = useMemo(() => employees.filter(p => !p.deletedAt), [employees]);
   const editorOpen = editor !== null;
   useEffect(() => {
+    if (!canReadEmployees) return;
     let activeRequest: AbortController | undefined;
     function refresh(reportError = false) {
       activeRequest?.abort();
@@ -241,12 +252,13 @@ export default function Workspace({
       document.removeEventListener("visibilitychange", onReturn);
       refreshEmployees.current = () => {};
     };
-  }, [trips, editorOpen, demo]);
+  }, [trips, editorOpen, demo, canReadEmployees]);
   const patchFilters = (p: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...p }));
     setSelected(new Set());
   };
   const go = (s: Section, nextFilters?: Partial<Filters>) => {
+    if (!canAccessSection(accessUser, s)) return;
     if (s === "honorarium" && section !== "honorarium") {
       window.location.assign(nextFilters?.entry ? `/honorarium?entry=${nextFilters.entry}` : "/honorarium");
       return;
@@ -270,6 +282,7 @@ export default function Workspace({
     id: string,
     action: "detail" | "edit" | "delete" = "detail",
   ) {
+    if (action !== "detail" && !editable) return;
     const request = ++openRequest.current;
     try {
       const latest = await api<Trip>(`/api/archives/${id}`, {
@@ -294,21 +307,23 @@ export default function Workspace({
     }
   }
   async function exportRows(rows = section === "archives" ? archiveExportRows : filtered) {
+    if (!exportable || !rows.length) return;
     setBusy(true);
     try {
-      await exportTrips(
-        rows,
+      await downloadArchiveExport(
+        rows.map(trip => trip.id),
         demo ? "contoh" : filters.year === "all" ? "semua-tahun" : filters.year,
       );
       setToast(`${rows.length} rekap diekspor ke Excel.`);
     } catch (error) {
       console.error("Ekspor arsip perjalanan gagal:", error);
-      setToast("Ekspor belum berhasil. Silakan coba lagi.");
+      setToast(error instanceof Error ? error.message : "Ekspor belum berhasil. Silakan coba lagi.");
     } finally {
       setBusy(false);
     }
   }
   async function moveTrash(t: Trip, restore = false) {
+    if (!editable) return;
     setBusy(true);
     setTrashError("");
     try {
@@ -384,7 +399,7 @@ export default function Workspace({
           </button>
         </div>
         <nav aria-label="Navigasi utama">
-          {navItems.map(([key, Icon]) => (
+          {navItems.filter(([key]) => canAccessSection(accessUser, key)).map(([key, Icon]) => (
             <button
               key={key}
               className={`nav-item ${section === key ? "active" : ""}`}
@@ -400,7 +415,7 @@ export default function Workspace({
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <div className="bottom-nav">
+        {editable && <div className="bottom-nav">
           <button
             className={`nav-item ${section === "trash" ? "active" : ""}`}
             onClick={() => go("trash")}
@@ -420,7 +435,7 @@ export default function Workspace({
             <Settings2 size={18} />
             <span>Pengaturan</span>
           </button>
-        </div>
+        </div>}
         <div className="sidebar-user">
           <div className="avatar user-avatar">
             {demo ? "OP" : (user?.name.slice(0, 2).toUpperCase() ?? "OP")}
@@ -430,9 +445,7 @@ export default function Workspace({
             <span>
               {demo
                 ? "Ruang contoh"
-                : user?.role === "admin"
-                  ? "Administrator"
-                  : "Operator arsip"}
+                : user ? roleLabels[user.role] : "Operator"}
             </span>
           </div>
           <DropdownMenu>
@@ -461,7 +474,7 @@ export default function Workspace({
         </div>
       </aside>
       <div className="main-shell">
-        <header className="topbar">
+        <header className="topbar" data-readonly={!editable || undefined}>
           <div className="breadcrumb">
             <button
               className="sidebar-toggle"
@@ -486,7 +499,7 @@ export default function Workspace({
               </button>
             ) : (
               <span className="secure-indicator">
-                <ShieldCheck size={15} /> Arsip kantor
+                <ShieldCheck size={15} /> <span>{editable ? "Arsip kantor" : <>Pembaca<span className="reader-access-detail"> · Hanya lihat</span></>}</span>
               </span>
             )}
             <span className="topbar-divider" />
@@ -516,14 +529,14 @@ export default function Workspace({
                 <h1>Arsip perjalanan</h1>
                 <p>Register perjalanan dinas yang sudah dilaksanakan, dikelompokkan per Surat Tugas beserta rekap dan dokumen setiap pegawai.</p>
               </div>
-              <div className="ledger-head-actions">
+              {editable && <div className="ledger-head-actions">
                 <Button variant="outline" onClick={() => setImporting(true)}>
                   <Upload /> Impor Excel
                 </Button>
                 <Button onClick={() => setEditor("new")}>
                   <Plus /> Tambah arsip
                 </Button>
-              </div>
+              </div>}
             </header>
           ) : section === "home" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
           <div className="page-heading">
@@ -532,7 +545,7 @@ export default function Workspace({
               <p>
                 {section === "trash"
                           ? "Arsip yang dihapus tetap tersedia untuk dipulihkan."
-                          : "Kelola bidang dan akses operator arsip kantor."}
+                          : "Kelola bidang dan hak akses pengguna arsip kantor."}
               </p>
             </div>
           </div>
@@ -577,7 +590,8 @@ export default function Workspace({
                   groups={filteredGroups}
                   selected={selected}
                   onSelectionChange={setSelected}
-                  renderActions={trip => <ArchiveActions trip={trip} onAction={action => openArchive(trip.id, action)} />}
+                  selectionEnabled={exportable}
+                  renderActions={trip => <ArchiveActions trip={trip} editable={editable} onAction={action => openArchive(trip.id, action)} />}
                   status={
                     <div className="ledger-status" role="group" aria-label="Filter kelengkapan">
                       <button aria-pressed={filters.status === "all"} onClick={() => patchFilters({ status: "all" })}>
@@ -591,11 +605,11 @@ export default function Workspace({
                       </button>
                     </div>
                   }
-                  tools={
+                  tools={exportable && (
                     <Button variant="outline" size="sm" className="ledger-tool" disabled={busy || !filteredGroups.length} onClick={() => exportRows()}>
                       {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
                     </Button>
-                  }
+                  )}
                   filterCount={[filters.department !== "all", filters.month !== "all"].filter(Boolean).length}
                   filters={
                     <>
@@ -626,15 +640,15 @@ export default function Workspace({
                   emptyState={
                     <Empty
                       icon={<FolderOpen size={30} />}
-                      heading={active.length ? "Tidak ada perjalanan yang cocok" : "Mulai rapikan arsip perjalanan"}
+                      heading={active.length ? "Tidak ada perjalanan yang cocok" : editable ? "Mulai rapikan arsip perjalanan" : "Belum ada arsip perjalanan"}
                       description={active.length
                         ? "Coba kata kunci lain, pilih tahun berbeda, atau hapus filter yang aktif."
-                        : "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu."}
+                        : editable ? "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu." : "Arsip akan tampil setelah dicatat oleh operator."}
                       action={active.length ? (
                         <Button variant="outline" onClick={() => patchFilters(defaultFilters)}>
                           Tampilkan semua perjalanan
                         </Button>
-                      ) : (
+                      ) : editable ? (
                         <div className="flex gap-2">
                           <Button variant="outline" onClick={() => setImporting(true)}>
                             <Upload /> Impor Excel
@@ -643,12 +657,12 @@ export default function Workspace({
                             <Plus /> Tambah arsip
                           </Button>
                         </div>
-                      )}
+                      ) : undefined}
                     />
                   }
                 />
               </section>
-              {selectedGroups.length > 0 && (
+              {exportable && selectedGroups.length > 0 && (
                 <div className="ledger-dock" role="region" aria-label="Arsip yang dipilih">
                   <span role="status">
                     <CheckCircle2 size={17} aria-hidden="true" />
@@ -693,6 +707,7 @@ export default function Workspace({
               filters={filters}
               onFilter={patchFilters}
               busy={busy}
+              canExport={exportable}
               onExport={rows => exportRows(rows)}
             />
           )}
@@ -786,7 +801,7 @@ export default function Workspace({
           </button>
         </div>
       )}
-      {editor && (
+      {editable && editor && (
         <TripForm
           trip={editor === "new" ? null : editor}
           departments={allDepartments}
@@ -820,6 +835,7 @@ export default function Workspace({
         <TripDetail
           key={detail.id}
           trip={detail}
+          editable={editable}
           onClose={() => setDetailId(null)}
           onEdit={() => openArchive(detail.id, "edit")}
           onDelete={() => openArchive(detail.id, "delete")}
@@ -829,7 +845,7 @@ export default function Workspace({
           }}
         />
       )}
-      {importing && (
+      {editable && importing && (
         <ImportDialog
           existing={trips}
           departments={allDepartments}
@@ -885,13 +901,13 @@ export default function Workspace({
             <div className="dialog-kicker">
               <BookOpen size={17} /> Panduan singkat
             </div>
-            <DialogTitle>Mulai dari arsip yang sudah ada</DialogTitle>
+            <DialogTitle>{editable ? "Mulai dari arsip yang sudah ada" : "Menelusuri arsip dan laporan"}</DialogTitle>
             <DialogDescription>
               Aplikasi ini merekap perjalanan yang sudah selesai dilaksanakan.
             </DialogDescription>
           </DialogHeader>
           <div className="help-steps">
-            {[
+            {(editable ? [
               [
                 "1",
                 "Masukkan perjalanan lama",
@@ -907,7 +923,11 @@ export default function Workspace({
                 "Temukan dan ekspor rekap",
                 "Pilih tahun, bidang, bulan, atau nama pegawai. Ekspor selalu mengikuti hasil filter atau pilihan arsip.",
               ],
-            ].map(([n, title, body]) => (
+            ] : [
+              ["1", "Pantau realisasi", "Beranda menampilkan ringkasan perjalanan dan realisasi biaya yang sudah dicatat."],
+              ["2", "Temukan arsip", "Cari berdasarkan nomor surat, tujuan, atau pegawai. Buka Detail untuk melihat biaya dan mencetak ringkasan satu arsip."],
+              ["3", "Baca laporan", "Gunakan Surat Tugas dan Rekap Laporan untuk menelusuri data menurut tahun, bulan, dan bidang. Hubungi operator jika ada data yang perlu dikoreksi."],
+            ]).map(([n, title, body]) => (
               <div key={n}>
                 <span>{n}</span>
                 <div>
@@ -925,7 +945,7 @@ export default function Workspace({
               wajib tiap perjalanan dan ketersediaan nominal realisasi.
             </p>
           </div>
-          <Button
+          {editable && <Button
             variant="outline"
             onClick={() =>
               downloadTemplate().catch(() =>
@@ -934,7 +954,7 @@ export default function Workspace({
             }
           >
             <Download /> Unduh template Excel
-          </Button>
+          </Button>}
         </DialogContent>
       </Dialog>
     </div>
@@ -1005,6 +1025,7 @@ function Settings({
   const [busy, setBusy] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [adding, setAdding] = useState(false);
+  const [newRole, setNewRole] = useState("viewer");
   const [error, setError] = useState("");
   useEffect(() => {
     if (user?.role === "admin")
@@ -1045,12 +1066,29 @@ function Settings({
       });
       setUsers((u) => [...u, added]);
       setAdding(false);
-      notify("Akun operator berhasil ditambahkan.");
+      setNewRole("viewer");
+      notify(`Akun ${roleLabels[added.role]} berhasil ditambahkan.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+  async function changeRole(account: User, role: string) {
+    if (account.role === role || (role !== "operator" && role !== "viewer")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await api<User>("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: account.id, role }),
+      });
+      setUsers(current => current.map(item => item.id === updated.id ? updated : item));
+      notify(`Peran ${updated.name} menjadi ${roleLabels[updated.role]}. Pengguna perlu masuk kembali.`);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally { setBusy(false); }
   }
   return (
     <div className="settings-layout">
@@ -1130,22 +1168,22 @@ function Settings({
       {user?.role === "admin" && (
         <section className="archive-panel settings-panel">
           <div className="section-heading">
-            <h2>Akun operator</h2>
+            <h2>Pengguna &amp; hak akses</h2>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setAdding(!adding)}
             >
-              <Plus /> Tambah operator
+              <Plus /> Tambah pengguna
             </Button>
           </div>
           <p>
-            Setiap operator dapat mengelola seluruh arsip dinas. Riwayat
-            perubahan mencatat identitas masing-masing.
+            Operator mengelola arsip. Pembaca hanya melihat Beranda, arsip perjalanan,
+            Surat Tugas, dan Rekap Laporan. Perubahan peran mengakhiri sesi login pengguna tersebut.
           </p>
           {adding && (
             <form className="account-form" onSubmit={addUser}>
-              <Field label="Nama operator">
+              <Field label="Nama pengguna">
                 <input name="name" required />
               </Field>
               <Field label="Email">
@@ -1153,7 +1191,7 @@ function Settings({
               </Field>
               <Field
                 label="Kata sandi awal"
-                hint="Minimal 12 karakter. Sampaikan secara pribadi kepada operator."
+                hint="Minimal 12 karakter. Sampaikan secara pribadi kepada pengguna."
               >
                 <input
                   type="password"
@@ -1162,6 +1200,12 @@ function Settings({
                   required
                   autoComplete="new-password"
                 />
+              </Field>
+              <Field label="Peran" hint="Pembaca tidak dapat mengubah data, membuka dokumen asli, atau mengekspor Excel.">
+                <CustomSelect name="role" aria-label="Peran pengguna baru" value={newRole} onValueChange={setNewRole} disabled={busy}>
+                  <SelectOption value="viewer">Pembaca</SelectOption>
+                  <SelectOption value="operator">Operator</SelectOption>
+                </CustomSelect>
               </Field>
               <Button type="submit" disabled={busy}>
                 Buat akun
@@ -1178,9 +1222,15 @@ function Settings({
                   <strong>{u.name}</strong>
                   <small>{u.email}</small>
                 </span>
-                <span className="status-badge neutral">
-                  {u.role === "admin" ? "Administrator" : "Operator"}
-                </span>
+                {u.role === "admin" ? (
+                  <span className="status-badge neutral">Administrator</span>
+                ) : (
+                  <CustomSelect className="user-role-select" aria-label={`Peran ${u.name}`} value={u.role}
+                    onValueChange={role => changeRole(u, role)} disabled={busy}>
+                    <SelectOption value="viewer">Pembaca</SelectOption>
+                    <SelectOption value="operator">Operator</SelectOption>
+                  </CustomSelect>
+                )}
               </div>
             ))}
           </div>
@@ -1244,7 +1294,7 @@ function LoginForm() {
           {notice}
         </p>
       )}
-      <Field label="Email operator">
+      <Field label="Email">
         <input
           type="email"
           name="email"
@@ -1322,12 +1372,12 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
           </div>
           <div className="auth-panel">
             <h2 id="auth-title">Masuk</h2>
-            <p>Masukkan email dan kata sandi operator untuk membuka arsip kantor.</p>
+            <p>Masukkan email dan kata sandi akun Anda untuk membuka arsip kantor.</p>
             <LoginForm />
           </div>
           <footer className="auth-foot">
             <span>© {new Date().getFullYear()} Dinas ESDM Provinsi Jambi</span>
-            <span>Akses hanya untuk operator terdaftar</span>
+            <span>Akses hanya untuk pengguna terdaftar</span>
           </footer>
         </section>
       </main>
@@ -1347,7 +1397,7 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
             Masuk ke arsip kantor
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Gunakan akun operator yang disediakan administrator.
+            Gunakan akun yang disediakan administrator.
           </DialogDescription>
         </DialogHeader>
         <LoginForm />
@@ -1359,8 +1409,10 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
 function ArchiveActions({
   trip,
   onAction,
+  editable,
 }: {
   trip: Trip;
+  editable: boolean;
   onAction: (action: "detail" | "edit" | "delete") => void;
 }) {
   const label = trip.lampiran6 ? trip.participants[0].name : trip.title;
@@ -1380,6 +1432,7 @@ function ArchiveActions({
         <Eye size={16} />
         <span>Detail</span>
       </Button>
+      {editable && <>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -1401,6 +1454,7 @@ function ArchiveActions({
         <Trash2 size={16} />
         <span>Hapus</span>
       </Button>
+      </>}
     </div>
   );
 }

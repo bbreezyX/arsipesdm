@@ -1,13 +1,15 @@
 import { context, checkOrigin, apiError } from "@/lib/auth";
 import { getTrip, getTrips, putTrip, transaction, addEvent } from "@/lib/db";
 import { tripSchema, fingerprint, isComplete } from "@/lib/model";
+import { visibleTrip } from "@/lib/archive-access";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: RouteContext) {
   try {
-    const c = await context();
+    const c = await context("archives:read");
     const { id } = await params;
-    const trip = (await getTrip(id, c.workspace));
+    const stored = await getTrip(id, c.workspace);
+    const trip = stored ? visibleTrip(stored, c.user) : null;
     if (!trip) throw new Error("NOT_FOUND");
     return Response.json(trip, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
@@ -19,7 +21,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
 export async function DELETE(req: Request, { params }: RouteContext) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("archives:write");
     const { id } = await params;
     const { version } = await req.json();
     const result = (await transaction(async () => {
@@ -44,7 +46,7 @@ export async function PATCH(
 ) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("archives:write");
     const { id } = await params;
     const body = await req.json();
     const result = (await transaction(async () => {

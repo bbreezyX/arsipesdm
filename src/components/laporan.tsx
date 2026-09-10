@@ -40,7 +40,7 @@ function summarize(trips: Trip[], groups: ArchiveGroup[]) {
 }
 
 export default function Laporan({
-  trips, groups, years, yearCounts, departments, filters, onFilter, busy, onExport,
+  trips, groups, years, yearCounts, departments, filters, onFilter, busy, onExport, canExport = true,
 }: {
   trips: Trip[];
   groups: ArchiveGroup[];
@@ -51,6 +51,7 @@ export default function Laporan({
   onFilter: (patch: Partial<Filters>) => void;
   busy: boolean;
   onExport: (rows: Trip[]) => void;
+  canExport?: boolean;
 }) {
   const { year, month, department } = filters;
   // Laporan hanya mengikuti tahun, bulan, dan bidang; pencarian dan status milik register arsip.
@@ -110,13 +111,13 @@ export default function Laporan({
       <header className="ledger-head">
         <div>
           <h1>Rekap &amp; laporan</h1>
-          <p>Laporan realisasi biaya perjalanan dinas per tahun, dirinci menurut bulan keberangkatan dan bidang, siap diekspor ke Excel.</p>
+          <p>Laporan realisasi biaya perjalanan dinas per tahun, dirinci menurut bulan keberangkatan dan bidang{canExport ? ", siap diekspor ke Excel." : "."}</p>
         </div>
-        <div className="ledger-head-actions">
+        {canExport && <div className="ledger-head-actions">
           <Button onClick={() => onExport(scoped)} disabled={busy || !scoped.length}>
             {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor laporan
           </Button>
-        </div>
+        </div>}
       </header>
 
       <nav className="ledger-years" aria-label="Tahun laporan">

@@ -11,7 +11,7 @@ const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", 
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const rupiah = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;
 
-export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo, onArchives, onAdd, onImport }: {
+export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo, onArchives, onAdd, onImport, editable = true }: {
   year: string;
   hero: BerandaSummary["hero"];
   monthlyDetails: BerandaSummary["monthlyDetails"];
@@ -20,6 +20,7 @@ export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo
   onArchives: (filters: Partial<Filters>) => void;
   onAdd: () => void;
   onImport: () => void;
+  editable?: boolean;
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [previewMonth, setPreviewMonth] = useState<number | null>(null);
@@ -70,7 +71,7 @@ export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo
           </ul>
           <p className="beranda-insight">
             {!period.recaps ? selectedMonth === null
-              ? "Tambahkan arsip pertama atau impor rekap Excel Anda."
+              ? editable ? "Tambahkan arsip pertama atau impor rekap Excel Anda." : "Arsip akan tampil setelah dicatat oleh operator."
               : "Belum ada perjalanan tercatat pada bulan ini."
               : period.unknown ? <><b>{period.unknown}</b> rekap belum bernominal.</>
               : selectedMonth === null && hero.peak ? <>Realisasi tertinggi: <b>{months[hero.peak.month]}</b>, Rp {shortMoney(hero.peak.total)}.</>
@@ -114,10 +115,10 @@ export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo
       </div>
 
       <div className="beranda-hero-footer">
-        <div className="beranda-hero-actions">
+        {editable ? <div className="beranda-hero-actions">
           <Button className="beranda-cta" onClick={onAdd}><Plus data-icon="inline-start" /> Tambah arsip</Button>
           <Button variant="outline" className="beranda-cta-outline" onClick={onImport}><Upload data-icon="inline-start" /> Impor Excel</Button>
-        </div>
+        </div> : <span className="beranda-reader-note">Akses Pembaca · Lihat arsip dan laporan</span>}
         <Button type="button" variant="ghost" className="beranda-view-archives" onClick={() => onArchives({
           ...defaultFilters, year, month: selectedMonth === null ? "all" : String(selectedMonth + 1).padStart(2, "0"),
         })}>

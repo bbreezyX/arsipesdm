@@ -3,8 +3,7 @@ import { db } from "@/lib/db";
 export async function PATCH(req: Request) {
   try {
     checkOrigin(req);
-    const c = await context();
-    if (c.user.role !== "admin") throw new Error("FORBIDDEN");
+    await context("settings:manage");
     const { departments } = await req.json();
     if (
       !Array.isArray(departments) ||

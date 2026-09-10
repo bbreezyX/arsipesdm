@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("archives:write");
     const parsed = batchRecapSchema.safeParse(await req.json());
     if (!parsed.success) {
       const issue = parsed.error.issues[0];

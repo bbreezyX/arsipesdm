@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { db, publicUser, sessionHash, initializeDatabase } from "./db";
 import type { User } from "./model";
+import { isUserRole, requirePermission, type Permission } from "./permissions";
 import { evaluateSession, shouldTouch, IDLE_LIMIT_MS, type SessionInfo } from "./session-policy";
 export type CurrentSession = { user: User; session: SessionInfo };
 /**
@@ -18,7 +19,7 @@ export async function currentSession({ touch = true } = {}): Promise<CurrentSess
       "SELECT pengguna.*, sesi_login.expires, sesi_login.last_activity FROM sesi_login JOIN pengguna ON pengguna.id=sesi_login.user_id WHERE token=?",
     )
     .get(hash)) as (Record<string, unknown> & { expires: number | string; last_activity: number | string | null }) | undefined;
-  if (!row) return null;
+  if (!row || !isUserRole(row.role)) return null;
   let session = evaluateSession(row, now);
   if (!session) return null;
   if (touch && shouldTouch(row, now)) {
@@ -34,21 +35,27 @@ export async function currentSession({ touch = true } = {}): Promise<CurrentSess
 export async function currentUser(): Promise<User | null> {
   return (await currentSession())?.user ?? null;
 }
-export async function context() {
+export async function context(permission: Permission = "archives:read") {
   const current = await currentSession();
-  if (current) return { user: current.user, workspace: "office", session: current.session };
+  if (current) {
+    requirePermission(current.user, permission);
+    return { user: current.user, workspace: "office", session: current.session };
+  }
   if ((await cookies()).has("archive-session")) throw new Error("UNAUTHORIZED");
-  if (process.env.DEMO_ENABLED === "true")
+  if (process.env.DEMO_ENABLED === "true") {
+    const user: User = {
+      id: "demo",
+      name: "Operator contoh",
+      email: "",
+      role: "operator",
+    };
+    requirePermission(user, permission);
     return {
-      user: {
-        id: "demo",
-        name: "Operator contoh",
-        email: "",
-        role: "operator",
-      } as User,
+      user,
       workspace: "demo",
       session: null,
     };
+  }
   throw new Error("UNAUTHORIZED");
 }
 export function checkOrigin(request: Request) {

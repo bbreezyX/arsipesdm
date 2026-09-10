@@ -3,12 +3,12 @@ import { createHonorarium, getHonorariums } from "@/lib/honorarium-db";
 import { honorariumSchema } from "@/lib/honorarium";
 export const runtime = "nodejs";
 export async function GET() {
-  try { const c = await context(); return Response.json((await getHonorariums(c.workspace)), {headers: {"Cache-Control": "private, no-store"}}); }
+  try { const c = await context("honorariums:read"); return Response.json((await getHonorariums(c.workspace)), {headers: {"Cache-Control": "private, no-store"}}); }
   catch (e) { return apiError(e); }
 }
 export async function POST(req: Request) {
   try {
-    checkOrigin(req); const c = await context();
+    checkOrigin(req); const c = await context("honorariums:write");
     const input = honorariumSchema.safeParse(await req.json());
     if (!input.success) return Response.json({error: input.error.issues[0].message}, {status: 422});
     return Response.json((await createHonorarium(c.workspace, input.data)), {status: 201});

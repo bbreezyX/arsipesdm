@@ -52,12 +52,14 @@ export default function TripDetail({
   onEdit,
   onDelete,
   onUpdate,
+  editable = true,
 }: {
   trip: Trip;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onUpdate: (t: Trip) => void;
+  editable?: boolean;
 }) {
   const [tab, setTab] = useState("overview");
   const [adding, setAdding] = useState(false);
@@ -77,6 +79,7 @@ export default function TripDetail({
   }, []);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
+    if (!editable) return;
     setError("");
     setBusy(true);
     try {
@@ -163,10 +166,10 @@ export default function TripDetail({
             {trip.lampiran6 && (
               <TabsTrigger value="lampiran">Rincian rekap</TabsTrigger>
             )}
-            <TabsTrigger value="documents">
+            {editable && <TabsTrigger value="documents">
               Dokumen <span className="tiny-count">{trip.documents.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="history">Riwayat</TabsTrigger>
+            </TabsTrigger>}
+            {editable && <TabsTrigger value="history">Riwayat</TabsTrigger>}
           </TabsList>
           <div className="detail-scroll rincian-scroll">
             {trip.lampiran6 && (
@@ -201,10 +204,10 @@ export default function TripDetail({
                     <dt>Kode rekening</dt>
                     <dd><Value value={trip.account} /></dd>
                   </div>
-                  <div>
+                  {editable && <div>
                     <dt>Berkas fisik</dt>
                     <dd><Value value={trip.physicalLocation} /></dd>
-                  </div>
+                  </div>}
                   <div>
                     <dt>Sumber data</dt>
                     <dd>{trip.source}</dd>
@@ -316,7 +319,7 @@ export default function TripDetail({
                 <p className="rincian-hint">Biaya bersama dihitung satu kali untuk seluruh perjalanan.</p>
               </section>
             </TabsContent>
-            <TabsContent value="documents">
+            {editable && <TabsContent value="documents">
               <section className="rincian-section">
                 <div className="rincian-section-head">
                   <div>
@@ -441,8 +444,8 @@ export default function TripDetail({
                   </div>
                 )}
               </section>
-            </TabsContent>
-            <TabsContent value="history">
+            </TabsContent>}
+            {editable && <TabsContent value="history">
               <section className="rincian-section">
                 <h3 className="rincian-heading">
                   Riwayat arsip
@@ -472,28 +475,28 @@ export default function TripDetail({
                   ))}
                 </ol>
               </section>
-            </TabsContent>
+            </TabsContent>}
           </div>
         </Tabs>
         <div className="detail-footer rincian-footer">
           <span>Versi {trip.version}, tersimpan di arsip kantor</span>
           <div className="detail-action-buttons">
-            <Button
+            {editable && <Button
               variant="ghost"
               className="text-destructive rincian-delete"
               onClick={onDelete}
               disabled={busy}
             >
               <Trash2 /> <span>Hapus arsip</span>
-            </Button>
+            </Button>}
             <Button variant="outline" className="rincian-print" asChild>
               <a href={`/cetak/${trip.id}`} target="_blank" rel="noreferrer">
                 <Printer /> <span>Cetak ringkasan</span>
               </a>
             </Button>
-            <Button className="rincian-edit" onClick={onEdit} disabled={busy}>
+            {editable && <Button className="rincian-edit" onClick={onEdit} disabled={busy}>
               <Pencil /> <span>Edit arsip</span>
-            </Button>
+            </Button>}
           </div>
         </div>
       </DialogContent>

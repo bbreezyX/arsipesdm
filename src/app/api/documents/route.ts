@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   let content: Buffer | undefined;
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("documents:write");
     if (Number(req.headers.get("content-length")) > 12 * 1024 * 1024)
       throw new Error("Ukuran dokumen maksimal 10 MB.");
     const form = await req.formData();

@@ -47,6 +47,11 @@
 }
 .beranda-calendar { grid-column: 1; }
 .beranda-activity { grid-column: 2; }
+.beranda[data-readonly] .beranda-calendar { grid-column: 1 / -1; }
+.beranda[data-readonly] .beranda-entry-links { grid-template-columns: minmax(0, 1fr); }
+.beranda[data-readonly] .beranda-registers { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.beranda[data-readonly] .beranda-registers button:last-child { grid-column: auto; }
+.beranda-reader-note { color: #b5c2d3; font-size: 12px; }
 
 /* ----- Hero: panel biru laut dengan garis ganda kop ----- */
 .beranda-hero {

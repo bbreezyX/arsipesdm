@@ -1,6 +1,8 @@
 import { OfficeLogin } from "@/components/workspace";
 import { context } from "@/lib/auth";
 import { getTrip } from "@/lib/db";
+import { visibleTrip } from "@/lib/archive-access";
+import { can } from "@/lib/permissions";
 import { notFound } from "next/navigation";
 import {
   dateText,
@@ -23,7 +25,8 @@ export default async function PrintPage({
   });
   if (!c) return <OfficeLogin />;
   const { id } = await params;
-  const t = (await getTrip(id, c.workspace));
+  const stored = await getTrip(id, c.workspace);
+  const t = stored ? visibleTrip(stored, c.user) : null;
   if (!t || t.deletedAt) notFound();
   return (
     <main
@@ -122,6 +125,7 @@ export default async function PrintPage({
         Sudah dibayar: {money(t.paid)} · {paymentLabel(t)}
       </p>
       {t.lampiran6 && <Lampiran6Summary trip={t} />}
+      {can(c.user, "documents:read") && <>
       <h3 style={{ margin: "25px 0 10px" }}>Dokumen tercatat</h3>
       <ul style={{ listStyle: "disc", paddingLeft: 20, lineHeight: 2 }}>
         {t.documents.map((d) => (
@@ -132,6 +136,7 @@ export default async function PrintPage({
         ))}
       </ul>
       {!t.documents.length && <p>Belum ada dokumen tercatat.</p>}
+      </>}
       {t.notes && (
         <div className="note-box">
           <strong>Catatan</strong>

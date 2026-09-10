@@ -19,8 +19,8 @@ Untuk menjalankan hasil build: `npm run build`, lalu `npm start` setelah menghen
 
 ## Alur penggunaan
 
-1. Saat aplikasi dibuka, halaman **Masuk ke arsip kantor** langsung ditampilkan. Masuk menggunakan akun operator atau administrator. Sesi yang masih aktif langsung membuka arsip kantor.
-2. Mode contoh dinonaktifkan (`DEMO_ENABLED=false`). Administrator dapat menambah operator melalui Pengaturan.
+1. Saat aplikasi dibuka, halaman **Masuk ke arsip kantor** langsung ditampilkan. Masuk menggunakan akun Administrator, Operator, atau Pembaca. Sesi yang masih aktif langsung membuka arsip kantor.
+2. Mode contoh dinonaktifkan (`DEMO_ENABLED=false`). Administrator dapat menambah Operator atau Pembaca melalui **Pengaturan → Pengguna & hak akses**.
 3. Pilih **Impor Excel** untuk XLSX/XLS/CSV. Format **Rekap perjalanan dinas per pegawai** dikenali otomatis, dengan satu entri per pegawai dan perjalanan. Baris lanjutan biaya digabungkan ke pegawai terkait; sel gabungan mengikuti penggabungan eksplisit pada sumber. Tinjau catatan tanggal, rumus, dan identitas sebelum menyimpan. Untuk format umum, baris judul kolom dikenali otomatis (termasuk hasil ekspor aplikasi yang berkop) dan tetap dapat diubah, lalu periksa pemetaan kolom; baris "Jumlah" di bawah tabel dilewati; beberapa peserta dalam satu perjalanan dipisahkan titik koma. Maksimal 1.000 entri per impor dan 20 MB per file.
 4. Gunakan **Tambah arsip** untuk memasukkan rekap kertas. Pilih **Satu pegawai** atau **Beberapa pegawai**. Pada mode beberapa pegawai, isi perjalanan sekali, pilih pegawai melalui pencarian/checkbox, lalu isi SPPD dan biaya masing-masing. Pada tahap **Biaya per pegawai**, pilih nama pada daftar di kiri (atau pemilih pegawai di layar kecil). Gunakan **Pegawai berikutnya** untuk melanjutkan tanpa kehilangan isian; bagian Biaya utama, Penginapan, Kendaraan/BBM, atau Biaya lain tetap terbuka saat berpindah orang. **Identitas & arsip** membuka data lengkap pegawai. **Salin biaya** menampilkan komponen, nominal sumber, dan penerima yang dipilih sebelum diterapkan. Jumlah pada bukti hotel/kendaraan dapat digunakan untuk mengganti nominal komponen terkait, tanpa menjumlahkan bukti dua kali. Tinjau seluruh rekap sebelum menyimpan; setiap pegawai memperoleh arsip terpisah dan seluruhnya disimpan dalam satu transaksi. Duplikat membatalkan penambahan seluruh kelompok. Pergantian mode mempertahankan isian; hanya pegawai yang dipilih pada mode aktif yang disimpan. **Arsip gabungan** tetap tersedia untuk satu arsip berisi beberapa peserta. Tanggal diketik DD/MM/YYYY. Semua perjalanan harus sudah selesai.
 5. Buka detail → **Dokumen** untuk unggah PDF/JPG/PNG (maksimal 10 MB), atau tandai berkas fisik setelah memeriksa lokasi penyimpanannya.
@@ -35,6 +35,16 @@ Biaya kosong berarti belum diketahui; angka 0 berarti nihil. Biaya bersama dihit
 Total menurut sumber dan total kuitansi rekap perjalanan dinas disimpan terpisah dari pembayaran. Rincian hotel, kendaraan, dan tiket menjadi bukti pendukung; nominalnya tidak dijumlahkan lagi ke komponen biaya. Perbedaan total dan rujukan rumus lintas pegawai ditandai untuk ditinjau. NIP yang sama dengan nama berbeda tetap dipertahankan dengan catatan pemeriksaan. File Excel sumber tidak diubah, dan pratinjau belum menyimpan data sampai tombol impor dipilih.
 
 PDF/foto disimpan sebagai lampiran. Aplikasi belum membaca isi scan secara otomatis (OCR).
+
+## Hak akses Pembaca
+
+Akun Pembaca (`viewer`) tetap wajib login dan memakai Beranda yang sama. Pembaca dapat mencari, memfilter, serta melihat arsip perjalanan aktif, Surat Tugas, Rekap Laporan, dan mencetak ringkasan satu arsip. Cakupannya seluruh arsip perjalanan aktif di ruang kantor; belum ada pembatasan per bidang atau per pegawai.
+
+Pembaca tidak dapat mengubah data, melakukan impor, menggunakan ekspor Excel, mengakses Sampah, Pengaturan, direktori Pegawai, master Kendaraan, Honorarium, atau berkas asli Dokumen. Daftar/detail arsip hanya menyertakan jenis dan jumlah dokumen untuk statistik kelengkapan; nama file, ID lampiran asli, lokasi berkas, catatan internal, sumber impor, dan riwayat perubahan tidak dikirim. Identitas peserta dan rincian biaya perjalanan tetap terlihat. Data yang memang diizinkan untuk dilihat tetap dapat disalin atau dicetak melalui browser.
+
+Administrator memilih peran saat menambah pengguna; pilihan awal adalah Pembaca. Peran akun non-administrator dapat diubah antara Operator dan Pembaca. Perubahan peran mengakhiri semua sesi akun tersebut sehingga pengguna harus login kembali. Akun Administrator tidak dapat diubah perannya melalui kontrol ini.
+
+Izin diperiksa di server pada setiap endpoint, termasuk unduhan dokumen dan `POST /api/archives/export`. Halaman yang tidak diizinkan mengarahkan Pembaca kembali ke Beranda. API perubahan data mengembalikan HTTP 403; arsip di Sampah tidak ditampilkan dan detailnya mengembalikan 404. Pengaturan peran tidak memerlukan migrasi tabel karena menggunakan kolom `pengguna.role` yang sudah ada.
 
 ## Penyimpanan dan pencadangan
 

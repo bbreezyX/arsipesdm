@@ -219,7 +219,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "operator";
+  role: "admin" | "operator" | "viewer";
 };
 export function totalCost(t: Pick<TripInput, "costs">): number | null {
   return t.costs.length ? t.costs.reduce((n, c) => n + c.amount, 0) : null;

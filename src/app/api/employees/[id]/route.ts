@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export async function PATCH(req: Request, {params}: RouteContext) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("employees:write");
     const {id} = await params;
     const body = await req.json();
     if (body.action !== undefined && body.action !== "restore") throw new Error("Tindakan pegawai tidak valid.");
@@ -20,7 +20,7 @@ export async function PATCH(req: Request, {params}: RouteContext) {
 export async function DELETE(req: Request, {params}: RouteContext) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("employees:write");
     const {id} = await params;
     const body = await req.json();
     return Response.json((await changeEmployee(c.workspace, id, body.version, "delete")));

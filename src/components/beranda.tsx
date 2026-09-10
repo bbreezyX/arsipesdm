@@ -9,6 +9,7 @@ import { money, shortMoney, type Filters, type Trip, type User } from "@/lib/mod
 import type { Employee } from "@/lib/employees";
 import type { Honorarium } from "@/lib/honorarium";
 import type { Section } from "@/lib/workspace-navigation";
+import { can, canAccessSection } from "@/lib/permissions";
 import BerandaCalendar, { calendarLegend } from "./beranda-calendar";
 import { AnimatedNumber } from "./animated-number";
 import BerandaHero from "./beranda-hero";
@@ -40,6 +41,8 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   onAdd: () => void;
   onImport: () => void;
 }) {
+  const accessUser = user ?? (demo ? { role: "operator" as const } : null);
+  const editable = can(accessUser, "archives:write");
   // Server time renders first so hydration matches; the client clock takes over afterwards.
   const [now, setNow] = useState(initialNow);
   useEffect(() => {
@@ -55,7 +58,8 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   const date = new Date(now);
   const today = jakartaDate.format(date);
   const summary = useMemo(() => berandaSummary({ trips, employees, honorariums, today }), [trips, employees, honorariums, today]);
-  const { year, hero, monthlyDetails, calendar, attention, registers, activity, latest: entries } = summary;
+  const { year, hero, monthlyDetails, calendar, registers, activity, latest: entries } = summary;
+  const attention = summary.attention.filter(item => canAccessSection(accessUser, attentionCopy[item.id].section));
   const firstName = (user?.name ?? (demo ? "Operator contoh" : "Operator")).split(",")[0].trim();
   const registerItems: { section: Section; icon: typeof Archive; name: string; figure: ReactNode; unit?: string; detail: string }[] = [
     { section: "archives", icon: Archive, name: "Arsip perjalanan", figure: <AnimatedNumber value={registers.archives.journeys} duration={900} />, unit: "perjalanan",
@@ -74,10 +78,10 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   ];
 
   return (
-    <div className="beranda">
+    <div className="beranda" data-readonly={!editable || undefined}>
       <BerandaHero key={year} year={year} hero={hero} monthlyDetails={monthlyDetails} demo={demo}
         greeting={`${greeting(Number(jakartaHour.format(date)))}, ${firstName}.`}
-        onArchives={filters => onGo("archives", filters)} onAdd={onAdd} onImport={onImport} />
+        onArchives={filters => onGo("archives", filters)} onAdd={onAdd} onImport={onImport} editable={editable} />
 
       <section className="beranda-panel beranda-attention" aria-labelledby="beranda-attention-title">
         <header className="beranda-panel-head">
@@ -96,7 +100,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
                     </strong>
                     <span>
                       <span>{copy.title(year)}</span>
-                      <small>{copy.hint}</small>
+                      <small>{editable ? copy.hint : "Lihat rekap terkait di Arsip perjalanan"}</small>
                     </span>
                     <ArrowRight size={16} aria-hidden="true" />
                   </button>
@@ -108,13 +112,13 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
           <div className="beranda-tidy">
             <CheckCircle2 size={26} strokeWidth={1.6} aria-hidden="true" />
             <strong>Arsip rapi</strong>
-            <p>Tidak ada rekap, dokumen, atau honorarium yang tertunda.</p>
+            <p>{editable ? "Tidak ada rekap, dokumen, atau honorarium yang tertunda." : "Rekap perjalanan sudah bernominal dan memiliki nomor Surat Tugas."}</p>
           </div>
         )}
       </section>
 
       <nav className="beranda-registers" aria-label="Daftar register">
-        {registerItems.map(item => (
+        {registerItems.filter(item => canAccessSection(accessUser, item.section)).map(item => (
           <button key={item.section} type="button" onClick={() => onGo(item.section)}>
             <span className="beranda-register-name"><item.icon size={16} strokeWidth={1.8} aria-hidden="true" />{item.name}</span>
             <span className="beranda-register-figure">{item.figure}{item.unit ? <small>{item.unit}</small> : null}</span>
@@ -142,11 +146,11 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
               {entries.unknown > 0 && <small>{entries.unknown} rekap belum bernominal</small>}</span>
             <ArrowRight size={16} aria-hidden="true" />
           </button>
-          <button type="button" onClick={() => onGo("honorarium", { entry: entries.filter })}>
+          {can(accessUser, "honorariums:read") && <button type="button" onClick={() => onGo("honorarium", { entry: entries.filter })}>
             <span>Honorarium<strong>{entries.honorariums} rekap</strong></span>
             <span className="beranda-entry-total">{money(entries.honorariumNet)}<small>Honor neto</small></span>
             <ArrowRight size={16} aria-hidden="true" />
-          </button>
+          </button>}
         </div>
       </section>
 
@@ -171,7 +175,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
         </footer>
       </section>
 
-      <section className="beranda-panel beranda-activity" aria-labelledby="beranda-activity-title">
+      {editable && <section className="beranda-panel beranda-activity" aria-labelledby="beranda-activity-title">
         <header className="beranda-panel-head">
           <h2 id="beranda-activity-title">Aktivitas terbaru</h2>
           <span>{activity.length ? `${activity.length} terakhir` : ""}</span>
@@ -198,7 +202,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
             <p>Perubahan arsip oleh setiap operator akan tercatat di sini.</p>
           </div>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

@@ -5,12 +5,12 @@ import { z } from "zod";
 type RouteContext = {params: Promise<{id: string}>};
 export const runtime = "nodejs";
 export async function GET(_req: Request, {params}: RouteContext) {
-  try { const c = await context(); return Response.json((await getHonorarium(c.workspace, (await params).id)), {headers: {"Cache-Control": "private, no-store"}}); }
+  try { const c = await context("honorariums:read"); return Response.json((await getHonorarium(c.workspace, (await params).id)), {headers: {"Cache-Control": "private, no-store"}}); }
   catch (e) { return apiError(e); }
 }
 export async function PATCH(req: Request, {params}: RouteContext) {
   try {
-    checkOrigin(req); const c = await context(); const body = await req.json();
+    checkOrigin(req); const c = await context("honorariums:write"); const body = await req.json();
     const meta = z.object({version: z.number().int().positive(), action: z.literal("restore").optional()}).safeParse(body);
     if (!meta.success) return Response.json({error: "Versi atau tindakan honorarium tidak valid."}, {status: 422});
     if (!meta.data.action) {
@@ -22,7 +22,7 @@ export async function PATCH(req: Request, {params}: RouteContext) {
 }
 export async function DELETE(req: Request, {params}: RouteContext) {
   try {
-    checkOrigin(req); const c = await context();
+    checkOrigin(req); const c = await context("honorariums:write");
     const body = z.object({version: z.number().int().positive()}).safeParse(await req.json());
     if (!body.success) return Response.json({error: "Versi honorarium tidak valid."}, {status: 422});
     return Response.json((await changeHonorarium(c.workspace, (await params).id, body.data.version, "delete")));

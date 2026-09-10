@@ -4,7 +4,7 @@ import { tripSchema, fingerprint } from "@/lib/model";
 export async function POST(req: Request) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("archives:write");
     const { rows } = await req.json();
     if (!Array.isArray(rows) || rows.length === 0 || rows.length > 1000)
       throw new Error("Impor 1–1.000 perjalanan dalam satu proses.");

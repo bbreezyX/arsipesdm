@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { db, verifyPassword, publicUser, sessionHash, initializeDatabase } from "@/lib/db";
 import { checkOrigin, apiError, currentSession } from "@/lib/auth";
 import { ABSOLUTE_LIMIT_MS, IDLE_LIMIT_MS } from "@/lib/session-policy";
+import { isUserRole } from "@/lib/permissions";
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
 /** Status sesi untuk peringatan di browser. Tidak memperpanjang batas tidak aktif. */
 export async function GET() {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       );
     const row = (await db.prepare("SELECT * FROM pengguna WHERE email=?").get(key)) as
       Record<string, unknown> | undefined;
-    if (!row || !verifyPassword(password, String(row.password))) {
+    if (!row || !isUserRole(row.role) || !verifyPassword(password, String(row.password))) {
       (await db.prepare(
         "INSERT INTO percobaan_login VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN percobaan_login.expires>? THEN percobaan_login.count+1 ELSE 1 END,expires=excluded.expires",
       ).run(key, 1, Date.now() + 600000, Date.now()));

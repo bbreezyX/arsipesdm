@@ -89,6 +89,7 @@ export default function ArchiveGroups({
   tools,
   filters,
   filterCount = 0,
+  selectionEnabled = true,
 }: {
   groups: ArchiveGroup[];
   selected: Set<string>;
@@ -103,6 +104,7 @@ export default function ArchiveGroups({
   filters?: ReactNode;
   /** Active filters beyond search; shown on the mobile filter toggle. */
   filterCount?: number;
+  selectionEnabled?: boolean;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const registerRef = useRef<HTMLDivElement>(null);
@@ -239,9 +241,11 @@ export default function ArchiveGroups({
     ],
     [],
   );
+  const visibleColumns = useMemo(() => selectionEnabled ? columns : columns.filter(column => column.id !== "select"), [columns, selectionEnabled]);
   const table = useReactTable({
     data: groups,
-    columns,
+    columns: visibleColumns,
+    enableRowSelection: selectionEnabled,
     getRowId: (group) => group.key,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -503,10 +507,10 @@ export default function ArchiveGroups({
             </Table>
           </div>
           <div className="ledger-mobile">
-            <label className="ledger-mobile-all">
+            {selectionEnabled && <label className="ledger-mobile-all">
               {selectAllPage}
               Pilih semua di halaman ini
-            </label>
+            </label>}
             {rows.map((row) => (
               <article
                 className="ledger-card"
@@ -515,13 +519,13 @@ export default function ArchiveGroups({
                 data-expanded={row.getIsExpanded()}
               >
                 <div className="ledger-card-top">
-                  <Checkbox
+                  {selectionEnabled && <Checkbox
                     checked={row.getIsSelected()}
                     onCheckedChange={(checked) =>
                       row.toggleSelected(checked === true)
                     }
                     aria-label={`Pilih ${reference(row.original)}`}
-                  />
+                  />}
                   <button
                     className="ledger-ref"
                     onClick={() => row.toggleExpanded()}

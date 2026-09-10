@@ -5,7 +5,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: RouteContext) {
   try {
-    const c = await context();
+    const c = await context("documents:read");
     const { id } = await params;
     if (!/^[\da-f-]{36}$/.test(id)) throw new Error("NOT_FOUND");
     const doc = (await getTrips(c.workspace))
@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
 export async function DELETE(req: Request, { params }: RouteContext) {
   try {
     checkOrigin(req);
-    const c = await context();
+    const c = await context("documents:write");
     const { id } = await params;
     if (!/^[\da-f-]{36}$/.test(id)) throw new Error("NOT_FOUND");
     const { version } = await req.json();
