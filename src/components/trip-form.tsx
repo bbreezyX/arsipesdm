@@ -2,6 +2,7 @@
 import { Combobox } from "./ui/combobox";
 import DestinationFields from "./destination-fields";
 import AccountCodeField from "./account-code-field";
+import FundTrackField from "./fund-track-field";
 import { formatDestinations, tripDestinations } from "@/lib/destinations";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
@@ -71,6 +72,7 @@ function GeneralTripForm({
       notes: "",
       activity: "",
       account: "",
+      fundTrack: "",
       physicalLocation: "",
       requiredDocs: [],
       correctionReason: "",
@@ -190,6 +192,7 @@ function GeneralTripForm({
                 </Field>
                 <AccountCodeField value={form.account} options={suggestions.accounts}
                   onChange={account => patch({ account })} className="span-2" />
+                <FundTrackField value={form.fundTrack ?? ""} trip={form} onChange={fundTrack => patch({ fundTrack })} />
                 <DestinationFields values={tripDestinations(form)} options={suggestions.destinations}
                   onChange={destinations => patch({destinations, destination: formatDestinations(destinations)})} />
                 <Field label="Bidang penanggung jawab" required>

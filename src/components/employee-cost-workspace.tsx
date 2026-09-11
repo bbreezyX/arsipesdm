@@ -15,6 +15,7 @@ import { Field } from "./fields";
 import { NumberField } from "./lampiran6-form";
 import RecapCostDetails from "./recap-cost-details";
 import AccountCodeField from "./account-code-field";
+import FundTrackField from "./fund-track-field";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import { Button } from "./ui/button";
 import { CustomSelect, SelectOption } from "./ui/select";
@@ -141,6 +142,8 @@ export default function EmployeeCostWorkspace({ rows, onChange, onEditArchive, e
           <TabsContent value="main">
             <AccountCodeField value={input.account} options={suggestions.accounts} className="mb-4"
               onChange={account => patch(current => ({ ...current, account }))} />
+            <FundTrackField value={input.fundTrack ?? ""} trip={input} className="mb-4"
+              onChange={fundTrack => patch(current => ({ ...current, fundTrack }))} />
             <div className="cost-sppd-fields"><Field label="Nomor SPPD"><input aria-label={`SPPD ${person.name}`} value={input.sppdNo} maxLength={250} placeholder="Isi nomor SPPD pegawai ini" onChange={event => { const sppdNo = event.target.value; patch(current => ({ ...current, sppdNo })); }} /></Field><Field label="Tanggal SPPD"><ArchiveDateInput value={data.sppdDate} onChange={sppdDate => patchData({ sppdDate })} /></Field></div>
             <div className="cost-amount-heading"><h4>Komponen biaya</h4><span>Rupiah · kosong = belum dicatat · 0 = nihil</span></div>
             <div className="cost-amount-grid">{batchCostColumns.map(([field, label]) => <div key={field} className="cost-amount-cell" data-recap-tone={data[field] === null ? "empty" : varied.has(field) ? "different" : "filled"}>

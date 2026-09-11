@@ -35,6 +35,7 @@ import {
   paymentLabel,
   isComplete,
 } from "@/lib/model";
+import { fundTrackLabels, resolveFundTrack } from "@/lib/fund-track";
 
 function dateRange(start: string, end: string) {
   if (start === end) return dateText(start);
@@ -44,6 +45,11 @@ function dateRange(start: string, end: string) {
 
 function Value({ value }: { value: string | null | undefined }) {
   return value?.trim() ? value : <span className="rincian-empty">Belum dicatat</span>;
+}
+
+function fundTrackDetail(trip: Trip) {
+  const track = resolveFundTrack(trip);
+  return track ? `${track} · ${fundTrackLabels[track]}` : "";
 }
 
 export default function TripDetail({
@@ -203,6 +209,10 @@ export default function TripDetail({
                   <div>
                     <dt>Kode rekening</dt>
                     <dd><Value value={trip.account} /></dd>
+                  </div>
+                  <div>
+                    <dt>Jenis dana</dt>
+                    <dd><Value value={fundTrackDetail(trip)} /></dd>
                   </div>
                   {editable && <div>
                     <dt>Berkas fisik</dt>

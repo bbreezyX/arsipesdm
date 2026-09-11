@@ -13,6 +13,7 @@ export const importFields = [
   ["paid", "Sudah dibayar", false],
   ["activity", "Kegiatan / subkegiatan", false],
   ["account", "Kode rekening", false],
+  ["fundTrack", "Jenis dana", false],
   ["physicalLocation", "Lokasi berkas fisik", false],
   ["notes", "Catatan", false],
 ] as const;
@@ -91,6 +92,7 @@ export function suggestMapping(headers: string[]): Mapping {
     paid: ["sudah dibayar", "dibayar", "pembayaran"],
     activity: ["kegiatan / subkegiatan", "subkegiatan", "program"],
     account: ["kode rekening", "rekening"],
+    fundTrack: ["jenis dana", "track dana", "jenis up/gu"],
     physicalLocation: ["lokasi berkas fisik", "lokasi berkas", "map"],
     notes: ["catatan", "keterangan"],
   };
@@ -123,6 +125,7 @@ export function convertRows(
       notes: text("notes"),
       activity: text("activity"),
       account: text("account"),
+      fundTrack: text("fundTrack"),
       physicalLocation: text("physicalLocation"),
       requiredDocs: [],
       correctionReason: "",

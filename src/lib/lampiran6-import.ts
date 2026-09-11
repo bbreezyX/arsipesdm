@@ -1,5 +1,6 @@
 import type { CellObject, WorkSheet } from "xlsx";
 import { parseDate, parseMoney, type ImportRow } from "./import";
+import { parseFundTrack } from "./fund-track";
 import { tripSchema, type TripInput } from "./model";
 import {
   flightSchema,
@@ -84,6 +85,7 @@ export function convertLampiran6(
   const hasLodgingMode = normalized(sheet[`BP${headerRow}`]?.v) === "perhitungan penginapan";
   const hasLodgingBaseRate = normalized(sheet[`BQ${headerRow}`]?.v) === "tarif dasar penginapan (rp)";
   const hasLodgingNights = normalized(sheet[`BR${headerRow}`]?.v) === "jumlah malam penginapan 30%";
+  const hasFundTrack = normalized(sheet[`BS${headerRow}`]?.v) === "keterangan";
   const vehicleColumns = ([
     ["BI", "Jenis mobil"], ["BJ", "Jenis BBM"], ["BK", "Harga BBM per liter (Rp)"], ["BM", "Jumlah liter BBM"],
   ] as const).filter(([col, label]) => normalized(sheet[`${col}${headerRow}`]?.v) === normalized(label)).map(([col]) => col);
@@ -409,6 +411,7 @@ export function convertLampiran6(
         notes: text("AB"),
         activity: detail.activityName,
         account: "",
+        fundTrack: hasFundTrack ? parseFundTrack(text("BS")) : "",
         physicalLocation: "",
         requiredDocs: [],
         correctionReason: "",

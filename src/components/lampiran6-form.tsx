@@ -7,6 +7,7 @@ import { Combobox } from "./ui/combobox";
 import DestinationFields from "./destination-fields";
 import { useRowKeys } from "./use-row-keys";
 import AccountCodeField from "./account-code-field";
+import FundTrackField from "./fund-track-field";
 import RecapEntryMode from "./recap-entry-mode";
 import AdditionalCostFields from "./additional-cost-fields";
 import DecimalField from "./decimal-field";
@@ -123,6 +124,7 @@ export default function Lampiran6Form({
           notes: "",
           activity: "",
           account: "",
+          fundTrack: "",
           physicalLocation: "",
           requiredDocs: [],
           correctionReason: "",
@@ -457,6 +459,7 @@ export default function Lampiran6Form({
                   <div className="form-grid">
                     <AccountCodeField value={form.account} options={suggestions.accounts}
                       onChange={account => patch({ account })} className="span-2" />
+                    <FundTrackField value={form.fundTrack ?? ""} trip={form} onChange={fundTrack => patch({ fundTrack })} />
                     <Field label="Nomor ST / SPT">
                       <Combobox aria-label="Nomor ST / SPT" value={form.sptNo} maxLength={250}
                         options={suggestions.letters} onValueChange={sptNo => patch({sptNo})}

@@ -307,6 +307,7 @@ if (
             "Data fiktif untuk mencoba aplikasi. Bukan catatan perjalanan atau biaya Dinas ESDM yang sebenarnya.",
           activity: "Pelaksanaan urusan pemerintahan bidang ESDM",
           account: "",
+          fundTrack: "",
           physicalLocation: `Lemari contoh A • Map ${startDate.slice(0, 4)}/${i + 1}`,
           requiredDocs: ["spt", "sppd", "report", "receipt"],
           correctionReason: "",

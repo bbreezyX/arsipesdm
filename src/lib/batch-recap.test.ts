@@ -16,6 +16,7 @@ const shared: SharedJourney = {
   title: "Perjalanan pengujian rekap", sptNo: "ST-TEST-BATCH", startDate: "2025-02-03", endDate: "2025-02-05",
   destination: "Kabupaten Kerinci", destinations: ["Kabupaten Kerinci"], origin: "Kota Jambi", claimedDays: 3,
   program: "Program uji", activityName: "Kegiatan anggaran", subActivity: "Subkegiatan uji", dailyRateMode: "auto",
+  fundTrack: "",
 };
 const people: Employee[] = ["A", "B", "C"].map((name, index) => ({
   id: name, name: `Pegawai Uji ${name}`, nip: `00${index}`, rank: index === 0 ? "IV/a" : "III/c",
@@ -105,7 +106,7 @@ test("empty batch needs no discard confirmation, any journey or selection does",
   const empty: SharedJourney = {
     title: "", sptNo: "", startDate: "", endDate: "", destination: "", destinations: [],
     origin: "", claimedDays: null, program: "", activityName: "", subActivity: "",
-    dailyRateMode: "auto", format: "dalam-provinsi", destinationProvince: "",
+    dailyRateMode: "auto", format: "dalam-provinsi", destinationProvince: "", fundTrack: "",
   };
   assert.equal(isBatchEmpty({ shared: empty, rows: [] }), true);
   assert.equal(isBatchEmpty({ shared: { ...empty, title: "   " }, rows: [] }), true);
@@ -116,7 +117,7 @@ test("empty batch needs no discard confirmation, any journey or selection does",
     { title: "Monitoring" }, { sptNo: "ST-1" }, { startDate: "2025-01-02" }, { endDate: "2025-01-03" },
     { destination: "Kerinci" }, { destinations: ["Kerinci"] }, { origin: "Jambi" }, { claimedDays: 2 },
     { program: "Program" }, { activityName: "Kegiatan" }, { subActivity: "Sub" },
-    { destinationProvince: "Sumatera Barat" }, { format: "luar-provinsi" }, { dailyRateMode: "manual" },
+    { destinationProvince: "Sumatera Barat" }, { format: "luar-provinsi" }, { dailyRateMode: "manual" }, { fundTrack: "UP" },
   ];
   for (const patch of patches) assert.equal(isBatchEmpty({ shared: { ...empty, ...patch }, rows: [] }), false, JSON.stringify(patch));
 });

@@ -9,6 +9,7 @@ import {
 } from "@/lib/batch-recap";
 import { lampiranReview } from "@/lib/lampiran6-schema";
 import { dateText, money, totalCost, type Trip, type TripInput } from "@/lib/model";
+import { fundTrackLabels, resolveFundTrack } from "@/lib/fund-track";
 import type { Employee } from "@/lib/employees";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import { reportSessionResponse } from "@/lib/session-client";
@@ -82,7 +83,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
       const row = typeof issue.path[1] === "number" ? selected[issue.path[1]] : undefined;
       const field = (issue.path[2] === "lampiran6" ? issue.path[3] : issue.path[2]) as keyof SharedJourney;
       const sectionByField: Partial<Record<keyof SharedJourney, JourneyIssue["section"]>> = {
-        title: "letter", sptNo: "letter", startDate: "schedule", endDate: "schedule", claimedDays: "schedule",
+        title: "letter", sptNo: "letter", fundTrack: "letter", startDate: "schedule", endDate: "schedule", claimedDays: "schedule",
         origin: "route", destination: "route", destinations: "route", format: "route", destinationProvince: "route",
       };
       const commonSection = step === 0 && row && sectionByField[field]
@@ -179,12 +180,16 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
                 const input = row.input;
                 const reviews = lampiranReview(input.lampiran6!, input.startDate, input.endDate);
                 const individualJourney = JSON.stringify(sharedJourney(input)) !== JSON.stringify(shared);
+                const track = resolveFundTrack(input);
                 return <article key={row.key} className="batch-review-card" data-error={errorKey === row.key}>
                   <div className="section-heading batch-review-heading">
                     <div className="batch-review-identity">
                       <strong>{input.participants[0].name}</strong>
                       <p className="field-hint">SPPD: {input.sppdNo || "Belum dicatat"} · {input.department}</p>
-                      <dl className="batch-review-account"><dt>Kode rekening</dt><dd>{input.account || "Belum dicatat"}</dd></dl>
+                      <dl className="batch-review-account">
+                        <dt>Kode rekening</dt><dd>{input.account || "Belum dicatat"}</dd>
+                        <dt>Jenis dana</dt><dd>{track ? `${track} · ${fundTrackLabels[track]}` : "Belum dicatat"}</dd>
+                      </dl>
                     </div>
                     <Button type="button" variant="outline" size="sm" aria-label={`Ubah biaya ${input.participants[0].name}`} onClick={() => { setActiveCostKey(row.key); go(1); }}>Ubah biaya</Button>
                   </div>

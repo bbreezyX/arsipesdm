@@ -15,6 +15,7 @@ import type { Employee } from "@/lib/employees";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import ArchiveDateInput from "./archive-date-input";
 import DestinationFields from "./destination-fields";
+import FundTrackField from "./fund-track-field";
 import { Field } from "./fields";
 import { NumberField } from "./lampiran6-form";
 import { Button } from "./ui/button";
@@ -148,6 +149,7 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
           <h4><span>01</span>Surat & kegiatan</h4>
           <div className="journey-input-stack">
             <Field className={shared.sptNo.trim() ? "recap-field-entered" : ""} label="Nomor ST / SPT" hint="Nomor surat tugas yang digunakan bersama."><Combobox aria-label="Nomor ST / SPT" value={shared.sptNo} maxLength={250} options={suggestions.letters} onValueChange={sptNo => onJourneyChange({ sptNo })} placeholder="Pilih atau ketik nomor ST" /></Field>
+            <FundTrackField value={shared.fundTrack ?? ""} trip={shared} className={shared.fundTrack?.trim() ? "recap-field-entered" : ""} onChange={fundTrack => onJourneyChange({ fundTrack })} />
             <Field className={shared.title.trim() ? "recap-field-entered" : ""} label="Nama kegiatan / maksud perjalanan" required><Combobox multiline rows={3} aria-label="Nama kegiatan / maksud perjalanan" value={shared.title} maxLength={3000} options={suggestions.purposes} onValueChange={title => onJourneyChange({ title })} placeholder="Contoh: Monitoring pelaksanaan kegiatan di Kabupaten Kerinci" /></Field>
           </div>
           {inlineIssue("letter")}

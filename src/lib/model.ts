@@ -2,6 +2,7 @@ import { z } from "zod";
 import { lampiran6Schema, lampiranCosts } from "./lampiran6-schema";
 import { calculateLodgingAllowance } from "./lodging-allowance";
 import { destinationKey, formatDestinations } from "./destinations";
+import { fundTracks, parseFundTrack } from "./fund-track";
 
 export const departments = [
   "Sekretariat",
@@ -82,6 +83,13 @@ export const tripSchema = z
     activity: z.string().trim().max(1000).default(""),
     lampiran6: lampiran6Schema.optional(),
     account: short.default(""),
+    fundTrack: z
+      .string()
+      .trim()
+      .max(20)
+      .default("")
+      .transform((value) => parseFundTrack(value) || value)
+      .refine((value) => value === "" || (fundTracks as readonly string[]).includes(value), "Jenis dana harus UP, GU 1, GU 2, GU 3, TU, atau LS."),
     physicalLocation: short.default(""),
     requiredDocs: z
       .array(

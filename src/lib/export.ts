@@ -1,6 +1,7 @@
 import type { CellValue, Workbook, Worksheet } from "exceljs";
 import type { Trip } from "./model";
 import { totalCost, isComplete, paymentLabel, docLabels, duration } from "./model";
+import { resolveFundTrack } from "./fund-track";
 import { createLampiran6Sheet } from "./lampiran6-export";
 import { lampiranReview } from "./lampiran6-schema";
 import {
@@ -104,6 +105,7 @@ const tripColumns: ColumnSpec[] = [
   { header: "Kelengkapan", width: 12, kind: "center" },
   { header: "Kegiatan / subkegiatan", width: 30 },
   { header: "Kode rekening", width: 16 },
+  { header: "Jenis dana", width: 12 },
   { header: "Lokasi berkas fisik", width: 22 },
   { header: "Catatan", width: 40 },
 ];
@@ -112,7 +114,7 @@ const tripGroups: GroupSpec[] = [
   { title: "Perjalanan", span: 7 },
   { title: "Pegawai", span: 1 },
   { title: "Biaya (Rp)", span: 4 },
-  { title: "Anggaran", span: 2 },
+  { title: "Anggaran", span: 3 },
   { title: "Berkas dan catatan", span: 2 },
 ];
 const scopeLabel = (t: Trip) =>
@@ -156,6 +158,7 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
       isComplete(t) ? "Lengkap" : "Draft",
       t.activity,
       t.account,
+      resolveFundTrack(t),
       t.physicalLocation,
       t.notes,
     ]),
@@ -272,6 +275,7 @@ function styleLampiranSheet(sheet: Worksheet) {
     { ranges: [["AM", "AO"], ["BI", "BI"]], header: "FF9A4F2F", body: "FFFCF0E8" }, // Transport darat dan mobil
     { ranges: [["AP", "BG"]], header: "FF695096", body: "FFF3EFFA" }, // Transport udara
     { ranges: [["BJ", "BK"], ["BM", "BM"]], header: "FF87620D", body: "FFFFF7DC" }, // BBM; BL tetap rincian tujuan
+    { ranges: [["BS", "BS"]], header: "FF1F3864" }, // Jenis dana (Keterangan BKU)
   ];
   const columnColors = new Map<number, (typeof sections)[number]>();
   for (const section of sections) {
@@ -307,13 +311,13 @@ function styleLampiranSheet(sheet: Worksheet) {
       const cell = row.getCell(c);
       cell.font = font(10);
       const colors = columnColors.get(c);
-      if (colors) cell.fill = solid(colors.body);
+      if (colors?.body) cell.fill = solid(colors.body);
       cell.border = thinBorder();
       const numeric = typeof cell.value === "number";
       cell.alignment = {
         vertical: "middle",
         horizontal: numeric ? "right" : cell.value instanceof Date ? "center" : "left",
-        wrapText: c === 12 || c === 28 || c === 64,
+        wrapText: c === 12 || c === 28 || c === 64 || c === 71,
       };
     }
   }

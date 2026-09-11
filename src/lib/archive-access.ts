@@ -15,7 +15,7 @@ export function visibleTrip(trip: Trip, user: Pick<User, "role">): Trip | null {
     department: trip.department, startDate: trip.startDate, endDate: trip.endDate,
     participants: trip.participants.map(({ id, name, nip, position, department }) => ({ id, name, nip, position, department })),
     costs: trip.costs.map(({ id, category, label, participantId, amount }) => ({ id, category, label, participantId, amount })),
-    paid: trip.paid, activity: trip.activity, account: trip.account,
+    paid: trip.paid, activity: trip.activity, account: trip.account, fundTrack: trip.fundTrack ?? "",
     lampiran6: trip.lampiran6 ? { ...trip.lampiran6, sourceNo: "", sourceRows: [], sourceIssues: [], sourceFormulas: {} } : undefined,
     requiredDocs: trip.requiredDocs,
     // Types/counts preserve completeness statistics without revealing the files or storage locations.

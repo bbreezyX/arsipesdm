@@ -177,7 +177,28 @@ test("download template contains all required headings and a separate guidance s
   assert(headings.includes("Pegawai"));
   assert.equal(headings.includes("Peserta"), false);
   assert(headings.includes("Total realisasi"));
+  assert(headings.includes("Jenis dana"));
   assert.equal(detectHeaderRow([headings]), 1);
+});
+test("Perjalanan export writes jenis dana without shifting cost columns", async () => {
+  const withTrack = {
+    ...trip,
+    startDate: "2026-05-12",
+    endDate: "2026-05-13",
+    sptNo: "B-000.1.2.3-144/DESDM/V/2026",
+    fundTrack: "",
+  };
+  const explicit = { ...trip, id: "explicit", code: "PD/2024/0003", fundTrack: "TU" };
+  const reopened = await reopen(await createTripWorkbook([withTrack, explicit]));
+  const rows = tableRows(reopened.Sheets.Perjalanan);
+  assert.equal(rows[0]["Jenis dana"], "GU 1");
+  assert.equal(rows[1]["Jenis dana"], "TU");
+  assert.equal(rows[0]["Total realisasi"], null);
+  const imported = convertRows(rows, suggestMapping(Object.keys(rows[0])), "test.xlsx", "Perjalanan", 2);
+  assert.deepEqual(imported.map((row) => row.errors), [[], []]);
+  assert.equal(imported[0].trip?.fundTrack, "GU 1");
+  assert.equal(imported[1].trip?.fundTrack, "TU");
+  assert.equal(imported[0].trip?.notes, "");
 });
 test("multiple destinations survive the general Excel export and import", async () => {
   const destinations = ["Kabupaten Bungo", "Kantor di Tebo; ruang pertemuan"];

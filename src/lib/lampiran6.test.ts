@@ -379,3 +379,53 @@ test("a source continuation row with a flight becomes a transit leg instead of a
   assert.equal(outbound.price, 1500000);
   assert(row.warnings?.some((note) => note.includes("AX11")));
 });
+
+test("lampiran export writes BKU keterangan on BS and imports it back", async () => {
+  const rows = convertLampiran6(sourceSheet(), "test.xlsx", "Luar Daerah (Dalam Provinsi)");
+  const trips: Trip[] = rows.map((row, i) => ({
+    ...row.trip!,
+    id: `fund-${i}`,
+    code: `PD/2026/${i}`,
+    version: 1,
+    createdAt: "2026-01-01",
+    updatedAt: "2026-01-01",
+    history: [],
+    documents: [],
+    source: row.source,
+    deletedAt: null,
+  }));
+  trips[0].fundTrack = "UP";
+  trips[0].sptNo = "B-000.1.2.3-225/DESDM/VII/2026";
+  trips[0].startDate = "2026-07-10";
+  trips[0].endDate = "2026-07-12";
+  trips[1].fundTrack = "";
+  trips[1].sptNo = "B-000.1.2.3-144/DESDM/V/2026";
+  trips[1].startDate = "2026-05-12";
+  trips[1].endDate = "2026-05-13";
+  trips[0].lampiran6!.lodgings = [{
+    name: "Hotel Uji", room: "001", reference: "", checkIn: "2026-07-10", checkOut: "2026-07-12",
+    days: 2, application: "", orderId: "", dailyRate: 100000, total: 200000,
+  }, {
+    name: "Hotel Lanjutan", room: "002", reference: "", checkIn: "2026-07-12", checkOut: "2026-07-13",
+    days: 1, application: "", orderId: "", dailyRate: 100000, total: 100000,
+  }];
+  const book = await createTripWorkbook(trips);
+  const ExcelJS = await loadExcelJs();
+  const styled = new ExcelJS.Workbook();
+  await styled.xlsx.load(await book.xlsx.writeBuffer());
+  const dalam = styled.getWorksheet("Luar Daerah (Dalam Provinsi)")!;
+  assert.equal(dalam.getCell("BS4").value, "Keterangan");
+  const headerFill = dalam.getCell("BS4").fill;
+  assert.equal(headerFill && headerFill.type === "pattern" ? headerFill.fgColor?.argb : undefined, "FF1F3864");
+  assert.equal(dalam.getCell("BS9").value, "UP");
+  assert.equal(dalam.getCell("BS9").alignment?.horizontal, "left");
+  assert.equal(dalam.getCell("BS9").alignment?.wrapText, true);
+  assert.equal(dalam.getCell("BS9").font?.color?.argb, "FF172C44");
+  assert.equal(dalam.getCell("BS10").value, null);
+  assert.equal(dalam.getCell("BS11").value, "GU 1");
+  const reopened = XLSX.read(Buffer.from(await book.xlsx.writeBuffer()), { type: "buffer", cellDates: true });
+  const again = convertLampiran6(reopened.Sheets["Luar Daerah (Dalam Provinsi)"], "export.xlsx", "Luar Daerah (Dalam Provinsi)");
+  assert.deepEqual(again.map((row) => row.errors), [[], []]);
+  assert.equal(again[0].trip?.fundTrack, "UP");
+  assert.equal(again[1].trip?.fundTrack, "GU 1");
+});

@@ -11,7 +11,7 @@ function trip(id: string, amount: number | null, changes: Partial<Trip> = {}): T
     destination: "Kabupaten Bungo", department: "Energi", startDate: "2026-02-12", endDate: "2026-02-13",
     participants: [{id: `person-${id}`, name: `Pegawai ${id}`, nip: id, position: "", department: "Energi"}],
     costs: amount === null ? [] : [{id: `cost-${id}`, category: "Biaya lainnya", label: "Biaya bersama", participantId: "shared", amount}],
-    paid: null, notes: "", activity: "", account: "", physicalLocation: "", requiredDocs: [], correctionReason: "",
+    paid: null, notes: "", activity: "", account: "", fundTrack: "", physicalLocation: "", requiredDocs: [], correctionReason: "",
     createdAt: "2026-02-14", updatedAt: "2026-02-14", documents: [], history: [], source: "test", deletedAt: null,
     ...changes,
   };

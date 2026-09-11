@@ -47,6 +47,7 @@ const input: TripInput = {
   notes: "",
   activity: "",
   account: "",
+  fundTrack: "",
   physicalLocation: "",
   requiredDocs: ["spt", "sppd"],
   correctionReason: "",

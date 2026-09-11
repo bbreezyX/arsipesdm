@@ -56,6 +56,7 @@ export function journeyDifferences(input: TripInput, shared: SharedJourney) {
   const data = input.lampiran6!;
   const fields: Array<[string, unknown, unknown]> = [
     ["Maksud perjalanan", input.title, shared.title], ["Nomor ST", input.sptNo, shared.sptNo],
+    ["Jenis dana", input.fundTrack ?? "", shared.fundTrack ?? ""],
     ["Tanggal berangkat", input.startDate, shared.startDate], ["Tanggal kembali", input.endDate, shared.endDate],
     ["Cakupan perjalanan", data.format, shared.format], ["Provinsi tujuan", data.format === "luar-provinsi" ? data.destinationProvince : "", shared.format === "luar-provinsi" ? shared.destinationProvince : ""],
     ["Asal", data.origin, shared.origin], ["Tujuan", tripDestinations(input), tripDestinations(shared)],

@@ -20,7 +20,7 @@ export const batchRecapSchema = z.object({
   });
 });
 
-const commonKeys = ["title", "sptNo", "startDate", "endDate", "destination", "destinations"] as const;
+const commonKeys = ["title", "sptNo", "startDate", "endDate", "destination", "destinations", "fundTrack"] as const;
 const commonDetailKeys = ["origin", "claimedDays", "program", "activityName", "subActivity", "dailyRateMode", "format", "destinationProvince"] as const;
 export type SharedJourney = Pick<TripInput, typeof commonKeys[number]> & Pick<Lampiran6, typeof commonDetailKeys[number]>;
 export type BatchRow = { key: string; selected: boolean; input: TripInput };
@@ -28,7 +28,7 @@ export type BatchRecapState = { shared: SharedJourney; rows: BatchRow[] };
 
 export function sharedJourney(input: TripInput): SharedJourney {
   return Object.fromEntries([
-    ...commonKeys.map(key => [key, input[key]]),
+    ...commonKeys.map(key => [key, key === "fundTrack" ? input.fundTrack ?? "" : input[key]]),
     ...commonDetailKeys.map(key => [key, input.lampiran6![key]]),
   ]) as SharedJourney;
 }
@@ -67,7 +67,7 @@ export function newBatchRow(shared: SharedJourney, employee: Pick<Employee, "id"
     origin, claimedDays, program, activityName, subActivity, format, destinationProvince, rank: employee.rank, dailyRateMode: dailyRateMode ?? "auto",
   }), tripDestinations(journey));
   return { key: employee.id, selected: true, input: prepareRecap({
-    ...journey, department: employee.department, sppdNo: "",
+    ...journey, fundTrack: journey.fundTrack ?? "", department: employee.department, sppdNo: "",
     participants: [{ id: employee.id, name: employee.name, nip: employee.nip, position: employee.position, department: employee.department }],
     lampiran6: data, costs: [], paid: null, notes: "", activity: activityName,
     account: "", physicalLocation: "", requiredDocs: [], correctionReason: "",
@@ -114,7 +114,7 @@ export function isBatchEmpty(state: BatchRecapState): boolean {
   const shared = state.shared;
   if ([shared.title, shared.sptNo, shared.startDate, shared.endDate, shared.destination,
     shared.origin, shared.program, shared.activityName, shared.subActivity,
-    shared.destinationProvince].some(value => value.trim().length > 0)) return false;
+    shared.destinationProvince, shared.fundTrack ?? ""].some(value => value.trim().length > 0)) return false;
   if ((shared.destinations ?? []).some(value => value.trim().length > 0)) return false;
   if (shared.claimedDays !== null) return false;
   if (shared.format !== "dalam-provinsi") return false;
