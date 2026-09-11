@@ -366,6 +366,7 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
   const pageRows = table.getRowModel().rows;
   const sorted = sorting[0];
   const sortValue = sorted ? `${sorted.id}:${sorted.desc ? "desc" : "asc"}` : "name:asc";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gulir ke atas setiap halaman, urutan, atau data berubah
   useEffect(() => {
     registerRef.current?.querySelector('[data-slot="table-container"]')?.scrollTo({ top: 0 });
   }, [pageIndex, pageSize, sorting, rows]);

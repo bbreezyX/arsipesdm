@@ -2,7 +2,7 @@
 
 import TravelScopeFields from "./travel-scope-fields";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, CalendarDays, Check, Search, Users, X } from "lucide-react";
 import type { BatchRow, SharedJourney } from "@/lib/batch-recap";
@@ -71,7 +71,7 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
   const daily = automaticDailyAllowance(shared, tripDestinations(shared));
   const differentDailyModes = selected.filter(row => row.input.lampiran6?.dailyRateMode !== shared.dailyRateMode).length;
 
-  function focusSection(section: JourneyIssue["section"], field?: keyof SharedJourney) {
+  const focusSection = useCallback((section: JourneyIssue["section"], field?: keyof SharedJourney) => {
     const target = root.current?.querySelector<HTMLElement>(`[data-journey-section="${section}"]`);
     const scroll = target?.closest<HTMLElement>(".journey-entry-scroll");
     if (scroll && target) scroll.scrollTop += target.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
@@ -89,7 +89,7 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
       const fieldBounds = input.getBoundingClientRect();
       if (fieldBounds.bottom > bounds.bottom) scroll.scrollTop += fieldBounds.bottom - bounds.bottom + 12;
     }
-  }
+  }, []);
   function jump(section: JourneyIssue["section"]) {
     setMobilePanel(section === "people" ? "people" : "journey");
     setFocusTarget({ section });
@@ -103,7 +103,7 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
     if (!focusTarget) return;
     focusSection(focusTarget.section, focusTarget.field);
     setFocusTarget(undefined);
-  }, [focusTarget]);
+  }, [focusTarget, focusSection]);
 
   function inlineIssue(section: JourneyIssue["section"]) {
     return issue?.section === section ? <p className="journey-inline-error">{issue.message}</p> : null;

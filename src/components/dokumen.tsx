@@ -613,6 +613,7 @@ function MapPanel({ folder, focusType, slotState, onUpload, onNote, onView, onOp
   closable: boolean;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fokus ulang saat berpindah map
   useEffect(() => {
     if (!focusType || !listRef.current) return;
     const target = listRef.current.querySelector<HTMLElement>(`[data-type="${focusType}"]`);
@@ -759,6 +760,7 @@ function Viewer({ folder, doc, onClose, onSelect, onRemove }: {
   const index = siblings.findIndex((d) => d.id === doc.id);
   const prev = siblings[index - 1];
   const next = siblings[index + 1];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tutup konfirmasi saat berpindah dokumen
   useEffect(() => { setConfirming(false); }, [doc.id]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

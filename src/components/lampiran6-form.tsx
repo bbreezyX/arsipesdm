@@ -136,6 +136,7 @@ export default function Lampiran6Form({
   const activeTabRef = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const focusStepRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: jalankan ulang setiap langkah berganti
   useEffect(() => {
     const activeTab = activeTabRef.current;
     const revealTab = () =>

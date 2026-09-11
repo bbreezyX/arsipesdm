@@ -275,11 +275,13 @@ export default function ArchiveGroups({
     ? `${sort.id}:${sort.desc ? "desc" : "asc"}`
     : "dates:desc";
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gulir ke atas setiap halaman, urutan, atau data berubah
   useEffect(() => {
     registerRef.current
       ?.querySelector('[data-slot="table-container"]')
       ?.scrollTo({ top: 0 });
   }, [pageIndex, pageSize, sorting, groups]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ukur ulang lebar tabel saat kolom atau jumlah baris berubah
   useEffect(() => {
     const container = registerRef.current?.querySelector(
       '[data-slot="table-container"]',

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle, LockKeyhole, LogOut, TimerReset } from "lucide-react";
 import { IDLE_LIMIT_MS, WARNING_MS, type SessionInfo } from "@/lib/session-policy";
 import {
@@ -48,13 +48,13 @@ export default function SessionGuard({ session }: { session: SessionInfo }) {
   const pending = useRef(false);
   const absoluteFirst = deadlines.absolute <= deadlines.idle;
 
-  function lock(message?: string) {
+  const lock = useCallback((message?: string) => {
     if (phaseRef.current === "expired") return;
     phaseRef.current = "expired";
     setPhase("expired");
     lockSession(message);
-  }
-  function apply(info: SessionInfo) {
+  }, []);
+  const apply = useCallback((info: SessionInfo) => {
     lastTouch.current = Date.now();
     const next = toClientClock(info);
     setDeadlines(next);
@@ -63,8 +63,8 @@ export default function SessionGuard({ session }: { session: SessionInfo }) {
       setPhase("active");
       setSnoozed(false);
     }
-  }
-  async function call(method: "GET" | "PATCH") {
+  }, []);
+  const call = useCallback(async (method: "GET" | "PATCH") => {
     if (pending.current) return;
     pending.current = true;
     try {
@@ -79,7 +79,7 @@ export default function SessionGuard({ session }: { session: SessionInfo }) {
     } finally {
       pending.current = false;
     }
-  }
+  }, [absoluteFirst, lock, apply]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -107,7 +107,7 @@ export default function SessionGuard({ session }: { session: SessionInfo }) {
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [deadlines]);
+  }, [deadlines, call]);
 
   useEffect(() => {
     const onExpired = () => lock();
@@ -129,7 +129,7 @@ export default function SessionGuard({ session }: { session: SessionInfo }) {
       window.removeEventListener(SESSION_ACTIVITY_EVENT, onApiActivity);
       for (const name of ACTIVITY_EVENTS) window.removeEventListener(name, onUserActivity);
     };
-  }, []);
+  }, [call, lock]);
 
   async function logout() {
     setBusy(true);

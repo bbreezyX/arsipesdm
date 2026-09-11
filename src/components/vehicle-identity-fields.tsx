@@ -20,6 +20,7 @@ export default function VehicleIdentityFields({ value, onChange }: {
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [reload, setReload] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload adalah penghitung pemicu muat ulang
   useEffect(() => {
     let active = true;
     let savedDuringLoad: SavedVehicle[] = [];

@@ -50,6 +50,7 @@ export default function BerandaCalendar({ year, days, today, peak, peopleDays }:
 
   // Di layar sempit kalender bergulir; mulai dari hari ini, bukan Januari.
   const scroller = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gulir ke hari ini lagi saat tahun atau tanggal berganti
   useEffect(() => {
     const box = scroller.current;
     const cell = box?.querySelector<HTMLElement>("[data-today]");
