@@ -318,7 +318,7 @@ if (
       (complete
         ? ["spt", "sppd", "report", "receipt"]
         : ["spt", "sppd"]
-      ).forEach((type) =>
+      ).forEach((type) => {
         t.documents.push({
           id: randomUUID(),
           type,
@@ -327,8 +327,8 @@ if (
           size: 0,
           location: t.physicalLocation,
           createdAt: t.createdAt,
-        }),
-      );
+        });
+      });
       (await putTrip(t, "demo"));
     }
     (await db.prepare("INSERT INTO pengaturan VALUES(?,?)").run("demo-seeded", "true"));

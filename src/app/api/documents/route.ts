@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       doc = {
         id,
         type,
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: sengaja membuang karakter kontrol dari nama file unggahan
         name: file.name.replace(/[\x00-\x1f]/g, "").slice(0, 200),
         kind: "file",
         size: file.size,

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // CSS memakai sintaks Tailwind v4 yang belum dipahami Biome; SVG bukan kode.
+  "files": { "includes": ["**", "!**/*.css", "!**/*.svg", "!next-env.d.ts"] },
+  // Formatter sengaja mati: kode yang ada memakai gaya padat yang konsisten. Nyalakan lewat satu commit format terpisah bila diinginkan.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "noNonNullAssertion": "off",
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        // Pola lazy-init `x ??= ...` dipakai sengaja di postgres.ts dan db.ts.
+        "noAssignInExpressions": "warn",
+        "noArrayIndexKey": "warn"
+      },
+      "correctness": {
+        // Pelanggaran lama; naikkan ke error setelah ditinjau satu per satu.
+        "useExhaustiveDependencies": "warn",
+        "noUnsafeFinally": "warn"
+      },
+      "a11y": {
+        // Pelanggaran lama; naikkan ke error setelah dibersihkan.
+        "useButtonType": "warn",
+        "useSemanticElements": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "noAriaHiddenOnFocusable": "warn",
+        "noAutofocus": "warn",
+        "noLabelWithoutControl": "warn",
+        "noStaticElementInteractions": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useFocusableInteractive": "warn",
+        "useKeyWithClickEvents": "warn"
+      }
+    }
+  }
+}

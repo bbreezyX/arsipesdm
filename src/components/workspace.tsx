@@ -31,8 +31,6 @@ import {
   ArrowUpRight,
   CheckCircle2,
   FolderOpen,
-  MapPin,
-  PanelLeftClose,
   Menu,
   HelpCircle,
   LogOut,
@@ -43,12 +41,9 @@ import {
   X,
   FileSpreadsheet,
   RotateCcw,
-  Paperclip,
   Building2,
   Wallet,
   LockKeyhole,
-  Info,
-  Check,
   Pencil,
   Eye,
   EyeOff,
@@ -67,7 +62,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import { Field, Empty, ErrorMessage, api } from "./fields";
 import {
@@ -80,9 +74,7 @@ import {
   type EntryFilter,
   filterTrips,
   totalCost,
-  dateText,
   isComplete,
-  paymentLabel,
 } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import { employeeDirectoryChannel, notifyEmployeeDirectoryChanged } from "@/lib/employee-directory-events";

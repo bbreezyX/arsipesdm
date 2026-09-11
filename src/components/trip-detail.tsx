@@ -43,7 +43,7 @@ function dateRange(start: string, end: string) {
 }
 
 function Value({ value }: { value: string | null | undefined }) {
-  return value && value.trim() ? <>{value}</> : <span className="rincian-empty">Belum dicatat</span>;
+  return value?.trim() ? value : <span className="rincian-empty">Belum dicatat</span>;
 }
 
 export default function TripDetail({

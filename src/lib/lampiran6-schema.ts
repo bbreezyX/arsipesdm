@@ -12,7 +12,7 @@ const optionalDate = z
     (value) =>
       value === "" ||
       (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
-        !isNaN(Date.parse(value)) &&
+        !Number.isNaN(Date.parse(value)) &&
         new Date(value).toISOString().slice(0, 10) === value),
     "Tanggal tidak valid.",
   )

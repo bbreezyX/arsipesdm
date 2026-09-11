@@ -26,7 +26,7 @@ export function AnimatedNumber({ value, duration = 1200, format = formatDefault 
     let frame = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
+      const eased = 1 - (1 - t) ** 3;
       const next = Math.round(from + (value - from) * eased);
       drawn.current = next;
       setShown(next);
