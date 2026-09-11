@@ -36,11 +36,10 @@ export function NavbarClock() {
   }, []);
 
   return (
-    <time
-      className="navbar-clock"
-      dateTime={now?.toISOString()}
-      aria-label={now ? `${weekdayFormatter.format(now)}, ${dateFormatter.format(now)}, pukul ${timeFormatter.format(now)} WIB` : "Waktu Indonesia Barat"}
-    >
+    <time className="navbar-clock" dateTime={now?.toISOString()}>
+      <span className="sr-only">
+        {now ? `${weekdayFormatter.format(now)}, ${dateFormatter.format(now)}, pukul ${timeFormatter.format(now)} WIB` : "Waktu Indonesia Barat"}
+      </span>
       <span className="navbar-clock-icon" aria-hidden="true">
         <Clock3 size={17} strokeWidth={1.7} />
       </span>

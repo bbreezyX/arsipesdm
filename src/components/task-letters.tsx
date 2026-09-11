@@ -320,7 +320,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
             })}
           </div>
         </div>
-        <div className="surat-facts" aria-label={`Ringkasan ${scopeLabel}`}>
+        <div className="surat-facts" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
           <dl>
             <div><dt>Surat tugas</dt><dd>{summary.letters}</dd></div>
             <div><dt>Rekap perjalanan</dt><dd>{summary.trips}</dd></div>
@@ -363,7 +363,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
               {query ? (
                 <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button>
               ) : (
-                <kbd aria-hidden="true">/</kbd>
+                <span aria-hidden="true"><kbd>/</kbd></span>
               )}
             </div>
           }

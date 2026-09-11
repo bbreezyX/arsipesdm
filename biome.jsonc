@@ -20,22 +20,12 @@
         "noArrayIndexKey": "warn"
       },
       "correctness": {
-        // Pelanggaran lama; naikkan ke error setelah ditinjau satu per satu.
-        "useExhaustiveDependencies": "warn",
+        // Satu `throw` di finally skrip integrasi yang disengaja sebagai pengaman skema.
         "noUnsafeFinally": "warn"
       },
       "a11y": {
-        // Pelanggaran lama; naikkan ke error setelah dibersihkan.
-        "useButtonType": "warn",
-        "useSemanticElements": "warn",
-        "useAriaPropsSupportedByRole": "warn",
-        "noAriaHiddenOnFocusable": "warn",
-        "noAutofocus": "warn",
-        "noLabelWithoutControl": "warn",
-        "noStaticElementInteractions": "warn",
-        "noSvgWithoutTitle": "warn",
-        "useFocusableInteractive": "warn",
-        "useKeyWithClickEvents": "warn"
+        // role="group" dengan aria-label di kontainer bergaya adalah ARIA yang sah; mengganti ke <fieldset> hanya melawan styling bawaan browser. role="separator" di splitter yang bisa digeser juga tidak bisa jadi <hr>.
+        "useSemanticElements": "off"
       }
     }
   }

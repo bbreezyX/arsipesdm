@@ -119,6 +119,7 @@ export default function EmployeeCostWorkspace({ rows, onChange, onEditArchive, e
       </div>
       <p className="cost-people-footnote">Isian tetap tersimpan di form saat berpindah pegawai.</p>
     </aside>
+    {/* biome-ignore lint/a11y/noStaticElementInteractions: delegasi keydown dari isian di dalamnya, bukan elemen interaktif */}
     <div className="cost-person-editor" onKeyDown={enterNext}>
       <div className="cost-person-header">
         <div className="cost-person-identity"><span className="cost-person-position">Pegawai {activeIndex + 1} dari {selected.length}</span><h3 tabIndex={-1} ref={editorHeading}>{person.name}</h3><div className="cost-identity-meta"><span>{[data.rank, input.department].filter(Boolean).join(" · ")}</span><button type="button" onClick={() => onEditArchive(active.key)}>Identitas & arsip</button></div></div>

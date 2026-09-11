@@ -607,7 +607,7 @@ export default function Workspace({
                         <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
                           placeholder="Cari nomor surat, tujuan, atau nama pegawai" value={filters.search}
                           onChange={event => patchFilters({ search: event.target.value })} />
-                        {filters.search ? <button type="button" onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+                        {filters.search ? <button type="button" onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
                       </div>
                       <div className="ledger-filter-group">
                       <CustomSelect aria-label="Bidang" className="ledger-select" data-active={filters.department !== "all"}
@@ -1289,6 +1289,7 @@ function LoginForm() {
           placeholder="nama@instansi.go.id"
           autoComplete="username"
           required
+          // biome-ignore lint/a11y/noAutofocus: halaman login hanya berisi form ini, fokus langsung ke email
           autoFocus
         />
       </Field>

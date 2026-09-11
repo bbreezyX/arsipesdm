@@ -192,7 +192,7 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
             </button>
           </div>
         </div>
-        <div className="ledger-summary pegawai-summary" aria-label={`Ringkasan ${scopeLabel}`}>
+        <div className="ledger-summary pegawai-summary" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
           <div>
             <span className="ledger-summary-label">{deleted ? "Pegawai pada daftar Terhapus" : "Pegawai tercatat"}, {scopeLabel}</span>
             {summary.count
@@ -230,7 +230,7 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
               <Search size={17} aria-hidden="true" />
               <input id="pegawai-search" ref={search} aria-label="Cari pegawai" aria-keyshortcuts="/"
                 placeholder="Cari nama, NIP, jabatan, atau golongan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
             </div>
             <div className="ledger-filter-group">
               <CustomSelect aria-label="Riwayat perjalanan" className="ledger-select" value={history} onValueChange={setHistory} data-active={history !== "all"}>

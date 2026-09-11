@@ -221,7 +221,7 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
             })}
           </div>
         </div>
-        <div className="ledger-summary honor-summary" aria-label={`Ringkasan ${scopeLabel}`}>
+        <div className="ledger-summary honor-summary" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
           <div>
             <span className="ledger-summary-label">{deleted ? "Honor netto pada daftar Terhapus" : "Honor netto dibayarkan"}, {scopeLabel}</span>
             {summary.count ? <p className="ledger-figure"><Figure value={summary.net} /></p> : <p className="ledger-figure is-empty">Belum ada rekap</p>}
@@ -260,7 +260,7 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
               <Search size={17} aria-hidden="true" />
               <input id="honor-search" ref={searchRef} aria-label="Cari honorarium" aria-keyshortcuts="/"
                 placeholder="Cari nama penerima, nomor SK, jabatan, atau kegiatan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
             </div>
             <div className="ledger-filter-group">
               {/* Di layar HP rel jenis disembunyikan; pilihan jenis pindah ke panel Filter ini. */}

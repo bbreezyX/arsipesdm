@@ -9,7 +9,7 @@ export function RecapStatus({ tone, children, description, className = "" }: {
 }
 
 export function RecapStatusLegend() {
-  return <div className="recap-status-legend" aria-label="Arti penanda isian">
+  return <div className="recap-status-legend" role="group" aria-label="Arti penanda isian">
     <RecapStatus tone="filled">Nominal dicatat</RecapStatus>
     <RecapStatus tone="details">Ada rincian</RecapStatus>
     <RecapStatus tone="different">Berbeda / perlu diperiksa</RecapStatus>

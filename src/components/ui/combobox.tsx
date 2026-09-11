@@ -108,11 +108,14 @@ export function Combobox({value, onValueChange, onOptionSelect, options, classNa
           <span className="combobox-count">{filtered.length}</span>
         </div>
         <div ref={list} id={id} role="listbox" aria-label={inputProps["aria-label"] || inputProps.placeholder || "Pilihan"} className="combobox-options">
-          {filtered.map((option, index) => <div key={option.value} id={`${id}-${index}`} role="option" aria-selected={option.value === value} data-index={index} data-active={activeIndex === index || undefined} className="select-option combobox-option"
+          {filtered.map((option, index) => (
+            // biome-ignore lint/a11y/useFocusableInteractive: pola combobox WAI-ARIA, fokus tetap di input dan opsi dipilih lewat aria-activedescendant
+            // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard ditangani di input lewat handleKeyDown
+            <div key={option.value} id={`${id}-${index}`} role="option" aria-selected={option.value === value} data-index={index} data-active={activeIndex === index || undefined} className="select-option combobox-option"
             onPointerMove={() => setActive(index)} onMouseDown={event => event.preventDefault()} onClick={() => choose(option)}>
             <span><span className="combobox-option-title">{option.value}</span>{option.description && <small>{option.description}</small>}</span>
             {option.value === value && <Check size={15} className="select-check" />}
-          </div>)}
+          </div>))}
           {!filtered.length && <div className="combobox-empty">{emptyMessage}<small>{value.trim() ? "Nilai yang diketik tetap dapat digunakan." : "Ketik untuk menambahkan nilai baru."}</small></div>}
         </div>
       </Popover.Content>

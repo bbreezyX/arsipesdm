@@ -117,7 +117,7 @@ export default function JourneyEmployeeWorkspace({ shared, rows, people, suggest
     <div className="journey-panel-heading-text">
       <h3>
         Perjalanan bersama
-        <span className="journey-fill-count" aria-label={`${filledCount} dari ${journeySections.length} bagian terisi`}>{filledCount}/{journeySections.length} terisi</span>
+        <span className="journey-fill-count"><span aria-hidden="true">{filledCount}/{journeySections.length} terisi</span><span className="sr-only">{filledCount} dari {journeySections.length} bagian terisi</span></span>
       </h3>
       <p>Berlaku untuk semua pegawai yang dipilih. Kolom bertanda * wajib diisi.</p>
       {adjusted > 0 && <RecapStatus tone="different" description="Sebagian isian pegawai berbeda dari perjalanan bersama.">{adjusted} pegawai memiliki penyesuaian</RecapStatus>}

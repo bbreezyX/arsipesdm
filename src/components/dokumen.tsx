@@ -374,7 +374,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
           </div>
         </div>}
 
-        <div className="ledger-summary dokumen-summary" aria-label={`Ringkasan kelengkapan ${scopeLabel}`}>
+        <div className="ledger-summary dokumen-summary" role="group" aria-label={`Ringkasan kelengkapan ${scopeLabel}`}>
           <div>
             <span className="ledger-summary-label">Map dengan berkas lengkap, {scopeLabel}</span>
             {summary.withRules
@@ -417,7 +417,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             <input ref={searchRef} aria-label="Cari map" aria-keyshortcuts="/"
               placeholder="Cari nomor surat, nama pegawai, tujuan, atau lokasi map"
               value={query} onChange={(e) => setQuery(e.target.value)} />
-            {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+            {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
           </div>
           <div className="ledger-filter-group">
             {phone && (
@@ -727,6 +727,7 @@ function SlotItem({ slot, folder, state, highlighted, onUpload, onNote, onView }
       <div className="dokumen-slot-foot">
         {noting ? (
           <form className="dokumen-note" onSubmit={async (e) => { e.preventDefault(); if (await onNote(folder, slot.type, location)) setNoting(false); }}>
+            {/* biome-ignore lint/a11y/noAutofocus: form ini muncul karena pengguna baru menekan tombol catat, fokus harus pindah ke isiannya */}
             <input value={location} onChange={(e) => setLocation(e.target.value)} required maxLength={500} autoFocus
               aria-label={`Lokasi berkas fisik ${docLabels[slot.type]}`} placeholder="Lemari, nomor map, dan tahun arsip" />
             <Button type="submit" size="sm" disabled={busy}>Simpan</Button>

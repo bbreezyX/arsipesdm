@@ -14,6 +14,7 @@ export function Field({
   className?: string;
 }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: isian dikirim lewat children
     <label className={`field ${className}`}>
       <span className="field-label">
         {label}

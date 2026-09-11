@@ -61,8 +61,8 @@ export default function BerandaHero({ year, hero, monthlyDetails, greeting, demo
         <div className="beranda-hero-summary" id="beranda-period-summary">
           <p className="beranda-hero-label">Realisasi perjalanan dinas</p>
           <p className="beranda-period">{periodLabel}</p>
-          <p className={`beranda-figure${period.known ? "" : " is-empty"}`} aria-label={nominal}>
-            {period.known ? <><small aria-hidden="true">Rp</small><span aria-hidden="true"><AnimatedNumber value={period.total} duration={350} /></span></> : nominal}
+          <p className={`beranda-figure${period.known ? "" : " is-empty"}`}>
+            {period.known ? <><span className="sr-only">{nominal}</span><small aria-hidden="true">Rp</small><span aria-hidden="true"><AnimatedNumber value={period.total} duration={350} /></span></> : nominal}
           </p>
           <ul className="beranda-facts" aria-label={`Ringkasan ${periodLabel}`}>
             <li><strong>{period.journeys}</strong> perjalanan</li>

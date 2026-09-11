@@ -509,6 +509,7 @@ export default function ArchiveGroups({
             </Table>
           </div>
           <div className="ledger-mobile">
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: selectAllPage adalah Checkbox */}
             {selectionEnabled && <label className="ledger-mobile-all">
               {selectAllPage}
               Pilih semua di halaman ini
