@@ -20,6 +20,10 @@
         // Index adalah key yang benar untuk daftar baca-saja tanpa identitas dan tanpa penataan ulang (catatan, judul, sel kalender). Daftar yang barisnya bisa dihapus memakai useRowKeys.
         "noArrayIndexKey": "off"
       },
+      "performance": {
+        // Semua <img> di sini adalah logo SVG statis (tidak dioptimasi next/image) atau lampiran dari /api/documents yang butuh cookie sesi, yang tidak dibawa optimizer Next.
+        "noImgElement": "off"
+      },
       "correctness": {
         // Satu `throw` di finally skrip integrasi yang disengaja sebagai pengaman skema.
         "noUnsafeFinally": "warn"
