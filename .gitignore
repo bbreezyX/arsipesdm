@@ -8,3 +8,4 @@ data/*
 !.env.example
 backups/
 .DS_Store
+.claude/launch.json
