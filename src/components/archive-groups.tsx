@@ -154,7 +154,7 @@ export default function ArchiveGroups({
         enableHiding: false,
         cell: ({ row }) => (
           <div className="ledger-identity">
-            <button
+            <button type="button"
               className="ledger-ref"
               onClick={() => row.toggleExpanded()}
               aria-expanded={row.getIsExpanded()}
@@ -189,7 +189,7 @@ export default function ArchiveGroups({
         accessorFn: (group) => group.participants.length,
         header: columnLabels.people,
         cell: ({ row }) => (
-          <button
+          <button type="button"
             className="ledger-people"
             onClick={() => row.toggleExpanded()}
             aria-expanded={row.getIsExpanded()}
@@ -445,7 +445,7 @@ export default function ArchiveGroups({
                         }
                       >
                         {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                          <button
+                          <button type="button"
                             className="ledger-sort"
                             onClick={header.column.getToggleSortingHandler()}
                             aria-label={`Urutkan ${columnLabels[header.column.id]}`}
@@ -526,7 +526,7 @@ export default function ArchiveGroups({
                     }
                     aria-label={`Pilih ${reference(row.original)}`}
                   />}
-                  <button
+                  <button type="button"
                     className="ledger-ref"
                     onClick={() => row.toggleExpanded()}
                     aria-expanded={row.getIsExpanded()}

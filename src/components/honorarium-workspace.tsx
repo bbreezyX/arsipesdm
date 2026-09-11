@@ -191,11 +191,11 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
       </header>
       <nav className="ledger-years" aria-label="Tahun anggaran honorarium">
         {years.map(value => (
-          <button key={value} className="ledger-year" aria-pressed={year === value} onClick={() => chooseYear(value)}>
+          <button type="button" key={value} className="ledger-year" aria-pressed={year === value} onClick={() => chooseYear(value)}>
             <strong>{value}</strong><span>{yearCounts.get(value) ?? 0} rekap</span>
           </button>
         ))}
-        <button className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => chooseYear("all")}>
+        <button type="button" className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => chooseYear("all")}>
           <strong>Semua</strong><span>{activeCount} rekap</span>
         </button>
       </nav>
@@ -203,14 +203,14 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
         <EntryPeriodFilter value={entry} todayCount={todayCount} onChange={setEntry}
           onToday={() => { reset(); setYear("all"); setCategory("all"); setDeleted(false); setEntry("today"); }} />
         <div className="honor-index" role="group" aria-label="Jenis honorarium">
-          <button className="honor-index-all" aria-pressed={category === "all"} onClick={() => setCategory("all")}>
+          <button type="button" className="honor-index-all" aria-pressed={category === "all"} onClick={() => setCategory("all")}>
             <strong>Semua jenis</strong><span>{pool.length} rekap</span>
           </button>
           <div className="honor-kinds">
             {kinds.map(kind => {
               const facts = kindFacts.get(kind.key);
               return (
-                <button key={kind.key} className="honor-kind" aria-pressed={category === kind.key} disabled={!facts}
+                <button type="button" key={kind.key} className="honor-kind" aria-pressed={category === kind.key} disabled={!facts}
                   aria-label={`${honorariumCategories[kind.key]}, ${facts?.count ?? 0} rekap`}
                   onClick={() => setCategory(category === kind.key ? "all" : kind.key)}>
                   <span>{kind.short}</span>
@@ -251,8 +251,8 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
           onAdd={() => { setError(""); setEditor(newHonorarium()); }}
           status={
             <div className="ledger-status" role="group" aria-label="Daftar honorarium">
-              <button aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{records.filter(r => !r.deletedAt).length}</b></button>
-              <button aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{records.filter(r => r.deletedAt).length}</b></button>
+              <button type="button" aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{records.filter(r => !r.deletedAt).length}</b></button>
+              <button type="button" aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{records.filter(r => r.deletedAt).length}</b></button>
             </div>
           }
           filters={<>
@@ -260,7 +260,7 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
               <Search size={17} aria-hidden="true" />
               <input id="honor-search" ref={searchRef} aria-label="Cari honorarium" aria-keyshortcuts="/"
                 placeholder="Cari nama penerima, nomor SK, jabatan, atau kegiatan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
             </div>
             <div className="ledger-filter-group">
               {/* Di layar HP rel jenis disembunyikan; pilihan jenis pindah ke panel Filter ini. */}
@@ -319,7 +319,7 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
     { id: "recipient", accessorKey: "recipient", header: "Penerima honor", size: 270, enableHiding: false,
       cell: ({ row }) => (
         <div className="honor-who">
-          <button className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
+          <button type="button" className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
             aria-controls={`honor-detail-${row.id}`}>{row.original.recipient}</button>
           <span>{row.original.skPosition}</span>
         </div>
@@ -457,7 +457,7 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
                     <TableHead key={header.id} data-column={header.column.id}
                       aria-sort={header.column.getCanSort() ? header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none" : undefined}>
                       {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                        <button className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
+                        <button type="button" className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {header.column.getIsSorted() === "asc" ? <ArrowUp size={13} /> : header.column.getIsSorted() === "desc" ? <ArrowDown size={13} /> : <ChevronsUpDown size={13} />}
                         </button>
@@ -495,7 +495,7 @@ function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, 
               <article className="ledger-card honor-card" key={row.id} data-expanded={row.getIsExpanded()}>
                 <div className="ledger-card-top">
                   <div className="honor-who">
-                    <button className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`}>{record.recipient}</button>
+                    <button type="button" className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`}>{record.recipient}</button>
                     <span>{record.skPosition}</span>
                   </div>
                 </div>

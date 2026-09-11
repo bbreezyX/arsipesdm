@@ -125,7 +125,7 @@ const columns: ColumnDef<TaskLetter>[] = [
     enableHiding: false,
     cell: ({ row }) => (
       <div className="ledger-identity">
-        <button
+        <button type="button"
           className="ledger-ref"
           onClick={() => row.toggleExpanded()}
           aria-expanded={row.getIsExpanded()}
@@ -271,7 +271,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
     <div className="surat-page">
       <nav className="ledger-years" aria-label="Tahun surat tugas">
         {years.map((value) => (
-          <button
+          <button type="button"
             key={value}
             className="ledger-year"
             aria-pressed={year === value}
@@ -281,7 +281,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
             <span>{yearCounts.get(value)} surat tugas</span>
           </button>
         ))}
-        <button
+        <button type="button"
           className="ledger-year ledger-year-all"
           aria-pressed={year === "all"}
           onClick={() => chooseYear("all")}
@@ -292,7 +292,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
       </nav>
       <section className="ledger-sheet surat-sheet" aria-label="Register surat tugas">
         <div className="surat-index" role="group" aria-label="Bulan pelaksanaan">
-          <button
+          <button type="button"
             className="surat-index-all"
             aria-pressed={month === null}
             onClick={() => setMonth(null)}
@@ -304,7 +304,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
             {months.map(([roman, name], index) => {
               const count = monthCounts[index];
               return (
-                <button
+                <button type="button"
                   key={roman}
                   className="surat-month"
                   aria-pressed={month === index}
@@ -361,7 +361,7 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
                 onChange={(event) => setQuery(event.target.value)}
               />
               {query ? (
-                <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button>
+                <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button>
               ) : (
                 <kbd aria-hidden="true">/</kbd>
               )}
@@ -423,13 +423,13 @@ function DestinationRail({ places, value, onChange }: {
   return (
     <>
       <div className="surat-places" role="group" aria-label="Tujuan perjalanan">
-        <button className="surat-places-all" aria-pressed={value === null} onClick={() => onChange(null)}>
+        <button type="button" className="surat-places-all" aria-pressed={value === null} onClick={() => onChange(null)}>
           <strong>Semua tujuan</strong>
           <span>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</span>
         </button>
         <div className="surat-place-list">
           {shown.map((fact) => (
-            <button
+            <button type="button"
               key={fact.key}
               className="surat-place"
               aria-pressed={value === fact.key}
@@ -445,7 +445,7 @@ function DestinationRail({ places, value, onChange }: {
           {rest.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="surat-place surat-place-more" aria-label={`${rest.length} tujuan lainnya`}>
+                <button type="button" className="surat-place surat-place-more" aria-label={`${rest.length} tujuan lainnya`}>
                   <span>Lainnya</span>
                   <strong>{rest.length}</strong>
                   <small>tujuan lain</small>
@@ -470,7 +470,7 @@ function DestinationRail({ places, value, onChange }: {
         <span>Tujuan</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="surat-places-pick" data-chosen={chosen ? "true" : undefined} aria-label={`Tujuan: ${current}`}>
+            <button type="button" className="surat-places-pick" data-chosen={chosen ? "true" : undefined} aria-label={`Tujuan: ${current}`}>
               <b>{current}</b>
               <ChevronDown size={15} aria-hidden="true" />
             </button>
@@ -619,7 +619,7 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
                           : undefined}
                       >
                         {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                          <button
+                          <button type="button"
                             className="ledger-sort"
                             onClick={header.column.getToggleSortingHandler()}
                             aria-label={`Urutkan ${columnLabels[header.column.id]}`}
@@ -663,7 +663,7 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
             {rows.map((row) => (
               <article className="ledger-card" key={row.id} data-expanded={row.getIsExpanded()}>
                 <div className="ledger-card-top">
-                  <button
+                  <button type="button"
                     className="ledger-ref"
                     onClick={() => row.toggleExpanded()}
                     aria-expanded={row.getIsExpanded()}

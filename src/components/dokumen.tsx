@@ -336,12 +336,12 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
 
       <nav className="ledger-years" aria-label="Tahun pelaksanaan">
         {years.map((y) => (
-          <button key={y} className="ledger-year" aria-pressed={year === y} onClick={() => { setYear(y); setOpenId(null); }}>
+          <button type="button" key={y} className="ledger-year" aria-pressed={year === y} onClick={() => { setYear(y); setOpenId(null); }}>
             <strong>{y}</strong>
             <span>{folders.filter((f) => f.trip.startDate.startsWith(y)).length} map</span>
           </button>
         ))}
-        <button className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => { setYear("all"); setOpenId(null); }}>
+        <button type="button" className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => { setYear("all"); setOpenId(null); }}>
           <strong>Semua</strong>
           <span>{folders.length} map</span>
         </button>
@@ -349,7 +349,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
 
       <section className="ledger-sheet dokumen-sheet" aria-label="Daftar kelengkapan berkas">
         {!phone && <div className="dokumen-index" role="group" aria-label="Jenis dokumen">
-          <button className="dokumen-index-all" aria-pressed={kind === "all"} onClick={() => setKind("all")}>
+          <button type="button" className="dokumen-index-all" aria-pressed={kind === "all"} onClick={() => setKind("all")}>
             <strong>Semua jenis</strong>
             <span>{scoped.length} map</span>
           </button>
@@ -358,7 +358,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
               const counts = kindCounts.get(type)!;
               const disabled = counts.present === 0 && counts.missing === 0;
               return (
-                <button key={type} className="dokumen-kind" aria-pressed={kind === type} disabled={disabled}
+                <button type="button" key={type} className="dokumen-kind" aria-pressed={kind === type} disabled={disabled}
                   data-missing={counts.missing > 0 ? "true" : undefined}
                   aria-label={`${docLabels[type]}: ${counts.present} map sudah ada, ${counts.missing} map belum ada`}
                   title={docLabels[type]}
@@ -406,9 +406,9 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             <span>{scopeLabel}</span>
           </div>
           <div className="ledger-status" role="group" aria-label="Kelengkapan map">
-            <button aria-pressed={status === "all"} onClick={() => setStatus("all")}>Semua <b>{scoped.length}</b></button>
-            <button aria-pressed={status === "incomplete"} onClick={() => setStatus("incomplete")}>Masih kurang <b>{summary.withRules - summary.complete}</b></button>
-            <button aria-pressed={status === "complete"} onClick={() => setStatus("complete")}>Lengkap <b>{summary.complete}</b></button>
+            <button type="button" aria-pressed={status === "all"} onClick={() => setStatus("all")}>Semua <b>{scoped.length}</b></button>
+            <button type="button" aria-pressed={status === "incomplete"} onClick={() => setStatus("incomplete")}>Masih kurang <b>{summary.withRules - summary.complete}</b></button>
+            <button type="button" aria-pressed={status === "complete"} onClick={() => setStatus("complete")}>Lengkap <b>{summary.complete}</b></button>
           </div>
         </div>
         <div className="ledger-filters dokumen-filters">
@@ -417,7 +417,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             <input ref={searchRef} aria-label="Cari map" aria-keyshortcuts="/"
               placeholder="Cari nomor surat, nama pegawai, tujuan, atau lokasi map"
               value={query} onChange={(e) => setQuery(e.target.value)} />
-            {query ? <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+            {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
           </div>
           <div className="ledger-filter-group">
             {phone && (
@@ -449,7 +449,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
             <ul className="dokumen-cards" aria-label="Daftar map">
               {rows.map((f) => (
                 <li key={f.trip.id} className="dokumen-card" data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
-                  <button className="dokumen-card-open" onClick={() => openFolder(f.trip.id)} aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
+                  <button type="button" className="dokumen-card-open" onClick={() => openFolder(f.trip.id)} aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
                     <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
                     <span className="dokumen-names">{f.names}</span>
                     <span className="dokumen-meta">{f.trip.destination}, {tripDates(f.trip)}</span>
@@ -459,7 +459,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
                       const state = s.docs.length ? "present" : s.required ? "missing" : "none";
                       return (
                         <span key={s.type} className={`dokumen-mark ${kind === s.type ? "is-active" : ""}`}>
-                          <button className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
+                          <button type="button" className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
                             aria-label={`${docLabels[s.type]}: ${state === "present" ? `${s.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`}>
                             {state === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
                           </button>
@@ -496,7 +496,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
                     <tr key={f.trip.id} className="dokumen-row" data-open={open?.trip.id === f.trip.id ? "true" : undefined}
                       data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
                       <td className="dokumen-col-map">
-                        <button className="dokumen-open" onClick={() => openFolder(f.trip.id)} aria-expanded={open?.trip.id === f.trip.id}
+                        <button type="button" className="dokumen-open" onClick={() => openFolder(f.trip.id)} aria-expanded={open?.trip.id === f.trip.id}
                           aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
                           <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
                           <span className="dokumen-names">{f.names}</span>
@@ -507,7 +507,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
                         const state = s.docs.length ? "present" : s.required ? "missing" : "none";
                         return (
                           <td key={s.type} className={`dokumen-col-kind ${kind === s.type ? "is-active" : ""}`}>
-                            <button className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
+                            <button type="button" className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
                               aria-label={`${docLabels[s.type]}: ${state === "present" ? `${s.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`}>
                               {state === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
                             </button>
@@ -627,7 +627,7 @@ function MapPanel({ folder, focusType, slotState, onUpload, onNote, onView, onOp
         <div className="dokumen-map-kicker">
           <span>Map berkas</span>
           {closable && (
-            <button className="dokumen-map-close" onClick={onClose} aria-label="Tutup map"><X size={18} /></button>
+            <button type="button" className="dokumen-map-close" onClick={onClose} aria-label="Tutup map"><X size={18} /></button>
           )}
         </div>
         <h2 className="dokumen-map-ref">{t.sptNo || "Tanpa nomor ST"}</h2>
@@ -637,7 +637,7 @@ function MapPanel({ folder, focusType, slotState, onUpload, onNote, onView, onOp
           <span className={`dokumen-map-state ${folder.complete ? "is-complete" : folder.required ? "is-missing" : ""}`}>
             {folder.required ? `${folder.present} dari ${folder.required} berkas ${folder.explicit ? "wajib" : "baku"}` : "Tanpa syarat dokumen"}
           </span>
-          <button className="dokumen-map-link" onClick={onOpenArchive}>Buka rekap <ExternalLink size={13} aria-hidden="true" /></button>
+          <button type="button" className="dokumen-map-link" onClick={onOpenArchive}>Buka rekap <ExternalLink size={13} aria-hidden="true" /></button>
         </div>
       </div>
       <div className="dokumen-map-location">
@@ -711,7 +711,7 @@ function SlotItem({ slot, folder, state, highlighted, onUpload, onNote, onView }
         <ul className="dokumen-thumbs">
           {slot.docs.map((d) => (
             <li key={d.id}>
-              <button className={`dokumen-thumb is-${d.kind === "physical" ? "physical" : isImage(d) ? "image" : "pdf"}`} onClick={() => onView(d.id)}
+              <button type="button" className={`dokumen-thumb is-${d.kind === "physical" ? "physical" : isImage(d) ? "image" : "pdf"}`} onClick={() => onView(d.id)}
                 aria-label={d.kind === "physical" ? `Catatan berkas fisik: ${d.location}` : `Buka ${d.name}`} title={d.kind === "physical" ? d.location : d.name}>
                 {d.kind === "physical"
                   ? <><FolderOpen size={16} aria-hidden="true" /><span>{d.location}</span></>
@@ -801,13 +801,13 @@ function Viewer({ folder, doc, onClose, onSelect, onRemove }: {
                 Buka di tab baru <ExternalLink size={13} aria-hidden="true" />
               </a>
             )}
-            <button className="dokumen-viewer-close" onClick={onClose} aria-label="Tutup"><X size={18} /></button>
+            <button type="button" className="dokumen-viewer-close" onClick={onClose} aria-label="Tutup"><X size={18} /></button>
           </div>
         </div>
         <div className={`dokumen-viewer-stage ${doc.kind === "physical" ? "is-note" : ""}`}>
-          {prev && <button className="dokumen-viewer-nav is-prev" onClick={() => onSelect(prev.id)} aria-label="Berkas sebelumnya"><ChevronLeft /></button>}
+          {prev && <button type="button" className="dokumen-viewer-nav is-prev" onClick={() => onSelect(prev.id)} aria-label="Berkas sebelumnya"><ChevronLeft /></button>}
           {body}
-          {next && <button className="dokumen-viewer-nav is-next" onClick={() => onSelect(next.id)} aria-label="Berkas berikutnya"><ChevronRight /></button>}
+          {next && <button type="button" className="dokumen-viewer-nav is-next" onClick={() => onSelect(next.id)} aria-label="Berkas berikutnya"><ChevronRight /></button>}
         </div>
         <div className="dokumen-viewer-foot">
           <span>Ditambahkan {dateText(doc.createdAt.slice(0, 10))}</span>

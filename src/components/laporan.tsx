@@ -122,12 +122,12 @@ export default function Laporan({
 
       <nav className="ledger-years" aria-label="Tahun laporan">
         {years.map(y => (
-          <button key={y} className="ledger-year" aria-pressed={year === y} onClick={() => onFilter({ year: y })}>
+          <button type="button" key={y} className="ledger-year" aria-pressed={year === y} onClick={() => onFilter({ year: y })}>
             <strong>{y}</strong>
             <span>{yearCounts.get(y) ?? 0} perjalanan</span>
           </button>
         ))}
-        <button className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => onFilter({ year: "all" })}>
+        <button type="button" className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => onFilter({ year: "all" })}>
           <strong>Semua</strong>
           <span>{groups.length} perjalanan</span>
         </button>
@@ -202,7 +202,7 @@ export default function Laporan({
               </div>
               <div className="laporan-chart" role="group" aria-label="Bulan keberangkatan">
                 {monthly.map(row => (
-                  <button key={row.value} className="laporan-month" aria-pressed={month === row.value}
+                  <button type="button" key={row.value} className="laporan-month" aria-pressed={month === row.value}
                     disabled={!row.trips} onClick={() => onFilter({ month: month === row.value ? "all" : row.value })}
                     title={`${row.name}: ${row.trips} rekap, ${money(row.trips - row.unknown > 0 ? row.total : null)}`}>
                     <span className="laporan-month-value">{row.total > 0 ? shortMoney(row.total) : row.trips ? "Rp 0" : ""}</span>
@@ -239,7 +239,7 @@ export default function Laporan({
                       {byDepartment.map(row => (
                         <tr key={row.name} data-active={department === row.name || undefined}>
                           <th scope="row">
-                            <button className="laporan-pick" aria-pressed={department === row.name}
+                            <button type="button" className="laporan-pick" aria-pressed={department === row.name}
                               onClick={() => onFilter({ department: department === row.name ? "all" : row.name })}>
                               {row.name}
                             </button>
@@ -305,7 +305,7 @@ export default function Laporan({
                       {monthlyShown.map(row => (
                         <tr key={row.value} data-active={month === row.value || undefined}>
                           <th scope="row">
-                            <button className="laporan-pick" aria-pressed={month === row.value}
+                            <button type="button" className="laporan-pick" aria-pressed={month === row.value}
                               onClick={() => onFilter({ month: month === row.value ? "all" : row.value })}>
                               {row.name}
                             </button>

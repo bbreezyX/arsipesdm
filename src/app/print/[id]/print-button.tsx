@@ -1,7 +1,7 @@
 "use client";
 export default function PrintButton() {
   return (
-    <button
+    <button type="button"
       onClick={() => window.print()}
       style={{
         background: "#244f73",

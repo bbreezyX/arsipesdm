@@ -359,7 +359,7 @@ export default function Workspace({
   return (
     <div className="app-shell">
       {navOpen && (
-        <button
+        <button type="button"
           aria-label="Tutup navigasi"
           className="nav-scrim"
           onClick={() => setNavOpen(false)}
@@ -379,7 +379,7 @@ export default function Workspace({
             <strong>Dinas ESDM</strong>
             <span>Provinsi Jambi</span>
           </div>
-          <button
+          <button type="button"
             className="mobile-close"
             onClick={() => setNavOpen(false)}
             aria-label="Tutup menu"
@@ -389,7 +389,7 @@ export default function Workspace({
         </div>
         <nav aria-label="Navigasi utama">
           {navItems.filter(([key]) => canAccessSection(accessUser, key)).map(([key, Icon]) => (
-            <button
+            <button type="button"
               key={key}
               className={`nav-item ${section === key ? "active" : ""}`}
               onClick={() => go(key)}
@@ -405,7 +405,7 @@ export default function Workspace({
         </nav>
         <div className="sidebar-spacer" />
         {editable && <div className="bottom-nav">
-          <button
+          <button type="button"
             className={`nav-item ${section === "trash" ? "active" : ""}`}
             onClick={() => go("trash")}
           >
@@ -417,7 +417,7 @@ export default function Workspace({
               </span>
             )}
           </button>
-          <button
+          <button type="button"
             className={`nav-item ${section === "settings" ? "active" : ""}`}
             onClick={() => go("settings")}
           >
@@ -465,7 +465,7 @@ export default function Workspace({
       <div className="main-shell">
         <header className="topbar" data-readonly={!editable || undefined}>
           <div className="breadcrumb">
-            <button
+            <button type="button"
               className="sidebar-toggle"
               onClick={() => setNavOpen(!navOpen)}
               aria-label="Buka navigasi"
@@ -482,7 +482,7 @@ export default function Workspace({
           <NavbarClock />
           <div className="topbar-right">
             {demo ? (
-              <button className="demo-indicator" onClick={() => setLogin(true)}>
+              <button type="button" className="demo-indicator" onClick={() => setLogin(true)}>
                 <span />
                 Data contoh <ArrowUpRight size={13} />
               </button>
@@ -492,7 +492,7 @@ export default function Workspace({
               </span>
             )}
             <span className="topbar-divider" />
-            <button
+            <button type="button"
               className="help-button"
               aria-label="Buka panduan"
               onClick={() => setHelp(true)}
@@ -543,7 +543,7 @@ export default function Workspace({
             <>
               <nav className="ledger-years" aria-label="Tahun pelaksanaan">
                 {years.map((year) => (
-                  <button
+                  <button type="button"
                     key={year}
                     className="ledger-year"
                     aria-pressed={filters.year === year}
@@ -553,7 +553,7 @@ export default function Workspace({
                     <span>{yearCounts.get(year) ?? 0} perjalanan</span>
                   </button>
                 ))}
-                <button
+                <button type="button"
                   className="ledger-year ledger-year-all"
                   aria-pressed={filters.year === "all"}
                   onClick={() => patchFilters({ year: "all" })}
@@ -583,13 +583,13 @@ export default function Workspace({
                   renderActions={trip => <ArchiveActions trip={trip} editable={editable} onAction={action => openArchive(trip.id, action)} />}
                   status={
                     <div className="ledger-status" role="group" aria-label="Filter kelengkapan">
-                      <button aria-pressed={filters.status === "all"} onClick={() => patchFilters({ status: "all" })}>
+                      <button type="button" aria-pressed={filters.status === "all"} onClick={() => patchFilters({ status: "all" })}>
                         Semua <b>{statusGroups.length}</b>
                       </button>
-                      <button aria-pressed={filters.status === "incomplete"} onClick={() => patchFilters({ status: "incomplete" })}>
+                      <button type="button" aria-pressed={filters.status === "incomplete"} onClick={() => patchFilters({ status: "incomplete" })}>
                         <i aria-hidden="true" /> Draft <b>{statusGroups.filter(group => !group.complete).length}</b>
                       </button>
-                      <button aria-pressed={filters.status === "complete"} onClick={() => patchFilters({ status: "complete" })}>
+                      <button type="button" aria-pressed={filters.status === "complete"} onClick={() => patchFilters({ status: "complete" })}>
                         <i className="complete" aria-hidden="true" /> Lengkap <b>{statusGroups.filter(group => group.complete).length}</b>
                       </button>
                     </div>
@@ -607,7 +607,7 @@ export default function Workspace({
                         <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
                           placeholder="Cari nomor surat, tujuan, atau nama pegawai" value={filters.search}
                           onChange={event => patchFilters({ search: event.target.value })} />
-                        {filters.search ? <button onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+                        {filters.search ? <button type="button" onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
                       </div>
                       <div className="ledger-filter-group">
                       <CustomSelect aria-label="Bidang" className="ledger-select" data-active={filters.department !== "all"}
@@ -657,13 +657,13 @@ export default function Workspace({
                     <CheckCircle2 size={17} aria-hidden="true" />
                     <strong>{selectedGroups.length}</strong> perjalanan dipilih, {selectedGroups.reduce((sum, group) => sum + group.trips.length, 0)} rekap
                   </span>
-                  {selectedGroups.length < filteredGroups.length && <button onClick={() => setSelected(new Set(filteredGroups.map(group => group.key)))}>
+                  {selectedGroups.length < filteredGroups.length && <button type="button" onClick={() => setSelected(new Set(filteredGroups.map(group => group.key)))}>
                     Pilih semua {filteredGroups.length}
                   </button>}
-                  <button className="is-primary" onClick={() => exportRows(archivesForExport(filteredGroups, selected))} disabled={busy}>
+                  <button type="button" className="is-primary" onClick={() => exportRows(archivesForExport(filteredGroups, selected))} disabled={busy}>
                     {busy ? <LoaderCircle size={14} className="animate-spin" /> : <Download size={14} />} Ekspor pilihan
                   </button>
-                  <button onClick={() => setSelected(new Set())}>
+                  <button type="button" onClick={() => setSelected(new Set())}>
                     Batal
                   </button>
                 </div>
@@ -774,7 +774,7 @@ export default function Workspace({
                 ? "Ruang contoh · Semua nama, perjalanan, dan biaya bersifat fiktif."
                 : "Arsip perjalanan Dinas ESDM Provinsi Jambi"}
             </span>
-            <button onClick={() => setHelp(true)}>
+            <button type="button" onClick={() => setHelp(true)}>
               Butuh panduan? <ArrowUpRight size={12} />
             </button>
           </footer>
@@ -784,7 +784,7 @@ export default function Workspace({
         <div className="toast" role="status">
           <CheckCircle2 size={18} />
           <span>{toast}</span>
-          <button onClick={() => setToast("")} aria-label="Tutup pemberitahuan">
+          <button type="button" onClick={() => setToast("")} aria-label="Tutup pemberitahuan">
             <X size={14} />
           </button>
         </div>

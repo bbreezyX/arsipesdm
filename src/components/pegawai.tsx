@@ -163,30 +163,30 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
       </header>
       <nav className="ledger-years" aria-label="Bidang">
         {spine.map(tab => (
-          <button key={tab.key} className="ledger-year" aria-pressed={department === tab.key} onClick={() => setDepartment(tab.key)}>
+          <button type="button" key={tab.key} className="ledger-year" aria-pressed={department === tab.key} onClick={() => setDepartment(tab.key)}>
             <strong>{tab.label}</strong><span>{tab.count} pegawai</span>
           </button>
         ))}
-        <button className="ledger-year ledger-year-all" aria-pressed={department === "all"} onClick={() => setDepartment("all")}>
+        <button type="button" className="ledger-year ledger-year-all" aria-pressed={department === "all"} onClick={() => setDepartment("all")}>
           <strong>Semua bidang</strong><span>{inStatus.length} pegawai</span>
         </button>
       </nav>
       <section className="ledger-sheet pegawai-sheet" aria-label="Buku induk pegawai">
         <div className="pegawai-index" role="group" aria-label="Golongan">
-          <button className="pegawai-index-all" aria-pressed={group === "all"} onClick={() => setGroup("all")}>
+          <button type="button" className="pegawai-index-all" aria-pressed={group === "all"} onClick={() => setGroup("all")}>
             <strong>Semua golongan</strong><span>{inDepartment.length} pegawai</span>
           </button>
           <div className="pegawai-groups">
             {groups.map(value => {
               const count = groupCounts.get(value) ?? 0;
               return (
-                <button key={value} className="pegawai-group" aria-pressed={group === value} disabled={!count}
+                <button type="button" key={value} className="pegawai-group" aria-pressed={group === value} disabled={!count}
                   aria-label={`Golongan ${value}, ${count} pegawai`} onClick={() => setGroup(group === value ? "all" : value)}>
                   <strong>{value}</strong><span>Golongan</span><b>{count}</b>
                 </button>
               );
             })}
-            <button className="pegawai-group is-none" aria-pressed={group === "none"} disabled={!groupCounts.get("none")}
+            <button type="button" className="pegawai-group is-none" aria-pressed={group === "none"} disabled={!groupCounts.get("none")}
               aria-label={`Tanpa golongan, ${groupCounts.get("none") ?? 0} pegawai`} onClick={() => setGroup(group === "none" ? "all" : "none")}>
               <span>Tanpa golongan</span><b>{groupCounts.get("none") ?? 0}</b>
             </button>
@@ -221,8 +221,8 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
           onRestore={person => change(person, true)} onAdd={() => { setError(""); setEditor("new"); }}
           status={
             <div className="ledger-status" role="group" aria-label="Daftar pegawai">
-              <button aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{activeCount}</b></button>
-              <button aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{deletedCount}</b></button>
+              <button type="button" aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{activeCount}</b></button>
+              <button type="button" aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{deletedCount}</b></button>
             </div>
           }
           filters={search => <>
@@ -230,7 +230,7 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
               <Search size={17} aria-hidden="true" />
               <input id="pegawai-search" ref={search} aria-label="Cari pegawai" aria-keyshortcuts="/"
                 placeholder="Cari nama, NIP, jabatan, atau golongan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
             </div>
             <div className="ledger-filter-group">
               <CustomSelect aria-label="Riwayat perjalanan" className="ledger-select" value={history} onValueChange={setHistory} data-active={history !== "all"}>
@@ -320,7 +320,7 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
       sortingFn: (a, b) => a.original.name.localeCompare(b.original.name, "id-ID"),
       cell: ({ row }) => (
         <div className="pegawai-identity">
-          <button className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
+          <button type="button" className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
             aria-controls={`pegawai-detail-${row.id}`}>{row.original.name}</button>
           <span className={`pegawai-position ${row.original.position ? "" : "is-empty"}`}>{row.original.position || "Jabatan belum dicatat"}</span>
         </div>
@@ -334,7 +334,7 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
       cell: ({ row }) => row.original.department.trim() || empty("Belum dicatat") },
     { id: "trips", accessorFn: row => row.journeys.length,
       cell: ({ row }) => (
-        <button className={`pegawai-trips ${row.original.journeys.length ? "" : "is-empty"}`} onClick={() => row.toggleExpanded()}
+        <button type="button" className={`pegawai-trips ${row.original.journeys.length ? "" : "is-empty"}`} onClick={() => row.toggleExpanded()}
           aria-expanded={row.getIsExpanded()} aria-controls={`pegawai-detail-${row.id}`} aria-label={`Riwayat perjalanan ${row.original.name}`}>
           <strong>{row.original.journeys.length ? `${row.original.journeys.length} perjalanan` : "Belum pernah bertugas"}</strong>
           {row.original.lastTrip && <span>Terakhir {monthText(row.original.lastTrip.startDate)}</span>}
@@ -433,7 +433,7 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
                     <TableHead key={header.id} data-column={header.column.id}
                       aria-sort={header.column.getCanSort() ? header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none" : undefined}>
                       {header.column.getCanSort() ? (
-                        <button className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
+                        <button type="button" className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
                           {columnLabels[header.column.id]}
                           {header.column.getIsSorted() === "asc" ? <ArrowUp size={13} /> : header.column.getIsSorted() === "desc" ? <ArrowDown size={13} /> : <ChevronsUpDown size={13} />}
                         </button>
@@ -468,7 +468,7 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
               <article className="ledger-card" key={row.id} data-expanded={row.getIsExpanded()}>
                 <div className="ledger-card-top">
                   <div className="pegawai-identity">
-                    <button className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
+                    <button type="button" className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
                       aria-controls={`pegawai-mobile-${row.id}`}>{person.name}</button>
                     <span className={`pegawai-position ${person.position ? "" : "is-empty"}`}>{person.position || "Jabatan belum dicatat"}</span>
                   </div>
