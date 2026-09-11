@@ -5,6 +5,7 @@ import RecapLedger from "./recap-ledger";
 import TravelScopeFields from "./travel-scope-fields";
 import { Combobox } from "./ui/combobox";
 import DestinationFields from "./destination-fields";
+import { useRowKeys } from "./use-row-keys";
 import AccountCodeField from "./account-code-field";
 import RecapEntryMode from "./recap-entry-mode";
 import AdditionalCostFields from "./additional-cost-fields";
@@ -166,6 +167,8 @@ export default function Lampiran6Form({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const data = form.lampiran6!;
+  const lodgingRows = useRowKeys(data.lodgings.length);
+  const transportRows = useRowKeys(data.groundTransports.length);
   const dailyAllowance = automaticDailyAllowance(data, tripDestinations(form));
   const automaticDaily = data.dailyRateMode !== "manual";
   const needsCorrectionReason = trip !== null && isComplete(trip);
@@ -691,13 +694,12 @@ export default function Lampiran6Form({
                   )}
                   {data.lodgings.map((hotel, index) => (
                     <EvidenceBlock
-                      key={index}
+                      key={lodgingRows.keys[index]}
                       title={`Penginapan ${index + 1}`}
-                      onRemove={() =>
-                        patchData({
-                          lodgings: data.lodgings.filter((_, i) => i !== index),
-                        })
-                      }
+                      onRemove={() => {
+                        lodgingRows.remove(index);
+                        patchData({ lodgings: data.lodgings.filter((_, i) => i !== index) });
+                      }}
                     >
                       <LodgingFields
                         value={hotel}
@@ -742,15 +744,12 @@ export default function Lampiran6Form({
                   </div>
                   {data.groundTransports.map((transport, index) => (
                     <EvidenceBlock
-                      key={index}
+                      key={transportRows.keys[index]}
                       title={`Transport darat ${index + 1}`}
-                      onRemove={() =>
-                        patchData({
-                          groundTransports: data.groundTransports.filter(
-                            (_, i) => i !== index,
-                          ),
-                        })
-                      }
+                      onRemove={() => {
+                        transportRows.remove(index);
+                        patchData({ groundTransports: data.groundTransports.filter((_, i) => i !== index) });
+                      }}
                     >
                       <GroundFields
                         value={transport}

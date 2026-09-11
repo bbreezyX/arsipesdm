@@ -17,7 +17,8 @@
       "suspicious": {
         // Pola lazy-init `x ??= ...` dipakai sengaja di postgres.ts dan db.ts.
         "noAssignInExpressions": "warn",
-        "noArrayIndexKey": "warn"
+        // Index adalah key yang benar untuk daftar baca-saja tanpa identitas dan tanpa penataan ulang (catatan, judul, sel kalender). Daftar yang barisnya bisa dihapus memakai useRowKeys.
+        "noArrayIndexKey": "off"
       },
       "correctness": {
         // Satu `throw` di finally skrip integrasi yang disengaja sebagai pengaman skema.

@@ -11,6 +11,7 @@ import { Field } from "./fields";
 import { NumberField } from "./lampiran6-form";
 import { RecapStatus } from "./recap-status";
 import { Button } from "./ui/button";
+import { useRowKeys } from "./use-row-keys";
 
 type Direction = "outbound" | "inbound";
 const directions = [["outbound", "pergi"], ["inbound", "pulang"]] as const;
@@ -45,13 +46,14 @@ function DirectionPane({ flight, other, direction, label, onChange }: {
   flight: Flight; other: Flight; direction: Direction; label: string; onChange: (flight: Flight) => void;
 }) {
   const legs = flightLegs(flight);
+  const rows = useRowKeys(legs.length);
   const setLegs = (next: FlightLeg[]) => onChange(withFlightLegs(flight, next));
   const canMirror = direction === "inbound" && !flightHasDetail(flight) && flightHasDetail(other);
   return <div className="flight-pane" role="tabpanel" id={`flight-pane-${direction}`} aria-labelledby={`flight-tab-${direction}`}>
     <div className="flight-legs">
-      {legs.map((leg, index) => <LegFields key={index} leg={leg} index={index} removable={legs.length > 1}
+      {legs.map((leg, index) => <LegFields key={rows.keys[index]} leg={leg} index={index} removable={legs.length > 1}
         onChange={changes => setLegs(legs.map((item, current) => current === index ? { ...item, ...changes } : item))}
-        onRemove={() => setLegs(legs.filter((_, current) => current !== index))} />)}
+        onRemove={() => { rows.remove(index); setLegs(legs.filter((_, current) => current !== index)); }} />)}
       <div className="flight-leg-actions">
         <Button type="button" variant="outline" size="sm" disabled={legs.length >= maxLegs} onClick={() => setLegs([...legs, nextTransitLeg(flight)])}><Plus size={14} />Tambah transit</Button>
         {canMirror && <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...withFlightLegs(flight, reversedFlightLegs(other)), application: other.application })}><ArrowLeftRight size={14} />Salin rute pergi (dibalik)</Button>}
