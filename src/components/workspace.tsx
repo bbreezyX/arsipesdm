@@ -153,7 +153,6 @@ export default function Workspace({
   const exportable = can(accessUser, "archives:export");
   const canReadEmployees = can(accessUser, "employees:read");
   const [employees, setEmployees] = useState(initialEmployees);
-  const refreshEmployees = useRef<() => void>(() => {});
   const [trips, setTrips] = useState(initialTrips);
   const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
@@ -226,33 +225,31 @@ export default function Workspace({
   const total = archiveExportRows.reduce((s, t) => s + (totalCost(t) ?? 0), 0);
   const unknown = archiveExportRows.filter((t) => totalCost(t) === null).length;
   const people = useMemo(() => employees.filter(p => !p.deletedAt), [employees]);
-  const editorOpen = editor !== null;
   useEffect(() => {
     if (!canReadEmployees) return;
     let activeRequest: AbortController | undefined;
+    let lastRefresh = 0;
     function refresh(reportError = false) {
       activeRequest?.abort();
       const controller = new AbortController();
       activeRequest = controller;
+      lastRefresh = Date.now();
       api<Employee[]>("/api/employees", { cache: "no-store", signal: controller.signal })
         .then(latest => { if (!controller.signal.aborted) setEmployees(latest); })
         .catch(error => { if (reportError && !controller.signal.aborted) setToast((error as Error).message); });
     }
-    const onReturn = () => { if (document.visibilityState === "visible") refresh(); };
+    // Tab yang berkedip visible/hidden (screen share, pane tersemat) jangan sampai membanjiri server.
+    const onReturn = () => { if (document.visibilityState === "visible" && Date.now() - lastRefresh > 15000) refresh(); };
     const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(employeeDirectoryChannel(demo));
     if (channel) channel.onmessage = event => { if (event.data === "changed") refresh(); };
-    refreshEmployees.current = refresh;
-    window.addEventListener("focus", onReturn);
     document.addEventListener("visibilitychange", onReturn);
     refresh(true);
     return () => {
       activeRequest?.abort();
       channel?.close();
-      window.removeEventListener("focus", onReturn);
       document.removeEventListener("visibilitychange", onReturn);
-      refreshEmployees.current = () => {};
     };
-  }, [trips, editorOpen, demo, canReadEmployees]);
+  }, [demo, canReadEmployees]);
   const patchFilters = (p: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...p }));
     setSelected(new Set());
@@ -721,7 +718,6 @@ export default function Workspace({
               departments={allDepartments}
               onChange={(employee) => {
                 setEmployees(current => [...current.filter(p => p.id !== employee.id), employee].sort((a,b) => a.name.localeCompare(b.name, "id")));
-                refreshEmployees.current();
                 notifyEmployeeDirectoryChanged(demo);
               }}
               notify={setToast}
