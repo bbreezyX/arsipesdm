@@ -16,7 +16,7 @@
       },
       "suspicious": {
         // Pola lazy-init `x ??= ...` dipakai sengaja di postgres.ts dan db.ts.
-        "noAssignInExpressions": "warn",
+        "noAssignInExpressions": "off",
         // Index adalah key yang benar untuk daftar baca-saja tanpa identitas dan tanpa penataan ulang (catatan, judul, sel kalender). Daftar yang barisnya bisa dihapus memakai useRowKeys.
         "noArrayIndexKey": "off"
       },
@@ -26,7 +26,7 @@
       },
       "correctness": {
         // Satu `throw` di finally skrip integrasi yang disengaja sebagai pengaman skema.
-        "noUnsafeFinally": "warn"
+        "noUnsafeFinally": "off"
       },
       "a11y": {
         // role="group" dengan aria-label di kontainer bergaya adalah ARIA yang sah; mengganti ke <fieldset> hanya melawan styling bawaan browser. role="separator" di splitter yang bisa digeser juga tidak bisa jadi <hr>.
