@@ -1801,6 +1801,142 @@
   opacity: 0.5;
 }
 
+/* Kepala ringkas (rekap satu pegawai): judul dan kendali dalam satu baris,
+   mode isian menempel di kanan; sisa tinggi dialog jatuh ke bidang isian. */
+.lampiran-dialog [data-slot="dialog-header"].lampiran-header-compact {
+  padding: 14px var(--form-inset) 8px;
+  gap: 8px;
+}
+.lampiran-header-compact .lampiran-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding-right: 44px; /* ruang tombol tutup */
+}
+.lampiran-header-compact .lampiran-heading-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.lampiran-header-compact .dialog-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--type-micro);
+}
+.lampiran-dialog .lampiran-header-compact [data-slot="dialog-title"] {
+  font-size: 1.125rem !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em;
+}
+.lampiran-header-compact .lampiran-heading-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.lampiran-dialog .lampiran-header-compact .recap-entry-mode {
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+.lampiran-header-compact .recap-entry-mode legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.lampiran-header-compact .recap-entry-mode > div {
+  padding: 2px;
+  border-radius: 8px;
+}
+.lampiran-header-compact .recap-entry-mode label {
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: var(--type-micro);
+}
+.lampiran-header-compact .format-switch {
+  white-space: nowrap;
+}
+.lampiran-dialog .lampiran-header-compact [data-slot="dialog-description"]:not(.sr-only) {
+  margin: 0;
+  font-size: var(--type-micro) !important;
+  color: var(--ledger-gold-soft) !important;
+}
+.lampiran-dialog .lampiran-header-compact ~ .editor-form .lampiran-step-tabs[data-slot="tabs-list"] {
+  padding-top: 4px;
+}
+
+/* Mode beberapa pegawai: blok "Perjalanan bersama" ikut satu baris di tengah,
+   sebagai satu garis kemajuan, bukan blok terpisah di bawah judul. */
+.lampiran-header-compact .journey-header-slot {
+  position: static;
+  flex: 1 1 320px;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 0 12px;
+}
+.lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header .journey-panel-heading-text {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  min-width: 0;
+}
+.lampiran-dialog .lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header h3 {
+  font-size: var(--type-meta);
+  white-space: nowrap;
+}
+.lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header p {
+  display: none;
+}
+.lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header .recap-status {
+  margin-top: 0;
+}
+@media (max-width: 900px) {
+  .lampiran-header-compact .journey-header-slot {
+    order: 5;
+    flex-basis: 100%;
+    padding: 0;
+  }
+}
+@media (max-width: 700px) {
+  /* Layar HP: cukup daftar periksa dalam satu baris; tanda terisi pada tiap
+     bagian sudah menunjukkan kemajuan. Judul tetap terbaca oleh pembaca layar. */
+  .lampiran-dialog .lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header h3 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header {
+    gap: 4px 10px;
+  }
+  .lampiran-header-compact .journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav {
+    width: auto;
+    flex: 0 1 auto;
+    gap: 4px 10px;
+  }
+}
+
 /* Legenda status pada mode beberapa pegawai. */
 .recap-status-legend {
   padding: 9px var(--form-inset);
@@ -3049,6 +3185,26 @@
   .batch-recap-dialog .recap-entry-mode {
     padding-bottom: 15px; /* 14px + 1px tumpang tindih ke daftar tab */
   }
+  .lampiran-dialog [data-slot="dialog-header"].lampiran-header-compact {
+    padding: 12px var(--form-inset) 8px;
+  }
+  .lampiran-dialog .lampiran-header-compact .recap-entry-mode {
+    padding: 0;
+  }
+  .lampiran-header-compact .lampiran-heading-row {
+    padding-right: 40px;
+    row-gap: 8px;
+  }
+  /* Tautan format berbagi baris dengan kicker kecil; judul dan pengalih mode
+     masing-masing satu baris penuh. */
+  .lampiran-header-compact .lampiran-heading-main,
+  .lampiran-header-compact .lampiran-heading-tools {
+    display: contents;
+  }
+  .lampiran-header-compact .dialog-kicker { order: 1; }
+  .lampiran-header-compact .format-switch { order: 2; margin-left: auto; }
+  .lampiran-dialog .lampiran-header-compact [data-slot="dialog-title"] { order: 3; flex-basis: 100%; }
+  .lampiran-dialog .lampiran-header-compact .recap-entry-mode { order: 4; flex-basis: 100%; }
   .lampiran-dialog .lampiran-step-tabs[data-slot="tabs-list"] {
     padding: 4px var(--form-inset) 0;
   }

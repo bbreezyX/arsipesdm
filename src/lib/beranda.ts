@@ -164,7 +164,7 @@ export function berandaSummary({ trips, employees, honorariums, today }: {
   const activity: ActivityItem[] = trips
     .flatMap(trip => trip.history.map(event => ({ ...event, tripId: trip.id, code: trip.code, title: trip.title })))
     .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, 8);
+    .slice(0, 24);
 
   return { year, hero, monthly, monthlyDetails, calendar, attention, registers, activity, latest };
 }

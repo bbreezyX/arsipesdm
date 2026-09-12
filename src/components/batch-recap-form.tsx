@@ -142,15 +142,20 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
 
   return <Dialog open onOpenChange={open => { if (!open) close(); }}>
     <DialogContent className={`form-dialog lampiran-dialog batch-recap-dialog batch-step-${step}`} onInteractOutside={event => event.preventDefault()}>
-      <DialogHeader>
-        <div className="dialog-kicker"><FileSpreadsheet size={16} /> Rekap perjalanan dinas</div>
-        <DialogTitle>Tambah rekap pegawai</DialogTitle>
-        <DialogDescription>Isi perjalanan sekali, lalu lengkapi SPPD dan biaya setiap pegawai.</DialogDescription>
-        {step === 0 && <div className="journey-header-slot" ref={setJourneyHeaderSlot} />}
+      {/* Kepala ringkas: judul, kemajuan perjalanan bersama, dan pengalih mode dalam satu baris. */}
+      <DialogHeader className="lampiran-header-compact batch-header-compact">
+        <div className="lampiran-heading-row">
+          <div className="lampiran-heading-main">
+            <div className="dialog-kicker"><FileSpreadsheet size={14} /> Rekap perjalanan dinas</div>
+            <DialogTitle>Tambah rekap pegawai</DialogTitle>
+          </div>
+          {step === 0 && <div className="journey-header-slot" ref={setJourneyHeaderSlot} />}
+          <div className="lampiran-heading-tools">
+            {step === 0 && <RecapEntryMode value="multiple" disabled={busy} onChange={value => { if (value === "single") onSingle(state); }} />}
+          </div>
+        </div>
+        <DialogDescription className="sr-only">Isi perjalanan sekali, lalu lengkapi SPPD dan biaya setiap pegawai.</DialogDescription>
       </DialogHeader>
-      {step === 0 && <fieldset className="batch-mode-fieldset" disabled={busy}>
-        <RecapEntryMode value="multiple" onChange={value => { if (value === "single") onSingle(state); }} />
-      </fieldset>}
       <form className="editor-form" onSubmit={save} noValidate>
         <Tabs value={String(step)} onValueChange={value => { const next = Number(value); if (next < step || validate()) go(next); }}>
           <TabsList className="detail-tabs lampiran-step-tabs" aria-label="Tahap tambah rekap">

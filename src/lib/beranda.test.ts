@@ -153,7 +153,7 @@ test("register directory summarises every module for the active year", () => {
   assert.deepEqual(summary.registers.people, { active: 3, travelled: 3 });
 });
 
-test("recent activity merges archive histories newest first and keeps eight entries", () => {
+test("recent activity merges archive histories newest first and keeps at most 24 entries", () => {
   const history = (n: number, tripId: string) => Array.from({ length: n }, (_, i) => ({
     id: `${tripId}-${i}`, action: "Diperbarui", actor: "Dany", at: `2026-08-${String(i + 1).padStart(2, "0")}T10:00:00.000Z`, detail: "",
   }));
@@ -161,10 +161,12 @@ test("recent activity merges archive histories newest first and keeps eight entr
     trips: [trip("a", 1, { history: history(5, "a") }), trip("b", 1, { history: history(5, "b"), deletedAt: "2026-09-01" })],
     employees: [], honorariums: [], today,
   });
-  assert.equal(summary.activity.length, 8);
+  assert.equal(summary.activity.length, 10);
   assert.equal(summary.activity[0].at, "2026-08-05T10:00:00.000Z");
   assert.equal(summary.activity[0].code, "PD/a");
-  assert.equal(summary.activity[7].at, "2026-08-02T10:00:00.000Z");
+  assert.equal(summary.activity[9].at, "2026-08-01T10:00:00.000Z");
+  const long = berandaSummary({ trips: [trip("c", 1, { history: history(30, "c") })], employees: [], honorariums: [], today });
+  assert.equal(long.activity.length, 24);
 });
 
 test("relative time speaks Indonesian", () => {

@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Archive, ArrowRight, ArrowUpRight, CheckCircle2, ClipboardList, FileSpreadsheet, FileText, Users, Wallet, Sparkles,
+  Archive, ArrowRight, ArrowUpRight, CheckCircle2, ClipboardList, FileSpreadsheet, FileText, Users, Wallet,
 } from "lucide-react";
-import { berandaSummary, greeting, relativeTime, type AttentionId } from "@/lib/beranda";
+import { berandaSummary, greeting, type AttentionId } from "@/lib/beranda";
 import { money, shortMoney, type Filters, type Trip, type User } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import type { Honorarium } from "@/lib/honorarium";
 import type { Section } from "@/lib/workspace-navigation";
 import { can, canAccessSection } from "@/lib/permissions";
 import BerandaCalendar, { calendarLegend } from "./beranda-calendar";
+import BerandaActivity from "./beranda-activity";
 import { AnimatedNumber } from "./animated-number";
 import BerandaHero from "./beranda-hero";
 
@@ -24,9 +25,11 @@ const attentionCopy: Record<AttentionId, { title: (year: string) => string; hint
   honorarium: { title: year => `Honorarium ${year} belum dicatat`, hint: "Buka buku honorarium tahun ini", section: "honorarium" },
 };
 
-const entryDayFormat = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-function entryDayText(day: string) {
-  return entryDayFormat.format(new Date(`${day}T12:00:00`));
+const entryWeekday = new Intl.DateTimeFormat("id-ID", { weekday: "long" });
+const entryMonthYear = new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric" });
+const entryFull = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+function entryDate(day: string) {
+  return new Date(`${day}T12:00:00`);
 }
 
 export default function Beranda({ trips, employees, honorariums, user, demo, initialNow, onGo, onOpen, onAdd, onImport }: {
@@ -118,12 +121,19 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
       </section>
 
       <nav className="beranda-registers" aria-label="Daftar register">
+        <div className="beranda-registers-head" aria-hidden="true">
+          <span>Daftar register</span>
+          <span className="beranda-register-amount">Jumlah {year}</span>
+        </div>
         {registerItems.filter(item => canAccessSection(accessUser, item.section)).map(item => (
           <button key={item.section} type="button" onClick={() => onGo(item.section)}>
-            <span className="beranda-register-name"><item.icon size={16} strokeWidth={1.8} aria-hidden="true" />{item.name}</span>
-            <span className="beranda-register-figure">{item.figure}{item.unit ? <small>{item.unit}</small> : null}</span>
+            <item.icon size={16} strokeWidth={1.8} aria-hidden="true" className="beranda-register-icon" />
+            <span className="beranda-register-name">{item.name}</span>
             <span className="beranda-register-detail">{item.detail}</span>
-            <ArrowUpRight size={15} aria-hidden="true" className="beranda-register-arrow" />
+            <span className="beranda-register-amount">
+              <span className="beranda-register-figure">{item.figure}{item.unit ? <small>{item.unit}</small> : null}</span>
+              <ArrowUpRight size={15} aria-hidden="true" className="beranda-register-arrow" />
+            </span>
           </button>
         ))}
       </nav>
@@ -132,25 +142,33 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
         <header className="beranda-panel-head">
           <div>
             <h2 id="beranda-entries-title">Pencatatan terakhir</h2>
-            <p>
-              {entries.day ? <><b>{entries.isToday ? "Hari ini" : entryDayText(entries.day)}</b> · </> : null}
-              {entries.day ? "tanggal pencatatan dalam WIB · seluruh tahun anggaran" : "Belum ada rekap yang dicatat"}
-            </p>
+            <p>{entries.day ? "Semua rekap yang dicatat pada hari kerja terakhir, menurut tanggal WIB." : "Rekap yang dicatat akan muncul di sini menurut tanggal WIB."}</p>
           </div>
           <span>{entries.recaps + entries.honorariums} rekap</span>
         </header>
-        <div className="beranda-entry-links">
-          <button type="button" onClick={() => onGo("archives", { year: "all", entry: entries.filter })}>
-            <span>Arsip perjalanan<strong>{entries.recaps} rekap <small>· {entries.journeys} perjalanan</small></strong></span>
-            <span className="beranda-entry-total">{entries.recaps && entries.unknown === entries.recaps ? "Belum bernominal" : money(entries.total)}
-              {entries.unknown > 0 && <small>{entries.unknown} rekap belum bernominal</small>}</span>
-            <ArrowRight size={16} aria-hidden="true" />
-          </button>
-          {can(accessUser, "honorariums:read") && <button type="button" onClick={() => onGo("honorarium", { entry: entries.filter })}>
-            <span>Honorarium<strong>{entries.honorariums} rekap</strong></span>
-            <span className="beranda-entry-total">{money(entries.honorariumNet)}<small>Honor neto</small></span>
-            <ArrowRight size={16} aria-hidden="true" />
-          </button>}
+        <div className="beranda-entry-day">
+          {/* Lembar agenda: tanggal pencatatan sebagai anak judul bagian ini. */}
+          <div className="beranda-entry-leaf" data-today={entries.isToday || undefined}
+            aria-label={entries.day ? (entries.isToday ? "Hari ini" : entryFull.format(entryDate(entries.day))) : "Belum ada pencatatan"}>
+            <span className="beranda-entry-leaf-top">{entries.day ? (entries.isToday ? "Hari ini" : entryWeekday.format(entryDate(entries.day))) : "Belum ada"}</span>
+            <strong>{entries.day ? Number(entries.day.slice(8, 10)) : "—"}</strong>
+            <span className="beranda-entry-leaf-month">{entries.day ? entryMonthYear.format(entryDate(entries.day)) : "pencatatan"}</span>
+          </div>
+          <div className="beranda-entry-links">
+            <button type="button" onClick={() => onGo("archives", { year: "all", entry: entries.filter })}>
+              <span className="beranda-entry-name">Arsip perjalanan
+                <small>{entries.recaps ? `${entries.recaps} rekap dari ${entries.journeys} perjalanan` : "Tidak ada rekap perjalanan"}</small></span>
+              <span className="beranda-entry-total">{entries.recaps && entries.unknown === entries.recaps ? "Belum bernominal" : money(entries.total)}
+                {entries.unknown > 0 && entries.unknown !== entries.recaps && <small>{entries.unknown} rekap belum bernominal</small>}</span>
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </button>
+            {can(accessUser, "honorariums:read") && <button type="button" onClick={() => onGo("honorarium", { entry: entries.filter })}>
+              <span className="beranda-entry-name">Honorarium
+                <small>{entries.honorariums ? `${entries.honorariums} rekap` : "Tidak ada rekap honorarium"}</small></span>
+              <span className="beranda-entry-total">{money(entries.honorariumNet)}<small>honor neto</small></span>
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </button>}
+          </div>
         </div>
       </section>
 
@@ -177,31 +195,13 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
 
       {editable && <section className="beranda-panel beranda-activity" aria-labelledby="beranda-activity-title">
         <header className="beranda-panel-head">
-          <h2 id="beranda-activity-title">Aktivitas terbaru</h2>
-          <span>{activity.length ? `${activity.length} terakhir` : ""}</span>
-        </header>
-        {activity.length ? (
-          <ol className="beranda-activity-list">
-            {activity.map(item => (
-              <li key={`${item.tripId}-${item.id}`}>
-                <button type="button" onClick={() => onOpen(item.tripId)}>
-                  <span className="beranda-activity-actor" aria-hidden="true">{item.actor.slice(0, 2).toUpperCase()}</span>
-                  <span className="beranda-activity-body">
-                    <span><b>{item.actor}</b> · {item.action}</span>
-                    <small>{item.code} · {item.title}</small>
-                  </span>
-                  <time dateTime={item.at}>{relativeTime(item.at, now)}</time>
-                </button>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <div className="beranda-tidy">
-            <Sparkles size={24} strokeWidth={1.6} aria-hidden="true" />
-            <strong>Belum ada aktivitas</strong>
-            <p>Perubahan arsip oleh setiap operator akan tercatat di sini.</p>
+          <div>
+            <h2 id="beranda-activity-title">Aktivitas terbaru</h2>
+            {activity.length ? <p>Buku agenda perubahan arsip, waktu WIB.</p> : null}
           </div>
-        )}
+          <span>{activity.length ? `${activity.length} catatan` : ""}</span>
+        </header>
+        <BerandaActivity activity={activity} today={today} onOpen={onOpen} />
       </section>}
     </div>
   );

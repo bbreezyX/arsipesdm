@@ -332,33 +332,38 @@ export default function Lampiran6Form({
         className="form-dialog lampiran-dialog"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        {/* Kepala ringkas: satu baris judul dan kendali, supaya ruang isian selebar mungkin. */}
+        <DialogHeader className="lampiran-header-compact">
           <div className="lampiran-heading-row">
-            <div className="dialog-kicker">
-              <FileSpreadsheet size={16} /> Rekap perjalanan dinas
+            <div className="lampiran-heading-main">
+              <div className="dialog-kicker">
+                <FileSpreadsheet size={14} /> Rekap perjalanan dinas
+              </div>
+              <DialogTitle>
+                {onDraftSave ? `Rincian — ${person.name}` : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Tambah rekap pegawai"}
+              </DialogTitle>
             </div>
-            {onSwitch && (
-              <button
-                className="format-switch"
-                type="button"
-                onClick={() => close(onSwitch)}
-                title="Buka format satu arsip dengan peserta gabungan"
-              >
-                Arsip gabungan
-              </button>
-            )}
+            <div className="lampiran-heading-tools">
+              {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
+              {onSwitch && (
+                <button
+                  className="format-switch"
+                  type="button"
+                  onClick={() => close(onSwitch)}
+                  title="Buka format satu arsip dengan peserta gabungan"
+                >
+                  Arsip gabungan
+                </button>
+              )}
+            </div>
           </div>
-          <DialogTitle>
-            {onDraftSave ? `Rincian — ${person.name}` : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Tambah rekap pegawai"}
-          </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className={needsCorrectionReason ? undefined : "sr-only"}>
             {onDraftSave ? "Perubahan berlaku untuk pegawai ini. Rekap disimpan bersama setelah ditinjau."
               : needsCorrectionReason
               ? "Perubahan pada arsip lengkap perlu disertai alasan."
               : "Isi data perjalanan dan biaya pegawai ini. Dokumen pendukung opsional."}
           </DialogDescription>
         </DialogHeader>
-        {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
         <form className="editor-form" onSubmit={save} noValidate>
           <Tabs
             value={step}
