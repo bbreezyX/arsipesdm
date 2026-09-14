@@ -1,237 +1,477 @@
 /*
-  Dokumen: daftar kelengkapan berkas di atas lapisan register (arsip.css).
-  Warna, tipe, dan kelas ledger-* mengikuti register lain.
-  Yang khas di halaman ini: rel jenis dokumen, matriks kelengkapan
-  (baris rekap, kolom jenis dokumen, sel bertanda), dan map berkas yang
-  terbuka di samping dengan tujuh kantong tempat foto dijatuhkan.
+  Dokumen: papan kelengkapan berkas, bukan buku map.
+  Dimuat setelah arsip.css dan memakai token --ledger-* yang sama.
+  Bagian: kop halaman dengan pilihan tahun; papan tujuh jenis dokumen berupa kolom terisi
+  yang sekaligus menjadi saringan; daftar map dalam satu bingkai; dan map terbuka yang
+  menggantikan daftar, dengan kantong-kantong sebagai zona jatuh berkas.
+  Kuning tua berarti berkas belum ada, hijau berarti lengkap, emas menandai yang aktif.
 */
 .dokumen-page {
+  --dokumen-shadow: 0 1px 2px rgba(20, 39, 63, 0.04), 0 14px 36px -28px rgba(20, 39, 63, 0.3);
   min-width: 0;
-}
-/* Lembar ini tidak memotong isinya agar map di samping bisa melekat saat digulir (WebKit
-   mengurung position: sticky di balik overflow: clip). Sudut dibulatkan per bagian. */
-.dokumen-sheet {
-  border-top-left-radius: 0;
-  overflow: visible;
-}
-.dokumen-index {
-  border-top-right-radius: var(--ledger-radius);
-}
-.dokumen-matrix-wrap {
-  border-bottom-left-radius: var(--ledger-radius);
-}
-.dokumen-side {
-  border-bottom-right-radius: var(--ledger-radius);
-}
-.dokumen-body:not(.has-open) .dokumen-side,
-.dokumen-body .dokumen-matrix-wrap:last-child {
-  border-bottom-right-radius: var(--ledger-radius);
 }
 
-/* ----- Rel jenis dokumen ----- */
-.dokumen-index {
+/* ----- Kop halaman ----- */
+.dokumen-head {
   display: flex;
-  align-items: stretch;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
 }
-.dokumen-index-all {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 156px;
-  padding: 12px 22px 12px 24px;
-  text-align: left;
+.dokumen-head h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ledger-ink);
+}
+.dokumen-head p {
+  margin-top: 6px;
+  max-width: 66ch;
+  font-size: var(--type-body);
+  line-height: 1.6;
   color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line);
-  transition: background 0.15s, color 0.15s;
 }
-.dokumen-index-all strong {
+.dokumen-head .custom-select.dokumen-year {
+  flex-shrink: 0;
+  width: auto;
+  min-width: 156px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 34px 0 14px;
+  border-radius: 10px;
+  border-color: #cfd8e2;
   font-size: var(--type-data);
   font-weight: 600;
-  color: inherit;
-  white-space: nowrap;
+  color: var(--ledger-ink);
 }
-.dokumen-index-all span {
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+
+/* ----- Papan kelengkapan ----- */
+.dokumen-board {
+  margin-bottom: 20px;
+  padding: 22px 28px 24px;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 16px;
+  box-shadow: var(--dokumen-shadow);
 }
-.dokumen-kinds {
+.dokumen-board-head {
   display: grid;
-  flex: 1;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 40px;
+  align-items: start;
+  margin-bottom: 20px;
 }
-.dokumen-kind {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 1px;
-  min-width: 0;
-  padding: 11px 6px 10px;
+.dokumen-board-head h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+}
+.dokumen-board-head p {
+  margin-top: 4px;
+  max-width: 62ch;
+  font-size: var(--type-meta);
+  line-height: 1.55;
   color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line-soft);
-  transition: background 0.15s, color 0.15s;
 }
-.dokumen-kind:last-child {
-  border-right: 0;
+.dokumen-board-total {
+  display: grid;
+  gap: 8px;
+  min-width: 260px;
 }
-.dokumen-kind strong {
-  font-size: 1.125rem;
+.dokumen-board-total p {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  max-width: none;
+  color: var(--ledger-muted);
+}
+.dokumen-board-total p strong {
+  font-size: 2rem;
   font-weight: 650;
   font-stretch: var(--ledger-condensed);
-  letter-spacing: 0.02em;
-  line-height: 1.15;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: var(--ledger-ink);
-  white-space: nowrap;
-}
-.dokumen-kind span {
-  font-size: var(--type-micro);
-  line-height: 1.45;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.dokumen-kind span b {
-  font-weight: 600;
-  color: var(--ledger-text);
+.dokumen-board-total p.is-empty {
+  font-size: var(--type-data);
 }
-.dokumen-kind span.is-missing,
-.dokumen-kind span.is-missing b {
+.dokumen-board-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ledger-amber-soft);
+  overflow: hidden;
+}
+.dokumen-board-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ledger-success);
+}
+.dokumen-board-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.dokumen-board-facts strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-board-facts .is-warning,
+.dokumen-board-facts .is-warning strong {
   color: var(--ledger-amber);
 }
-.dokumen-kind:disabled {
-  cursor: default;
-  color: #aab6c3;
+.dokumen-board-kinds {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.dokumen-kind:disabled strong,
-.dokumen-kind:disabled b {
-  color: #aab6c3;
+.dokumen-board-kind {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 6px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  color: var(--ledger-muted);
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dokumen-board-kind strong,
+.dokumen-board-kind .dokumen-board-figure {
+  padding-inline: 6px;
+}
+.dokumen-board-kind:not(:disabled):hover {
+  background: var(--ledger-tint);
+}
+.dokumen-board-kind[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  border-color: var(--ledger-navy);
+  box-shadow: inset 0 0 0 1px var(--ledger-navy);
+  color: var(--ledger-ink);
+}
+.dokumen-board-kind:disabled {
+  cursor: default;
+}
+.dokumen-board-kind:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+/* Ubin: ikon jenis dokumen, angka "ada/total", dan bilah isian; latar kuning tua selagi masih ada yang kurang. */
+.dokumen-board-tile {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 12px 10px;
+  border-radius: 10px;
+  background: var(--ledger-amber-soft);
+  color: var(--ledger-amber);
+  text-align: left;
+}
+.dokumen-board-tile svg {
+  color: inherit;
+}
+.dokumen-board-count {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  line-height: 1;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-board-count b {
+  font-size: 1.375rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.02em;
+}
+.dokumen-board-count small {
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: var(--ledger-muted);
+}
+.dokumen-board-fill {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(20, 39, 63, 0.1);
+  overflow: hidden;
+}
+.dokumen-board-fill i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ledger-navy);
+  transition: width 0.3s ease;
+}
+.dokumen-board-kind:not([data-missing]) .dokumen-board-tile {
+  background: var(--ledger-success-soft);
+  color: var(--ledger-success);
+}
+.dokumen-board-kind:not([data-missing]) .dokumen-board-fill i {
+  background: var(--ledger-success);
+}
+.dokumen-board-kind:disabled .dokumen-board-tile {
+  background: var(--ledger-tint);
+  color: #a4b2c0;
+}
+.dokumen-board-kind:disabled .dokumen-board-count b {
+  color: #a4b2c0;
   font-weight: 500;
 }
-.dokumen-kind:not(:disabled):hover,
-.dokumen-index-all:hover {
-  background: #eef2f6;
-  color: var(--ledger-text);
+.dokumen-board-kind:disabled .dokumen-board-fill {
+  visibility: hidden;
 }
-.dokumen-kind[aria-pressed="true"],
-.dokumen-index-all[aria-pressed="true"] {
+.dokumen-board-kind strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  line-height: 1.2;
+}
+.dokumen-board-kind:disabled strong {
+  color: var(--ledger-muted);
+  font-weight: 500;
+}
+.dokumen-board-figure {
+  font-size: var(--type-micro);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dokumen-board-figure b {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.dokumen-board-kind[data-missing="true"] .dokumen-board-figure,
+.dokumen-board-kind[data-missing="true"] .dokumen-board-figure b {
+  color: var(--ledger-amber);
+}
+
+/* ----- Bingkai daftar ----- */
+.dokumen-roster {
+  min-width: 0;
+  /* Saat digulir ke atas, bingkai berhenti di bawah bilah atas yang melekat. */
+  scroll-margin-top: 80px;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 16px;
+  box-shadow: var(--dokumen-shadow);
+  overflow: clip;
+}
+.dokumen-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 20px 12px;
+}
+.dokumen-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  min-width: 220px;
+  height: 42px;
+  padding: 0 10px 0 14px;
+  gap: 10px;
+  background: var(--ledger-tint);
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.dokumen-search:focus-within {
+  background: var(--ledger-surface);
+  border-color: var(--ledger-action);
+  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.12);
+}
+.dokumen-search > svg {
+  flex-shrink: 0;
+  color: var(--ledger-muted);
+}
+.dokumen-roster .dokumen-search input:not([type="checkbox"]) {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--type-data);
+  color: var(--ledger-ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dokumen-roster .dokumen-search input:not([type="checkbox"]):focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+.dokumen-search input::-webkit-search-cancel-button,
+.dokumen-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dokumen-search kbd {
+  font: inherit;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 5px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+}
+.dokumen-search > button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--ledger-muted);
+}
+.dokumen-search > button:hover {
   background: var(--ledger-surface);
   color: var(--ledger-ink);
 }
-.dokumen-kind[aria-pressed="true"]::after,
-.dokumen-index-all[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 3px;
-  background: var(--ledger-gold);
+.dokumen-status-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ledger-tint);
+  border-radius: 11px;
 }
-.dokumen-kind:focus-visible,
-.dokumen-index-all:focus-visible {
-  outline: 2px solid var(--ledger-action);
-  outline-offset: -2px;
+.dokumen-status-switch > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
-
-/* ----- Kepala register dan saringan ----- */
-.dokumen-register-head {
-  border-top: 0;
+.dokumen-status-switch > button b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  opacity: 0.75;
 }
-.dokumen-filters .ledger-filters-end {
-  margin-left: auto;
+.dokumen-status-switch > button:hover {
+  color: var(--ledger-ink);
 }
-
-/* ----- Badan: matriks di kiri, map di kanan ----- */
-.dokumen-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+.dokumen-status-switch > button[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 39, 63, 0.12), 0 0 0 1px var(--ledger-line);
+}
+.dokumen-toolbar .custom-select.dokumen-select {
+  width: auto;
+  min-width: 160px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 34px 0 14px;
+  border-radius: 10px;
+  border-color: #cfd8e2;
+  font-size: var(--type-data);
+  font-weight: 500;
+  color: var(--ledger-text);
+}
+.dokumen-toolbar .custom-select.dokumen-select[data-active="true"] {
+  border-color: var(--ledger-navy);
+  color: var(--ledger-ink);
+  background: var(--ledger-action-soft);
+}
+.dokumen-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 20px 12px;
+}
+.dokumen-scope p {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.dokumen-scope p strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dokumen-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 10px;
+  border-radius: 7px;
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+  font-size: var(--type-label);
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.dokumen-chips button:hover {
+  background: #d9e5f0;
+}
+.dokumen-chips button svg {
+  opacity: 0.7;
+}
+.dokumen-chips .dokumen-chips-clear {
+  padding: 0 6px;
+  background: transparent;
+  color: var(--ledger-muted);
+}
+.dokumen-chips .dokumen-chips-clear:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.dokumen-roster .empty-state {
   border-top: 1px solid var(--ledger-line);
-  min-height: 420px;
 }
-/* Pembatas geser hanya ada pada bentang berdampingan; di layar sempit map menjadi dialog. */
-.dokumen-splitter {
-  display: none;
-}
-@media (min-width: 1101px) {
-  .dokumen-body {
-    position: relative;
-    grid-template-columns: minmax(0, 1fr) var(--dokumen-side, 420px);
-  }
-  .dokumen-side {
-    border-left: 1px solid var(--ledger-line);
-    background: var(--ledger-tint);
-  }
-  /* Pembatas geser: daerah sentuh 16px menempel pada garis batas; garis dan
-     gagang menegang saat disorot, difokus papan ketik, atau digeser. */
-  .dokumen-splitter {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: var(--dokumen-side, 420px);
-    width: 16px;
-    transform: translateX(50%);
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: col-resize;
-    touch-action: none;
-    border-radius: 8px;
-    outline: none;
-  }
-  .dokumen-splitter::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    margin-inline: auto;
-    width: 2px;
-    background: transparent;
-    transition: background 0.15s;
-  }
-  .dokumen-splitter > span {
-    position: sticky;
-    top: 40vh;
-    z-index: 1;
-    width: 4px;
-    height: 44px;
-    border-radius: 999px;
-    background: #c3ced9;
-    transition: background 0.15s, height 0.15s;
-  }
-  .dokumen-splitter:hover::after,
-  .dokumen-splitter:focus-visible::after,
-  .dokumen-splitter[data-dragging="true"]::after {
-    background: var(--ledger-action);
-  }
-  .dokumen-splitter:hover > span,
-  .dokumen-splitter:focus-visible > span,
-  .dokumen-splitter[data-dragging="true"] > span {
-    background: var(--ledger-action);
-    height: 64px;
-  }
-}
-@media print {
-  .dokumen-splitter {
-    display: none;
-  }
-}
+
+/* Matriks kelengkapan: baris map, kolom jenis, sel bertanda. */
 .dokumen-matrix-wrap {
   min-width: 0;
-  overflow-x: auto;
+  max-height: min(72vh, 820px);
+  overflow: auto;
   overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #b6c5d3 transparent;
+  border-top: 1px solid var(--ledger-line);
 }
-.dokumen-matrix-wrap .empty-state {
-  padding: 56px 24px;
-}
-
-/* Matriks kelengkapan: sel bertanda. */
 .dokumen-matrix {
   width: 100%;
-  min-width: 720px;
+  min-width: 820px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: var(--type-data);
@@ -240,25 +480,24 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  height: 44px;
+  height: 42px;
   padding: 0 10px;
   background: var(--ledger-surface);
   color: var(--ledger-muted);
   font-size: var(--type-micro);
   font-weight: 600;
-  letter-spacing: 0.01em;
   text-align: left;
-  box-shadow: inset 0 -1px var(--ledger-line);
   white-space: nowrap;
+  box-shadow: inset 0 -1px var(--ledger-line);
 }
 .dokumen-matrix th.dokumen-col-map {
-  padding-left: 24px;
-  min-width: 260px;
+  padding-left: 20px;
+  min-width: 280px;
 }
 .dokumen-matrix th.dokumen-col-kind {
-  width: 56px;
-  text-align: center;
+  width: 52px;
   padding: 0 4px;
+  text-align: center;
 }
 .dokumen-matrix th.dokumen-col-kind span {
   display: inline-block;
@@ -266,81 +505,107 @@
   border-radius: 6px;
 }
 .dokumen-matrix th.dokumen-col-kind.is-active span {
-  background: var(--ledger-gold-soft);
-  color: var(--ledger-ink);
+  background: var(--ledger-navy);
+  color: #fff;
 }
 .dokumen-matrix th.dokumen-col-state {
-  padding-right: 24px;
-  min-width: 150px;
+  min-width: 170px;
+}
+.dokumen-matrix th.dokumen-col-open,
+.dokumen-matrix td.dokumen-col-open {
+  width: 52px;
+  padding-inline: 6px 14px;
+  text-align: right;
 }
 .dokumen-matrix td {
-  padding: 10px 10px;
+  padding: 10px;
   vertical-align: middle;
-  border-bottom: 1px solid var(--ledger-line-soft);
+  white-space: normal;
   color: var(--ledger-text);
+  border-bottom: 1px solid var(--ledger-line-soft);
   transition: background 0.12s;
+}
+.dokumen-matrix tbody > tr:last-child > td {
+  border-bottom: 0;
 }
 .dokumen-matrix td.dokumen-col-map {
   padding: 0;
 }
+/* Kolom perjalanan menempel di kiri saat matriks perlu digulir mendatar. */
+.dokumen-matrix th.dokumen-col-map,
+.dokumen-matrix td.dokumen-col-map {
+  position: sticky;
+  left: 0;
+  background: var(--ledger-surface);
+  box-shadow: inset -1px 0 var(--ledger-line-soft);
+}
+.dokumen-matrix th.dokumen-col-map {
+  z-index: 3;
+  box-shadow: inset -1px 0 var(--ledger-line-soft), inset 0 -1px var(--ledger-line);
+}
+.dokumen-matrix td.dokumen-col-map {
+  z-index: 1;
+}
+.dokumen-row:hover td.dokumen-col-map {
+  background: #f8fafc;
+}
 .dokumen-matrix td.dokumen-col-kind {
-  text-align: center;
   padding: 10px 4px;
+  text-align: center;
 }
 .dokumen-matrix td.dokumen-col-kind.is-active {
-  background: #fdf8ea;
-}
-.dokumen-matrix td.dokumen-col-state {
-  padding-right: 24px;
-}
-.dokumen-row:hover td {
   background: var(--ledger-tint);
 }
-.dokumen-row[data-open="true"] td {
-  background: #f3f6f9;
+.dokumen-row:hover td {
+  background: #f8fafc;
 }
-.dokumen-row[data-open="true"] td.dokumen-col-map {
-  box-shadow: inset 4px 0 var(--ledger-gold);
+.dokumen-row:hover .dokumen-open-folder[data-slot="button"] {
+  color: var(--ledger-navy);
 }
-
 .dokumen-open {
   display: grid;
   gap: 2px;
   width: 100%;
-  padding: 10px 14px 10px 24px;
+  padding: 12px 14px 12px 20px;
   text-align: left;
   color: var(--ledger-text);
   border-radius: 0;
+}
+.dokumen-open:hover .dokumen-ref {
+  text-decoration: underline;
+  text-decoration-color: var(--ledger-gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 .dokumen-open:focus-visible {
   outline: 2px solid var(--ledger-action);
   outline-offset: -2px;
 }
 .dokumen-ref {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   font-stretch: var(--ledger-condensed);
   letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
   color: var(--ledger-ink);
-  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .dokumen-names {
   font-weight: 500;
-  color: var(--ledger-ink);
   line-height: 1.4;
+  color: var(--ledger-ink);
 }
 .dokumen-meta {
   font-size: var(--type-meta);
-  color: var(--ledger-muted);
   line-height: 1.4;
+  color: var(--ledger-muted);
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-/* Sel: ada (isi navy), belum (bingkai kuning tua), tidak diminta (titik). */
+/* Sel: ada (isi biru laut), belum (bingkai kuning tua), tidak diminta (titik). */
 .dokumen-cell {
   display: inline-flex;
   align-items: center;
@@ -383,17 +648,16 @@
   outline: 2px solid var(--ledger-action);
   outline-offset: 2px;
 }
-
 .dokumen-state {
   display: grid;
   gap: 1px;
   line-height: 1.35;
-  white-space: nowrap;
 }
 .dokumen-state b {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ledger-ink);
+  white-space: nowrap;
 }
 .dokumen-state span {
   font-size: var(--type-micro);
@@ -409,166 +673,300 @@
   color: var(--ledger-muted);
   font-weight: 500;
 }
-
-/* ----- Map berkas yang terbuka ----- */
-.dokumen-side {
-  min-width: 0;
-}
-.dokumen-map {
-  position: sticky;
-  top: calc(var(--shell-header-height) + 12px);
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - var(--shell-header-height) - 24px);
-  min-width: 0;
-}
-.dokumen-map-empty {
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 420px;
-  padding: 40px 36px;
-  text-align: center;
-  color: var(--ledger-muted);
-}
-.dokumen-map-empty svg {
+.dokumen-open-folder[data-slot="button"] {
   width: 30px;
   height: 30px;
-  color: #aab6c3;
-  margin-bottom: 6px;
+  border-radius: 8px;
+  color: var(--ledger-muted);
 }
-.dokumen-map-empty h2 {
-  font-size: var(--type-section);
+.dokumen-open-folder[data-slot="button"]:hover {
+  color: var(--ledger-ink);
+}
+
+/* Paginasi. */
+.dokumen-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--ledger-line);
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.dokumen-pagination p {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-pagination strong {
   font-weight: 600;
   color: var(--ledger-ink);
 }
-.dokumen-map-empty p {
-  max-width: 34ch;
-  font-size: var(--type-meta);
-  line-height: 1.55;
-}
-
-.dokumen-map-head {
-  padding: 20px 24px 18px;
-  background: var(--ledger-navy);
-  color: #d5deea;
-}
-.dokumen-map-kicker {
+.dokumen-page-size {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: var(--type-meta);
-  font-weight: 500;
-  color: var(--ledger-gold);
+  gap: 8px;
 }
-.dokumen-map-close {
-  display: inline-flex;
-  padding: 6px;
-  margin: -6px -8px -6px 0;
+.dokumen-page-size .custom-select {
+  width: 76px;
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
   border-radius: 8px;
-  color: #c9d4e2;
-}
-.dokumen-map-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-}
-.dokumen-map-ref {
-  margin-top: 6px;
-  font-size: 1.5rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: 0.01em;
-  line-height: 1.15;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.dokumen-map-names {
-  margin-top: 4px;
-  font-size: var(--type-body);
-  font-weight: 500;
-  color: #fff;
-  line-height: 1.4;
-}
-.dokumen-map-meta {
-  margin-top: 2px;
   font-size: var(--type-meta);
-  line-height: 1.5;
-  color: #b7c4d4;
 }
-.dokumen-map-facts {
+.dokumen-pagination nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dokumen-pagination nav > span {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-pagination nav [data-slot="button"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+
+/* ----- Map terbuka ----- */
+.dokumen-folder {
+  display: grid;
+  min-width: 0;
+}
+.dokumen-folder > * {
+  min-width: 0;
+}
+.dokumen-folder-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: var(--type-meta);
-}
-.dokumen-map-state {
-  font-weight: 600;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.dokumen-map-state.is-complete {
-  color: #9ad4b4;
-}
-.dokumen-map-state.is-missing {
-  color: #f0cf7c;
-}
-.dokumen-map-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #fff;
-  font-weight: 500;
-  border-radius: 6px;
-}
-.dokumen-map-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.dokumen-map-link:focus-visible,
-.dokumen-map-close:focus-visible {
-  outline: 2px solid var(--ledger-gold);
-  outline-offset: 2px;
-}
-.dokumen-map-location {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  font-size: var(--type-meta);
-  color: var(--ledger-text);
-  background: var(--ledger-surface);
+  padding: 12px 20px 12px 14px;
   border-bottom: 1px solid var(--ledger-line);
 }
-.dokumen-map-location svg {
-  color: var(--ledger-muted);
-  flex-shrink: 0;
-}
-.dokumen-map-location strong {
+.dokumen-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 8px;
+  border-radius: 9px;
+  font-size: var(--type-label);
   font-weight: 600;
-  color: var(--ledger-ink);
+  color: var(--ledger-action);
+  transition: background 0.15s;
 }
-.dokumen-map-location .is-empty {
+.dokumen-back:hover {
+  background: var(--ledger-action-soft);
+}
+.dokumen-back svg {
+  transition: transform 0.15s;
+}
+.dokumen-back:hover svg {
+  transform: translateX(-2px);
+}
+.dokumen-folder-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dokumen-folder-nav span {
+  min-width: 78px;
+  text-align: center;
+  font-size: var(--type-meta);
   color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dokumen-folder-nav [data-slot="button"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+.dokumen-folder-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 32px;
+  padding: 22px 28px 24px;
+  background: var(--ledger-navy);
+  color: #fff;
+}
+.dokumen-folder-head::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 0;
+  height: 2px;
+  background: var(--ledger-gold);
+}
+.dokumen-folder-who {
+  min-width: 0;
+}
+.dokumen-folder-kind {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--type-meta);
+  color: #9fb0c4;
+}
+.dokumen-folder-head h2 {
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+}
+.dokumen-folder-head h2:focus-visible {
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 4px;
+}
+.dokumen-folder-names {
+  margin-top: 6px;
+  font-size: var(--type-body);
+  font-weight: 500;
+  line-height: 1.4;
+  color: #fff;
+}
+.dokumen-folder-meta {
+  margin-top: 2px;
+  font-size: var(--type-meta);
+  line-height: 1.5;
+  color: #c9d4e2;
+}
+.dokumen-folder-actions {
+  align-self: start;
+}
+.dokumen-folder-actions [data-slot="button"] {
+  height: 34px;
+  border-radius: 9px;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: none;
+}
+.dokumen-folder-actions [data-slot="button"]:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.dokumen-folder-facts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 40px;
+  margin: 0;
+}
+.dokumen-folder-facts > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.dokumen-folder-facts dt {
+  font-size: var(--type-micro);
+  color: #9fb0c4;
+}
+.dokumen-folder-facts dd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--type-data);
+  font-weight: 500;
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.dokumen-folder-facts dd.is-complete {
+  color: #9ad4b4;
+}
+.dokumen-folder-facts dd.is-missing {
+  color: #f0cf7c;
+}
+.dokumen-folder-facts .is-empty {
+  color: #8fa2b8;
+  font-weight: 400;
+}
+.dokumen-folder-steps {
+  display: inline-flex;
+  gap: 3px;
+}
+.dokumen-folder-steps i {
+  width: 14px;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.dokumen-folder-steps i[data-done="true"] {
+  background: #9ad4b4;
+}
+.dokumen-folder-body {
+  padding: 20px 24px 24px;
+  background: var(--ledger-canvas);
+}
+.dokumen-folder-note {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #ecd9a6;
+  border-radius: 12px;
+  background: var(--ledger-amber-soft);
+  color: #5b4708;
+  font-size: var(--type-data);
+  line-height: 1.55;
+}
+.dokumen-folder-note strong {
+  font-weight: 600;
+  color: #3f3106;
+}
+.dokumen-folder-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--ledger-line);
+  background: var(--ledger-tint);
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.dokumen-next-missing[data-slot="button"] {
+  height: 34px;
+  border-radius: 9px;
+  background: var(--ledger-navy);
+  font-weight: 600;
+}
+.dokumen-next-missing[data-slot="button"]:hover {
+  background: var(--ledger-navy-soft);
 }
 
 /* Kantong dokumen. */
 .dokumen-slots {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 10px 14px 14px;
   display: grid;
-  gap: 8px;
+  /* Dua kolom bila muat, satu kolom di ruang sempit; mengikuti lebar nyata, bukan lebar layar. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   align-content: start;
 }
 .dokumen-slot {
   position: relative;
-  padding: 12px 14px 12px;
+  display: grid;
+  align-content: start;
+  padding: 14px 16px;
   background: var(--ledger-surface);
   border: 1px solid var(--ledger-line);
   border-radius: 12px;
@@ -581,6 +979,7 @@
 .dokumen-slot[data-tone="none"] {
   border-style: dashed;
   background: transparent;
+  color: var(--ledger-muted);
 }
 .dokumen-slot[data-highlight="true"] {
   box-shadow: 0 0 0 3px var(--ledger-gold-soft), inset 3px 0 var(--ledger-gold);
@@ -776,24 +1175,6 @@
   margin-top: 8px;
 }
 
-/* Map sebagai dialog di layar sempit. */
-.dokumen-map-dialog {
-  width: min(560px, calc(100% - 2rem));
-  max-width: none;
-  max-height: calc(100vh - 2rem);
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-  border-radius: 14px;
-}
-.dokumen-map-dialog .dokumen-map {
-  position: static;
-  max-height: calc(100vh - 2rem);
-}
-.dokumen-map-dialog .dokumen-slots {
-  background: var(--ledger-tint);
-}
-
 /* ----- Penampil berkas ----- */
 .dokumen-viewer {
   width: min(1100px, calc(100% - 2rem));
@@ -952,26 +1333,22 @@
   font-weight: 500;
 }
 
-/* ----- Kartu map di ponsel: satu baris tanda untuk tujuh kantong ----- */
+/* ----- Kartu map di layar sempit ----- */
 .dokumen-cards {
-  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ledger-line);
 }
 .dokumen-card {
-  position: relative;
-  padding: 12px 16px 14px;
+  padding: 4px 16px 14px;
   border-bottom: 1px solid var(--ledger-line-soft);
 }
-.dokumen-card-open {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  text-align: left;
-  color: var(--ledger-text);
-  border-radius: 6px;
+.dokumen-cards li:last-child .dokumen-card {
+  border-bottom: 0;
 }
-.dokumen-card-open:focus-visible {
-  outline: 2px solid var(--ledger-action);
-  outline-offset: 4px;
+.dokumen-card .dokumen-open {
+  padding: 10px 0 8px;
 }
 .dokumen-card .dokumen-meta {
   -webkit-line-clamp: 2;
@@ -981,7 +1358,7 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   max-width: 360px;
-  margin-top: 12px;
+  margin-top: 6px;
 }
 .dokumen-mark {
   display: grid;
@@ -1002,143 +1379,129 @@
   width: 32px;
   height: 32px;
 }
-.dokumen-card-state {
-  display: block;
+.dokumen-card .dokumen-state {
   margin-top: 10px;
-  font-size: var(--type-meta);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--ledger-muted);
-}
-.dokumen-card-state.is-complete {
-  color: var(--ledger-success);
-}
-.dokumen-card-state.is-missing {
-  color: var(--ledger-amber);
-}
-.dokumen-kind-select {
-  display: none;
 }
 
-/* ----- Layar sempit ----- */
+/* ----- Responsif ----- */
 @media (max-width: 1100px) {
-  .dokumen-kinds {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .dokumen-board-head {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .dokumen-index {
-    flex-direction: column;
-  }
-  .dokumen-index-all {
-    border-right: 0;
-    border-bottom: 1px solid var(--ledger-line);
-    padding: 10px 24px;
-  }
-  .dokumen-kind {
-    border-bottom: 1px solid var(--ledger-line-soft);
-  }
-  .dokumen-kind:nth-child(4n) {
-    border-right: 0;
+  .dokumen-board-total {
+    min-width: 0;
   }
 }
 @media (max-width: 760px) {
-  /* Rel jenis dokumen diganti pilihan di baris saringan; ringkasan hanya angka dan bilah. */
-  .dokumen-index {
-    display: none;
+  .dokumen-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 16px;
   }
-  .dokumen-kind-select {
-    display: inline-flex;
+  .dokumen-head h1 {
+    font-size: 1.5rem;
   }
-  .dokumen-summary > div {
-    padding: 18px 16px 16px;
+  .dokumen-head .custom-select.dokumen-year {
+    align-self: flex-start;
   }
-  .dokumen-summary > div + div {
-    padding-top: 0;
-    padding-bottom: 18px;
-    border-top: 0;
-    gap: 8px;
+  .dokumen-board {
+    padding: 16px 16px 18px;
+    border-radius: 14px;
   }
-  .dokumen-summary .ledger-summary-row,
-  .dokumen-summary .ledger-legend {
-    display: none;
+  .dokumen-board-head {
+    gap: 14px;
+    margin-bottom: 16px;
   }
-  .dokumen-summary .ledger-figure {
-    margin: 4px 0 8px;
-    font-size: 2.125rem;
+  .dokumen-board-total p strong {
+    font-size: 1.625rem;
   }
-  .dokumen-register-head {
-    padding: 16px 16px 12px;
+  .dokumen-board-kinds {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
-  .dokumen-register-head .ledger-status {
+  .dokumen-board-kind {
+    padding: 4px 2px 8px;
+    gap: 6px;
+  }
+  .dokumen-board-tile {
+    padding: 10px 10px 8px;
+  }
+  .dokumen-board-count b {
+    font-size: 1.125rem;
+  }
+  .dokumen-board-figure {
+    white-space: normal;
+  }
+  .dokumen-roster {
+    border-radius: 14px;
+  }
+  .dokumen-toolbar {
+    padding: 12px 14px 10px;
+  }
+  .dokumen-search {
+    flex-basis: 100%;
+  }
+  .dokumen-status-switch {
     width: 100%;
   }
-  .dokumen-register-head .ledger-status button {
+  .dokumen-status-switch > button {
     flex: 1;
     justify-content: center;
+    padding: 0 8px;
   }
-  .dokumen-filters {
-    padding: 0 16px 14px;
+  .dokumen-toolbar .custom-select.dokumen-select {
+    flex: 1;
   }
-  .dokumen-filters .ledger-filters-end {
-    display: none;
+  .dokumen-scope {
+    padding-inline: 14px;
   }
-  .dokumen-body {
-    min-height: 0;
+  .dokumen-pagination {
+    padding: 12px 14px;
+    gap: 10px 14px;
   }
-  .dokumen-map-dialog {
-    inset: 0;
+  .dokumen-pagination p {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+  .dokumen-page-size {
+    margin-right: auto;
+  }
+  .dokumen-folder-bar {
+    padding: 10px 14px 10px 8px;
+  }
+  .dokumen-folder-nav span {
+    min-width: 0;
+  }
+  .dokumen-folder-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px 18px 22px;
+  }
+  .dokumen-folder-head::after {
+    left: 18px;
+    right: 18px;
+  }
+  .dokumen-folder-head h2 {
+    font-size: 1.25rem;
+  }
+  .dokumen-folder-facts {
+    gap: 12px 28px;
+  }
+  .dokumen-folder-body {
+    padding: 14px 14px 18px;
+  }
+  .dokumen-folder-foot {
+    padding: 10px 14px 12px;
+  }
+  .dokumen-next-missing[data-slot="button"] {
     width: 100%;
-    max-width: none;
-    height: 100dvh;
-    max-height: none;
-    /* Tailwind memusatkan dialog lewat properti translate; nolkan variabelnya,
-       karena deklarasi translate: none dilebur kompilator ke transform. */
-    --tw-translate-x: 0;
-    --tw-translate-y: 0;
-    border: 0;
-    border-radius: 0;
-  }
-  .dokumen-map-dialog .dokumen-map {
-    max-height: 100dvh;
-    height: 100dvh;
-  }
-  .dokumen-map-dialog .dokumen-slots {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
   .dokumen-slot-format {
     display: none;
   }
   .dokumen-slot {
     padding: 12px 14px 10px;
-  }
-  .dokumen-matrix th.dokumen-col-map,
-  .dokumen-open {
-    padding-left: 16px;
-  }
-  .dokumen-matrix td.dokumen-col-map {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: var(--ledger-surface);
-    box-shadow: inset -1px 0 var(--ledger-line);
-  }
-  .dokumen-matrix th.dokumen-col-map {
-    position: sticky;
-    left: 0;
-    z-index: 3;
-    min-width: 200px;
-  }
-  .dokumen-row:hover td.dokumen-col-map,
-  .dokumen-row[data-open="true"] td.dokumen-col-map {
-    background: #f3f6f9;
-  }
-  .dokumen-map-head {
-    padding: 16px 18px 14px;
-  }
-  .dokumen-map-location {
-    padding: 10px 18px;
-  }
-  .dokumen-slots {
-    padding: 10px 10px 12px;
   }
   .dokumen-viewer {
     width: calc(100% - 1rem);
@@ -1147,27 +1510,48 @@
   .dokumen-viewer-tools .dokumen-viewer-link {
     display: none;
   }
-  .dokumen-kinds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .dokumen-kind:nth-child(4n) {
-    border-right: 1px solid var(--ledger-line-soft);
-  }
-  .dokumen-kind:nth-child(2n) {
-    border-right: 0;
+}
+@media (max-width: 360px) {
+  .dokumen-board-kinds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .dokumen-cell,
   .dokumen-thumb,
   .dokumen-slot,
-  .dokumen-kind,
-  .dokumen-index-all {
+  .dokumen-board-kind,
+  .dokumen-board-fill i,
+  .dokumen-back,
+  .dokumen-back svg,
+  .dokumen-search,
+  .dokumen-status-switch > button,
+  .dokumen-chips button {
     transition: none;
   }
   .dokumen-cell:hover,
   .dokumen-thumb:hover {
     transform: none;
+  }
+}
+@media print {
+  .dokumen-toolbar,
+  .dokumen-pagination,
+  .dokumen-folder-bar,
+  .dokumen-folder-foot,
+  .dokumen-folder-actions,
+  .dokumen-add,
+  .dokumen-slot-foot,
+  .dokumen-col-open {
+    display: none;
+  }
+  .dokumen-board,
+  .dokumen-roster {
+    border: 0;
+    box-shadow: none;
+  }
+  .dokumen-matrix-wrap {
+    max-height: none;
+    overflow: visible;
   }
 }

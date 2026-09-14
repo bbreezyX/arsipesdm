@@ -1,13 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
-  type ColumnDef, type ExpandedState, type Row, type SortingState, type VisibilityState,
+  type ColumnDef, type Row, type SortingState,
 } from "@tanstack/react-table";
 import {
-  ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
-  Columns3, IdCard, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Rows3, Save, Search, Trash2, Users, X,
+  ArrowDown, ArrowUp, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
+  FolderOpen, IdCard, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Save, Search, SlidersHorizontal, Trash2, Users, X,
 } from "lucide-react";
 import { employeeMatches, employeeRankOptions, type Employee, type EmployeeInput } from "@/lib/employees";
 import { dateText, duration, money, totalCost, type Trip } from "@/lib/model";
@@ -17,18 +17,18 @@ import { Combobox } from "./ui/combobox";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import {
-  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
-/* Rel golongan mengikuti empat golongan PNS; format lain tetap bebas dan masuk "tanpa golongan". */
+/* Golongan mengikuti empat golongan PNS; format lain tetap bebas dan masuk "tanpa golongan". */
 const groups = ["I", "II", "III", "IV"] as const;
 type Group = (typeof groups)[number] | "none";
 const groupOrder: Record<Group, number> = { I: 1, II: 2, III: 3, IV: 4, none: 5 };
+const groupLabel: Record<Group, string> = { I: "Golongan I", II: "Golongan II", III: "Golongan III", IV: "Golongan IV", none: "Tanpa golongan" };
 const NONE = "__none__";
 const columnLabels: Record<string, string> = {
-  name: "Pegawai", nip: "NIP", rank: "Golongan", department: "Bidang", trips: "Perjalanan", actions: "Aksi",
+  name: "Pegawai", nip: "NIP", rank: "Golongan", department: "Bidang", trips: "Perjalanan", actions: "",
 };
 const sortOptions = [
   { value: "name:asc", label: "Nama A–Z" }, { value: "name:desc", label: "Nama Z–A" },
@@ -37,10 +37,13 @@ const sortOptions = [
   { value: "trips:desc", label: "Perjalanan terbanyak" }, { value: "trips:asc", label: "Perjalanan paling sedikit" },
   { value: "last:desc", label: "Terakhir bertugas" },
 ];
+const monthShort = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 type EmployeeRow = Employee & {
   group: Group;
   complete: boolean;
+  missing: string[];
   journeys: Trip[];
   lastTrip: Trip | null;
 };
@@ -53,8 +56,35 @@ export function rankGroup(rank: string): Group {
   return found && found in groupOrder ? (found as Group) : "none";
 }
 export function isCompleteEmployee(p: Employee) {
-  return Boolean(p.name.trim() && p.nip.trim() && p.position.trim() && p.rank.trim() && p.department.trim());
+  return missingFields(p).length === 0;
 }
+function missingFields(p: Employee) {
+  const missing: string[] = [];
+  if (!p.name.trim()) missing.push("nama");
+  if (!p.nip.trim()) missing.push("NIP");
+  if (!p.position.trim()) missing.push("jabatan");
+  if (!p.rank.trim()) missing.push("golongan");
+  if (!p.department.trim()) missing.push("bidang");
+  return missing;
+}
+/* Monogram dari dua kata pertama nama, tanpa gelar. */
+function monogram(name: string) {
+  const words = name.replace(/,.*$/, "").trim().split(/\s+/).filter(Boolean);
+  const letters = words.slice(0, 2).map(word => word[0]?.toUpperCase() ?? "");
+  return letters.join("") || "?";
+}
+function listText(items: string[]) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} dan ${items[items.length - 1]}`;
+}
+/* Layar sempit memakai kartu, bukan tabel; hanya satu yang dirender agar pembaca layar tidak membaca dua kali. */
+const narrowQuery = "(max-width: 760px)";
+function subscribeNarrow(callback: () => void) {
+  const media = window.matchMedia(narrowQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+const useIsNarrow = () => useSyncExternalStore(subscribeNarrow, () => window.matchMedia(narrowQuery).matches, () => false);
 const empty = (text: string) => <span className="pegawai-empty">{text}</span>;
 const monthText = (date: string) => dateText(date, { month: "short", year: "numeric" });
 const tripDates = (t: Trip) => t.startDate === t.endDate
@@ -77,6 +107,8 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
   const [completeness, setCompleteness] = useState("all");
   const [editor, setEditor] = useState<Employee | "new" | null>(null);
   const [removing, setRemoving] = useState<Employee | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [indexOpen, setIndexOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -84,25 +116,29 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
     const journeys = trips
       .filter(trip => !trip.deletedAt && trip.participants.some(participant => employeeMatches(person, participant)))
       .sort((a, b) => b.startDate.localeCompare(a.startDate));
-    return { ...person, group: rankGroup(person.rank), complete: isCompleteEmployee(person), journeys, lastTrip: journeys[0] ?? null };
+    const missing = missingFields(person);
+    return { ...person, group: rankGroup(person.rank), complete: missing.length === 0, missing, journeys, lastTrip: journeys[0] ?? null };
   }), [people, trips]);
 
   const inStatus = useMemo(() => rows.filter(row => Boolean(row.deletedAt) === deleted), [rows, deleted]);
   const activeCount = rows.filter(row => !row.deletedAt).length;
   const deletedCount = rows.length - activeCount;
 
-  /* Lidah bidang: unit yang tercantum pada model dahulu, lalu bidang lain menurut abjad, lalu yang belum dicatat. */
-  const spine = useMemo(() => {
+  /* Faset bidang: unit yang tercantum pada pengaturan dahulu, lalu bidang lain menurut abjad, lalu yang belum dicatat. */
+  const bidang = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const row of inStatus) counts.set(row.department.trim() || NONE, (counts.get(row.department.trim() || NONE) ?? 0) + 1);
+    for (const row of inStatus) {
+      const key = row.department.trim() || NONE;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
     const known = departments.filter(value => counts.has(value));
     const others = [...counts.keys()].filter(value => value !== NONE && !departments.includes(value)).sort((a, b) => a.localeCompare(b, "id-ID"));
     const keys = [...known, ...others, ...(counts.has(NONE) ? [NONE] : [])];
-    return keys.map(key => ({ key, label: key === NONE ? "Belum dicatat" : key, count: counts.get(key) ?? 0 }));
+    return keys.map(key => ({ key, label: key === NONE ? "Bidang belum dicatat" : key, count: counts.get(key) ?? 0 }));
   }, [inStatus, departments]);
   useEffect(() => {
-    if (department !== "all" && !spine.some(tab => tab.key === department)) setDepartment("all");
-  }, [spine, department]);
+    if (department !== "all" && !bidang.some(tab => tab.key === department)) setDepartment("all");
+  }, [bidang, department]);
 
   const inDepartment = useMemo(() => inStatus.filter(row => department === "all" || (row.department.trim() || NONE) === department), [inStatus, department]);
   const groupCounts = useMemo(() => {
@@ -115,14 +151,10 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
   }, [groupCounts, group]);
 
   const scoped = useMemo(() => inDepartment.filter(row => group === "all" || row.group === group), [inDepartment, group]);
-  const summary = useMemo(() => ({
-    count: scoped.length,
-    withNip: scoped.filter(row => row.nip.trim()).length,
-    travelled: scoped.filter(row => row.journeys.length).length,
+  const facts = useMemo(() => ({
     complete: scoped.filter(row => row.complete).length,
-    departments: new Set(scoped.map(row => row.department.trim()).filter(Boolean)).size,
+    travelled: scoped.filter(row => row.journeys.length > 0).length,
   }), [scoped]);
-  const completeShare = summary.count ? Math.round((summary.complete / summary.count) * 100) : 0;
 
   const visible = useMemo(() => {
     const search = query.trim().toLocaleLowerCase("id-ID");
@@ -131,11 +163,21 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
       && (completeness === "all" || (completeness === "complete") === row.complete)
       && (!search || [row.name, row.nip, row.position, row.department, row.rank].join(" ").toLocaleLowerCase("id-ID").includes(search)));
   }, [scoped, query, history, completeness]);
-  const filtered = Boolean(query) || history !== "all" || completeness !== "all";
-  const reset = useCallback(() => { setQuery(""); setHistory("all"); setCompleteness("all"); }, []);
 
-  const departmentLabel = department === "all" ? "semua bidang" : department === NONE ? "bidang belum dicatat" : department;
-  const scopeLabel = group === "all" ? departmentLabel : `${departmentLabel}, ${group === "none" ? "tanpa golongan" : `golongan ${group}`}`;
+  const chips = useMemo(() => {
+    const list: { key: string; label: string; clear: () => void }[] = [];
+    if (department !== "all") list.push({ key: "department", label: department === NONE ? "Bidang belum dicatat" : department, clear: () => setDepartment("all") });
+    if (group !== "all") list.push({ key: "group", label: groupLabel[group], clear: () => setGroup("all") });
+    if (completeness !== "all") list.push({ key: "completeness", label: completeness === "complete" ? "Data lengkap" : "Perlu dilengkapi", clear: () => setCompleteness("all") });
+    if (history !== "all") list.push({ key: "history", label: history === "with" ? "Pernah bertugas" : "Belum pernah bertugas", clear: () => setHistory("all") });
+    if (query.trim()) list.push({ key: "query", label: `“${query.trim()}”`, clear: () => setQuery("") });
+    return list;
+  }, [department, group, completeness, history, query]);
+  const clearAll = useCallback(() => {
+    setDepartment("all"); setGroup("all"); setCompleteness("all"); setHistory("all"); setQuery("");
+  }, []);
+
+  const openPerson = openId ? rows.find(row => row.id === openId) ?? null : null;
 
   async function change(person: Employee, restore: boolean) {
     setBusy(true); setError("");
@@ -149,112 +191,104 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
+  const startEdit = (person: Employee) => { setError(""); setEditor(person); };
+  const startRemove = (person: Employee) => { setError(""); setRemoving(person); };
+  const startAdd = () => { setError(""); setEditor("new"); };
+
+  const facet = (key: string, pressed: boolean, onClick: () => void, label: ReactNode, count: number, extra?: ReactNode) => (
+    <button type="button" key={key} className="pegawai-facet" aria-pressed={pressed} disabled={!count && !pressed} onClick={onClick}>
+      {extra}<span>{label}</span><b>{count.toLocaleString("id-ID")}</b>
+    </button>
+  );
 
   return (
     <div className="pegawai-page">
-      <header className="ledger-head">
+      <header className="pegawai-head">
         <div>
           <h1>Pegawai</h1>
-          <p>Buku induk pegawai yang menjadi rujukan saat mengisi arsip, tersusun per bidang dan golongan, beserta riwayat perjalanan dinas setiap orang.</p>
+          <p>Direktori pegawai yang menjadi rujukan saat mengisi arsip. Buka berkas seseorang untuk melihat identitas dan seluruh perjalanan dinasnya.</p>
         </div>
-        <div className="ledger-head-actions">
-          <Button disabled={busy} onClick={() => { setError(""); setEditor("new"); }}><Plus /> Tambah pegawai</Button>
-        </div>
+        <Button className="pegawai-add" disabled={busy} onClick={startAdd}><Plus /> Tambah pegawai</Button>
       </header>
-      <nav className="ledger-years" aria-label="Bidang">
-        {spine.map(tab => (
-          <button type="button" key={tab.key} className="ledger-year" aria-pressed={department === tab.key} onClick={() => setDepartment(tab.key)}>
-            <strong>{tab.label}</strong><span>{tab.count} pegawai</span>
+
+      <div className="pegawai-body">
+        <aside className="pegawai-index" data-open={indexOpen} aria-label="Saring daftar pegawai">
+          <button type="button" className="pegawai-index-toggle" aria-expanded={indexOpen} aria-controls="pegawai-index-panel" onClick={() => setIndexOpen(open => !open)}>
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            <span>Saring daftar</span>
+            {chips.length > 0 && <b>{chips.length}</b>}
           </button>
-        ))}
-        <button type="button" className="ledger-year ledger-year-all" aria-pressed={department === "all"} onClick={() => setDepartment("all")}>
-          <strong>Semua bidang</strong><span>{inStatus.length} pegawai</span>
-        </button>
-      </nav>
-      <section className="ledger-sheet pegawai-sheet" aria-label="Buku induk pegawai">
-        <div className="pegawai-index" role="group" aria-label="Golongan">
-          <button type="button" className="pegawai-index-all" aria-pressed={group === "all"} onClick={() => setGroup("all")}>
-            <strong>Semua golongan</strong><span>{inDepartment.length} pegawai</span>
-          </button>
-          <div className="pegawai-groups">
-            {groups.map(value => {
-              const count = groupCounts.get(value) ?? 0;
-              return (
-                <button type="button" key={value} className="pegawai-group" aria-pressed={group === value} disabled={!count}
-                  aria-label={`Golongan ${value}, ${count} pegawai`} onClick={() => setGroup(group === value ? "all" : value)}>
-                  <strong>{value}</strong><span>Golongan</span><b>{count}</b>
-                </button>
-              );
-            })}
-            <button type="button" className="pegawai-group is-none" aria-pressed={group === "none"} disabled={!groupCounts.get("none")}
-              aria-label={`Tanpa golongan, ${groupCounts.get("none") ?? 0} pegawai`} onClick={() => setGroup(group === "none" ? "all" : "none")}>
-              <span>Tanpa golongan</span><b>{groupCounts.get("none") ?? 0}</b>
-            </button>
-          </div>
-        </div>
-        <div className="ledger-summary pegawai-summary" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
-          <div>
-            <span className="ledger-summary-label">{deleted ? "Pegawai pada daftar Terhapus" : "Pegawai tercatat"}, {scopeLabel}</span>
-            {summary.count
-              ? <p className="ledger-figure">{summary.count.toLocaleString("id-ID")}<small>pegawai</small></p>
-              : <p className="ledger-figure is-empty">Belum ada pegawai</p>}
-            <div className="ledger-summary-facts">
-              <span><strong>{summary.withNip}</strong> dengan NIP</span>
-              <span><strong>{summary.travelled}</strong> pernah bertugas</span>
-              {department === "all" && <span><strong>{summary.departments}</strong> bidang</span>}
+          <div className="pegawai-index-panel" id="pegawai-index-panel">
+            <div className="pegawai-index-total">
+              <strong>{inStatus.length.toLocaleString("id-ID")}</strong>
+              <span>{deleted ? "pegawai pada daftar Terhapus" : "pegawai aktif"}</span>
             </div>
+
+            <section className="pegawai-index-group" aria-label="Bidang">
+              <h2>Bidang</h2>
+              {facet("all", department === "all", () => setDepartment("all"), "Semua bidang", inStatus.length)}
+              {bidang.map(tab => facet(tab.key, department === tab.key, () => setDepartment(department === tab.key ? "all" : tab.key), tab.label, tab.count))}
+            </section>
+
+            <section className="pegawai-index-group" aria-label="Golongan">
+              <h2>Golongan</h2>
+              <div className="pegawai-composition" role="img"
+                aria-label={inDepartment.length ? `Komposisi golongan: ${[...groups, "none" as const].filter(value => groupCounts.get(value)).map(value => `${groupLabel[value]} ${groupCounts.get(value)}`).join(", ")}` : "Belum ada pegawai"}>
+                {[...groups, "none" as const].map(value => {
+                  const count = groupCounts.get(value) ?? 0;
+                  return count ? <i key={value} data-group={value} style={{ flexGrow: count }} /> : null;
+                })}
+              </div>
+              {facet("all", group === "all", () => setGroup("all"), "Semua golongan", inDepartment.length)}
+              {[...groups, "none" as const].map(value => facet(
+                value, group === value, () => setGroup(group === value ? "all" : value), groupLabel[value], groupCounts.get(value) ?? 0,
+                <i className="pegawai-swatch" data-group={value} aria-hidden="true" />,
+              ))}
+            </section>
+
+            <section className="pegawai-index-group" aria-label="Kelengkapan data">
+              <h2>Kelengkapan data</h2>
+              {facet("complete", completeness === "complete", () => setCompleteness(completeness === "complete" ? "all" : "complete"), "Data lengkap", facts.complete)}
+              {facet("incomplete", completeness === "incomplete", () => setCompleteness(completeness === "incomplete" ? "all" : "incomplete"), "Perlu dilengkapi", scoped.length - facts.complete)}
+              <p className="pegawai-index-note">Lengkap berarti nama, NIP, jabatan, golongan, dan bidang sudah terisi.</p>
+            </section>
+
+            <section className="pegawai-index-group" aria-label="Riwayat perjalanan">
+              <h2>Riwayat perjalanan</h2>
+              {facet("with", history === "with", () => setHistory(history === "with" ? "all" : "with"), "Pernah bertugas", facts.travelled)}
+              {facet("without", history === "without", () => setHistory(history === "without" ? "all" : "without"), "Belum pernah bertugas", scoped.length - facts.travelled)}
+              <p className="pegawai-index-note">Dicocokkan lewat NIP, atau lewat nama bila NIP belum tercatat.</p>
+            </section>
           </div>
-          <div>
-            <div className="ledger-summary-row"><span>Data lengkap</span><strong>{summary.complete} dari {summary.count}</strong></div>
-            <div className={`ledger-bar ${summary.count ? "" : "is-empty"}`} role="img" aria-label={`${completeShare} persen data pegawai lengkap`}>
-              {summary.count > 0 && <span style={{ width: `${completeShare}%` }} />}
-            </div>
-            <div className="ledger-legend">
-              <span><i /><strong>{summary.complete}</strong> lengkap</span>
-              <span><i className="draft" /><strong>{summary.count - summary.complete}</strong> perlu dilengkapi</span>
-            </div>
-          </div>
-        </div>
-        <PegawaiRegister rows={visible} scope={scopeLabel} filtered={filtered} hasAny={scoped.length > 0} deleted={deleted} busy={busy}
-          error={removing ? "" : error} onReset={reset} onOpen={onOpen}
-          onEdit={person => { setError(""); setEditor(person); }} onRemove={person => { setError(""); setRemoving(person); }}
-          onRestore={person => change(person, true)} onAdd={() => { setError(""); setEditor("new"); }}
+        </aside>
+
+        <PegawaiRoster rows={visible} deleted={deleted} busy={busy} error={removing ? "" : error} openId={openId}
+          hasAny={scoped.length > 0} chips={chips} onClearAll={clearAll} hideDepartment={department !== "all" || bidang.length <= 1}
+          query={query} onQuery={setQuery}
           status={
-            <div className="ledger-status" role="group" aria-label="Daftar pegawai">
+            <div className="pegawai-status" role="group" aria-label="Daftar pegawai">
               <button type="button" aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{activeCount}</b></button>
               <button type="button" aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{deletedCount}</b></button>
             </div>
           }
-          filters={search => <>
-            <div className="ledger-search">
-              <Search size={17} aria-hidden="true" />
-              <input id="pegawai-search" ref={search} aria-label="Cari pegawai" aria-keyshortcuts="/"
-                placeholder="Cari nama, NIP, jabatan, atau golongan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
-            </div>
-            <div className="ledger-filter-group">
-              <CustomSelect aria-label="Riwayat perjalanan" className="ledger-select" value={history} onValueChange={setHistory} data-active={history !== "all"}>
-                <SelectOption value="all">Semua riwayat</SelectOption>
-                <SelectOption value="with">Pernah bertugas</SelectOption>
-                <SelectOption value="without">Belum pernah bertugas</SelectOption>
-              </CustomSelect>
-              <CustomSelect aria-label="Kelengkapan data" className="ledger-select" value={completeness} onValueChange={setCompleteness} data-active={completeness !== "all"}>
-                <SelectOption value="all">Semua kelengkapan</SelectOption>
-                <SelectOption value="complete">Data lengkap</SelectOption>
-                <SelectOption value="incomplete">Perlu dilengkapi</SelectOption>
-              </CustomSelect>
-              {filtered && <Button variant="ghost" size="sm" className="ledger-reset" onClick={reset}>Bersihkan filter</Button>}
-            </div>
-          </>}
+          onOpen={setOpenId} onEdit={startEdit} onRemove={startRemove} onRestore={person => change(person, true)} onAdd={startAdd}
+          record={(person, nav) => (
+            <EmployeeRecord person={person} busy={busy} nav={nav} onBack={() => setOpenId(null)}
+              onOpen={id => { setOpenId(null); onOpen(id); }}
+              onEdit={startEdit} onRemove={startRemove} onRestore={p => change(p, true)} />
+          )}
+          openPerson={openPerson}
         />
-      </section>
-      <p className="pegawai-footnote">
-        Data lengkap berarti nama, NIP, jabatan, golongan, dan bidang sudah terisi. Riwayat perjalanan dicocokkan lewat NIP, atau lewat nama bila NIP belum tercatat; identitas pada arsip lama tidak berubah saat data pegawai diperbarui.
-      </p>
+      </div>
+
       {editor && (
         <EmployeeForm key={editor === "new" ? "new" : editor.id} employee={editor === "new" ? null : editor} departments={departments}
           onClose={() => setEditor(null)}
-          onSaved={person => { onChange(person); setEditor(null); setDeleted(false); reset(); notify(editor === "new" ? "Pegawai ditambahkan ke buku induk." : "Data pegawai tersimpan."); }} />
+          onSaved={person => {
+            onChange(person); setEditor(null); setDeleted(false);
+            if (editor === "new") { clearAll(); setOpenId(person.id); }
+            notify(editor === "new" ? "Pegawai ditambahkan ke direktori." : "Data pegawai tersimpan.");
+          }} />
       )}
       <Dialog open={Boolean(removing)} onOpenChange={value => { if (!value && !busy) { setRemoving(null); setError(""); } }}>
         <DialogContent showCloseButton={!busy}>
@@ -273,37 +307,46 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
   );
 }
 
-function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, status, filters, onReset, onOpen, onEdit, onRemove, onRestore, onAdd }: {
-  rows: EmployeeRow[]; scope: string; filtered: boolean; hasAny: boolean; deleted: boolean; busy: boolean; error: string;
-  status: ReactNode; filters: (search: React.RefObject<HTMLInputElement | null>) => ReactNode;
-  onReset: () => void; onOpen: (id: string) => void; onEdit: (person: Employee) => void;
-  onRemove: (person: Employee) => void; onRestore: (person: Employee) => void; onAdd: () => void;
-}) {
-  const registerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
-  const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [density, setDensity] = useState("comfortable");
+type RecordNav = { index: number; total: number; prev: (() => void) | null; next: (() => void) | null };
 
+function PegawaiRoster({ rows, deleted, busy, error, openId, openPerson, hasAny, chips, hideDepartment, query, onQuery, status, onClearAll, onOpen, onEdit, onRemove, onRestore, onAdd, record }: {
+  rows: EmployeeRow[]; deleted: boolean; busy: boolean; error: string; openId: string | null; openPerson: EmployeeRow | null;
+  hasAny: boolean; chips: { key: string; label: string; clear: () => void }[]; hideDepartment: boolean;
+  query: string; onQuery: (value: string) => void; status: ReactNode; onClearAll: () => void;
+  onOpen: (id: string | null) => void; onEdit: (person: Employee) => void; onRemove: (person: Employee) => void;
+  onRestore: (person: Employee) => void; onAdd: () => void;
+  record: (person: EmployeeRow, nav: RecordNav) => ReactNode;
+}) {
+  const rosterRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const narrow = useIsNarrow();
+  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+
+  /* "/" memfokuskan pencarian (dan menutup berkas bila terbuka); Escape kembali ke daftar selama tidak ada dialog. */
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "Escape" && openId && !document.querySelector('[data-slot="dialog-content"]')) {
+        onOpen(null); return;
+      }
+      if (event.key !== "/") return;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      event.preventDefault(); searchRef.current?.focus();
+      event.preventDefault();
+      if (openId) { onOpen(null); requestAnimationFrame(() => searchRef.current?.focus()); }
+      else searchRef.current?.focus();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [openId, onOpen]);
 
-  const menu = useCallback((person: EmployeeRow, row: Row<EmployeeRow>) => (
+  const menu = useCallback((person: EmployeeRow) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon-sm" className="pegawai-menu" disabled={busy} aria-label={`Aksi ${person.name}`}><MoreHorizontal size={17} /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => row.toggleExpanded(true)}><IdCard size={15} />Lihat kartu pegawai</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onOpen(person.id)}><FolderOpen size={15} />Buka berkas</DropdownMenuItem>
         {person.deletedAt
           ? <DropdownMenuItem onSelect={() => onRestore(person)}><RotateCcw size={15} />Pulihkan pegawai</DropdownMenuItem>
           : <>
@@ -313,16 +356,18 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
           </>}
       </DropdownMenuContent>
     </DropdownMenu>
-  ), [busy, onEdit, onRemove, onRestore]);
+  ), [busy, onOpen, onEdit, onRemove, onRestore]);
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(() => [
-    { id: "name", accessorFn: row => row.name, enableHiding: false,
+    { id: "name", accessorFn: row => row.name,
       sortingFn: (a, b) => a.original.name.localeCompare(b.original.name, "id-ID"),
       cell: ({ row }) => (
         <div className="pegawai-identity">
-          <button type="button" className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
-            aria-controls={`pegawai-detail-${row.id}`}>{row.original.name}</button>
-          <span className={`pegawai-position ${row.original.position ? "" : "is-empty"}`}>{row.original.position || "Jabatan belum dicatat"}</span>
+          <span className="pegawai-mono" aria-hidden="true">{monogram(row.original.name)}</span>
+          <div>
+            <button type="button" className="pegawai-name" onClick={() => onOpen(row.original.id)} aria-haspopup="dialog">{row.original.name}</button>
+            <span className={`pegawai-position ${row.original.position ? "" : "is-empty"}`}>{row.original.position || "Jabatan belum dicatat"}</span>
+          </div>
         </div>
       ) },
     { id: "nip", accessorFn: row => row.nip.trim() || undefined, sortUndefined: "last",
@@ -334,111 +379,143 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
       cell: ({ row }) => row.original.department.trim() || empty("Belum dicatat") },
     { id: "trips", accessorFn: row => row.journeys.length,
       cell: ({ row }) => (
-        <button type="button" className={`pegawai-trips ${row.original.journeys.length ? "" : "is-empty"}`} onClick={() => row.toggleExpanded()}
-          aria-expanded={row.getIsExpanded()} aria-controls={`pegawai-detail-${row.id}`} aria-label={`Riwayat perjalanan ${row.original.name}`}>
+        <div className={`pegawai-trips ${row.original.journeys.length ? "" : "is-empty"}`}>
           <strong>{row.original.journeys.length ? `${row.original.journeys.length} perjalanan` : "Belum pernah bertugas"}</strong>
           {row.original.lastTrip && <span>Terakhir {monthText(row.original.lastTrip.startDate)}</span>}
-        </button>
-      ) },
-    { id: "last", accessorFn: row => row.lastTrip?.startDate ?? undefined, sortUndefined: "last", enableHiding: false,
-      cell: () => null },
-    { id: "actions", enableSorting: false, enableHiding: false,
-      cell: ({ row }) => (
-        <div className="pegawai-row-tools">
-          {menu(row.original, row)}
-          <Button variant="ghost" size="icon-sm" className="ledger-expand" aria-expanded={row.getIsExpanded()}
-            aria-controls={`pegawai-detail-${row.id}`} aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} kartu ${row.original.name}`}
-            onClick={() => row.toggleExpanded()}><ChevronDown size={16} /></Button>
         </div>
       ) },
-  ], [menu]);
+    { id: "last", accessorFn: row => row.lastTrip?.startDate ?? undefined, sortUndefined: "last", cell: () => null },
+    { id: "actions", enableSorting: false,
+      cell: ({ row }) => (
+        <div className="pegawai-row-tools">
+          {menu(row.original)}
+          <Button variant="ghost" size="icon-sm" className="pegawai-open-file" aria-label={`Buka berkas ${row.original.name}`} onClick={() => onOpen(row.original.id)}>
+            <ChevronRight size={16} />
+          </Button>
+        </div>
+      ) },
+  ], [menu, onOpen]);
 
   const table = useReactTable({
     data: rows, columns, getRowId: row => row.id,
     getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageIndex: 0, pageSize: 10 }, columnVisibility: { last: false } },
-    state: { sorting, expanded, columnVisibility: { ...columnVisibility, last: false } },
-    onSortingChange: setSorting, onExpandedChange: setExpanded, onColumnVisibilityChange: setColumnVisibility,
-    getRowCanExpand: () => true, enableMultiSort: false, enableSortingRemoval: false,
+    initialState: { pagination: { pageIndex: 0, pageSize: 10 } },
+    state: { sorting, columnVisibility: { last: false, department: !hideDepartment } },
+    onSortingChange: setSorting, enableMultiSort: false, enableSortingRemoval: false,
   });
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = Math.max(1, table.getPageCount());
   const pageRows = table.getRowModel().rows;
+  const orderedRows = table.getPrePaginationRowModel().rows;
   const sorted = sorting[0];
   const sortValue = sorted ? `${sorted.id}:${sorted.desc ? "desc" : "asc"}` : "name:asc";
   // biome-ignore lint/correctness/useExhaustiveDependencies: gulir ke atas setiap halaman, urutan, atau data berubah
   useEffect(() => {
-    registerRef.current?.querySelector('[data-slot="table-container"]')?.scrollTo({ top: 0 });
+    rosterRef.current?.querySelector('[data-slot="table-container"]')?.scrollTo({ top: 0 });
   }, [pageIndex, pageSize, sorting, rows]);
   function go(page: number) {
     table.setPageIndex(page);
-    if (window.matchMedia("(max-width: 760px)").matches) registerRef.current?.scrollIntoView({ block: "start" });
+    if (window.matchMedia("(max-width: 760px)").matches) rosterRef.current?.scrollIntoView({ block: "start" });
   }
-  const sortSelect = (className: string) => (
-    <CustomSelect aria-label="Urutkan pegawai" className={className} value={sortValue}
-      onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
-      {sortOptions.map(option => <SelectOption key={option.value} value={option.value}>{option.label}</SelectOption>)}
-    </CustomSelect>
-  );
-  const detail = (row: Row<EmployeeRow>) => (
-    <EmployeeCard person={row.original} deleted={deleted} busy={busy} onOpen={onOpen} onEdit={onEdit} onRemove={onRemove} onRestore={onRestore} />
-  );
+
+  /* Berkas: pegawai sebelumnya/berikutnya mengikuti urutan daftar yang tampil, lintas halaman. */
+  const openIndex = openId ? orderedRows.findIndex(row => row.id === openId) : -1;
+  const jump = (offset: number) => {
+    const target = orderedRows[openIndex + offset];
+    if (!target) return;
+    onOpen(target.id);
+    table.setPageIndex(Math.floor((openIndex + offset) / pageSize));
+  };
+  const nav: RecordNav = {
+    index: openIndex, total: orderedRows.length,
+    prev: openIndex > 0 ? () => jump(-1) : null,
+    next: openIndex >= 0 && openIndex < orderedRows.length - 1 ? () => jump(1) : null,
+  };
+
+  if (openPerson) {
+    return (
+      <section className="pegawai-roster is-record" ref={rosterRef} aria-label={`Berkas pegawai ${openPerson.name}`}>
+        {record(openPerson, nav)}
+      </section>
+    );
+  }
 
   return (
-    <div className="ledger-register pegawai-register" data-density={density} ref={registerRef}>
-      <div className="ledger-register-head">
-        <div className="ledger-register-title">
-          <h2>{deleted ? "Pegawai terhapus" : "Daftar pegawai"}</h2>
-          <span>{scope}</span>
+    <section className="pegawai-roster" ref={rosterRef} aria-label={deleted ? "Daftar pegawai terhapus" : "Daftar pegawai"}>
+      <div className="pegawai-toolbar">
+        <div className="pegawai-search">
+          <Search size={17} aria-hidden="true" />
+          <input id="pegawai-search" ref={searchRef} aria-label="Cari pegawai" aria-keyshortcuts="/" type="search" autoComplete="off"
+            placeholder="Cari nama, NIP, jabatan, atau golongan" value={query} onChange={event => onQuery(event.target.value)} />
+          {query ? <button type="button" onClick={() => onQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
         </div>
         {status}
-        <div className="ledger-register-tools">
-          {sortSelect("ledger-select pegawai-sort ledger-desktop")}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="ledger-tool ledger-desktop"><Columns3 /> Kolom</Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Tampilkan kolom</DropdownMenuLabel><DropdownMenuSeparator />
-              {table.getAllLeafColumns().filter(column => column.getCanHide()).map(column => (
-                <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onSelect={event => event.preventDefault()}
-                  onCheckedChange={checked => column.toggleVisibility(checked)}>{columnLabels[column.id]}</DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="ledger-tool ledger-desktop" aria-label="Kepadatan tabel"><Rows3 /><span>Tampilan</span></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Kepadatan tabel</DropdownMenuLabel><DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value={density} onValueChange={setDensity}>
-                <DropdownMenuRadioItem value="comfortable">Nyaman</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="compact">Ringkas</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <CustomSelect aria-label="Urutkan pegawai" className="pegawai-sort" value={sortValue}
+          onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
+          {sortOptions.map(option => <SelectOption key={option.value} value={option.value}>{option.label}</SelectOption>)}
+        </CustomSelect>
       </div>
-      <div className="ledger-filters">
-        {filters(searchRef)}
-        <div className="ledger-filters-end">
-          {sortSelect("ledger-select ledger-sort-select")}
-          <span className="ledger-result"><strong>{rows.length}</strong> pegawai</span>
-        </div>
+      <div className="pegawai-scope">
+        <p role="status"><strong>{rows.length.toLocaleString("id-ID")}</strong> {deleted ? "pegawai terhapus" : "pegawai"}{chips.length > 0 && " sesuai saringan"}</p>
+        {chips.length > 0 && (
+          <ul className="pegawai-chips" aria-label="Saringan aktif">
+            {chips.map(chip => (
+              <li key={chip.key}>
+                <button type="button" onClick={chip.clear} aria-label={`Hapus saringan ${chip.label}`}>{chip.label}<X size={13} aria-hidden="true" /></button>
+              </li>
+            ))}
+            <li><button type="button" className="pegawai-chips-clear" onClick={onClearAll}>Bersihkan semua</button></li>
+          </ul>
+        )}
       </div>
       {error && <div className="pegawai-error"><ErrorMessage message={error} /></div>}
-      {rows.length ? <>
-        <div className="ledger-table-wrap">
-          <Table className="ledger-table pegawai-table" style={{ minWidth: table.getTotalSize() }} aria-label={deleted ? "Daftar pegawai terhapus" : "Daftar pegawai"}>
+
+      {rows.length ? narrow ? (
+        <ul className="pegawai-cards">
+          {pageRows.map(row => {
+            const person = row.original;
+            return (
+              <li key={row.id}>
+                <article className="pegawai-card" data-open={row.id === openId}>
+                  <div className="pegawai-identity">
+                    <span className="pegawai-mono" aria-hidden="true">{monogram(person.name)}</span>
+                    <div>
+                      <button type="button" className="pegawai-name" onClick={() => onOpen(person.id)} aria-haspopup="dialog">{person.name}</button>
+                      <span className={`pegawai-position ${person.position ? "" : "is-empty"}`}>{person.position || "Jabatan belum dicatat"}</span>
+                    </div>
+                    {menu(person)}
+                  </div>
+                  <dl className="pegawai-card-meta">
+                    <div><dt>NIP</dt><dd className={person.nip.trim() ? "pegawai-nip" : "pegawai-empty"}>{person.nip.trim() || "Belum dicatat"}</dd></div>
+                    <div><dt>Golongan</dt><dd className={person.rank.trim() ? "pegawai-rank" : "pegawai-empty"}>{person.rank.trim() || "Belum dicatat"}</dd></div>
+                    {!hideDepartment && <div><dt>Bidang</dt><dd className={person.department.trim() ? "" : "pegawai-empty"}>{person.department.trim() || "Belum dicatat"}</dd></div>}
+                    <div><dt>Perjalanan dinas</dt>
+                      <dd className={person.journeys.length ? "" : "pegawai-empty"}>
+                        {person.journeys.length ? `${person.journeys.length} perjalanan` : "Belum pernah bertugas"}
+                        {person.lastTrip && <small>, terakhir {monthText(person.lastTrip.startDate)}</small>}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="pegawai-table-wrap">
+          <Table className="pegawai-table" aria-label={deleted ? "Daftar pegawai terhapus" : "Daftar pegawai"}>
             <TableHeader>
-              {table.getHeaderGroups().map(group => (
-                <TableRow key={group.id}>
-                  {group.headers.map(header => (
+              {table.getHeaderGroups().map(headerGroup => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
                     <TableHead key={header.id} data-column={header.column.id}
                       aria-sort={header.column.getCanSort() ? header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none" : undefined}>
                       {header.column.getCanSort() ? (
-                        <button type="button" className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
+                        <button type="button" className="pegawai-sort-head" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
                           {columnLabels[header.column.id]}
                           {header.column.getIsSorted() === "asc" ? <ArrowUp size={13} /> : header.column.getIsSorted() === "desc" ? <ArrowDown size={13} /> : <ChevronsUpDown size={13} />}
                         </button>
-                      ) : columnLabels[header.column.id]}
+                      ) : <span className="sr-only">{header.column.id === "actions" ? "Aksi" : columnLabels[header.column.id]}</span>}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -446,154 +523,225 @@ function PegawaiRegister({ rows, scope, filtered, hasAny, deleted, busy, error, 
             </TableHeader>
             <TableBody>
               {pageRows.map(row => (
-                <Fragment key={row.id}>
-                  <TableRow data-expanded={row.getIsExpanded()}>
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} data-column={cell.column.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                  {row.getIsExpanded() && (
-                    <TableRow className="ledger-detail-row">
-                      <TableCell colSpan={row.getVisibleCells().length}><div id={`pegawai-detail-${row.id}`}>{detail(row)}</div></TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
+                <TableRow key={row.id} data-open={row.id === openId}>
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id} data-column={cell.column.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                  ))}
+                </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-        <div className="ledger-mobile">
-          {pageRows.map(row => {
-            const person = row.original;
-            return (
-              <article className="ledger-card" key={row.id} data-expanded={row.getIsExpanded()}>
-                <div className="ledger-card-top">
-                  <div className="pegawai-identity">
-                    <button type="button" className="ledger-ref pegawai-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
-                      aria-controls={`pegawai-mobile-${row.id}`}>{person.name}</button>
-                    <span className={`pegawai-position ${person.position ? "" : "is-empty"}`}>{person.position || "Jabatan belum dicatat"}</span>
-                  </div>
-                  {menu(person, row)}
-                </div>
-                <dl className="pegawai-card-meta">
-                  <div><dt>NIP</dt><dd className={person.nip.trim() ? "pegawai-nip" : "pegawai-empty"}>{person.nip.trim() || "Belum dicatat"}</dd></div>
-                  <div><dt>Golongan</dt><dd className={person.rank.trim() ? "" : "pegawai-empty"}>{person.rank.trim() || "Belum dicatat"}</dd></div>
-                  <div><dt>Bidang</dt><dd className={person.department.trim() ? "" : "pegawai-empty"}>{person.department.trim() || "Belum dicatat"}</dd></div>
-                </dl>
-                <div className="ledger-card-bottom">
-                  <div className={`pegawai-trips ${person.journeys.length ? "" : "is-empty"}`}>
-                    <strong>{person.journeys.length ? `${person.journeys.length} perjalanan` : "Belum pernah bertugas"}</strong>
-                    {person.lastTrip && <span>Terakhir {monthText(person.lastTrip.startDate)}</span>}
-                  </div>
-                  <Button variant="outline" size="sm" aria-expanded={row.getIsExpanded()} aria-controls={`pegawai-mobile-${row.id}`} onClick={() => row.toggleExpanded()}>
-                    {row.getIsExpanded() ? "Tutup kartu" : "Kartu pegawai"}
-                  </Button>
-                </div>
-                {row.getIsExpanded() && <div className="ledger-card-detail" id={`pegawai-mobile-${row.id}`}>{detail(row)}</div>}
-              </article>
-            );
-          })}
-        </div>
-      </> : (
+      ) : (
         <Empty icon={<Users size={28} />}
-          heading={hasAny ? "Tidak ada pegawai yang cocok" : deleted ? "Daftar Terhapus kosong" : "Belum ada pegawai pada bidang ini"}
-          description={hasAny ? "Ubah kata kunci atau bersihkan filter untuk melihat pegawai lain." : deleted ? "Pegawai yang dihapus dari daftar aktif akan muncul di sini dan dapat dipulihkan." : "Tambahkan pegawai agar identitasnya tersedia saat mengisi arsip perjalanan."}
-          action={hasAny && filtered
-            ? <Button variant="outline" onClick={onReset}>Bersihkan filter</Button>
+          heading={hasAny ? "Tidak ada pegawai yang cocok" : deleted ? "Daftar Terhapus kosong" : "Belum ada pegawai"}
+          description={hasAny ? "Ubah kata kunci atau bersihkan saringan untuk melihat pegawai lain." : deleted ? "Pegawai yang dihapus dari daftar aktif akan muncul di sini dan dapat dipulihkan." : "Tambahkan pegawai agar identitasnya tersedia saat mengisi arsip perjalanan."}
+          action={chips.length > 0
+            ? <Button variant="outline" onClick={onClearAll}>Bersihkan saringan</Button>
             : !deleted ? <Button onClick={onAdd}><Plus /> Tambah pegawai</Button> : undefined} />
       )}
-      <div className="ledger-pagination">
-        <p role="status">Menampilkan <strong>{rows.length ? pageIndex * pageSize + 1 : 0}–{Math.min((pageIndex + 1) * pageSize, rows.length)}</strong> dari <strong>{rows.length}</strong> pegawai</p>
-        <div className="ledger-page-size">
-          <label htmlFor="pegawai-page-size">Baris per halaman</label>
-          <CustomSelect id="pegawai-page-size" value={String(pageSize)} onValueChange={value => table.setPageSize(Number(value))}>
-            {[10, 25, 50].map(size => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
-          </CustomSelect>
+
+      {rows.length > 0 && (
+        <div className="pegawai-pagination">
+          <p role="status">Menampilkan <strong>{pageIndex * pageSize + 1}–{Math.min((pageIndex + 1) * pageSize, rows.length)}</strong> dari <strong>{rows.length}</strong> pegawai</p>
+          <div className="pegawai-page-size">
+            <label htmlFor="pegawai-page-size">Per halaman</label>
+            <CustomSelect id="pegawai-page-size" value={String(pageSize)} onValueChange={value => table.setPageSize(Number(value))}>
+              {[10, 25, 50].map(size => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
+            </CustomSelect>
+          </div>
+          <nav aria-label="Halaman daftar pegawai">
+            <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={!table.getCanPreviousPage()} onClick={() => go(0)}><ChevronsLeft /></Button>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={!table.getCanPreviousPage()} onClick={() => go(pageIndex - 1)}><ChevronLeft /></Button>
+            <span><strong>{pageIndex + 1}</strong> / {pageCount}</span>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={!table.getCanNextPage()} onClick={() => go(pageIndex + 1)}><ChevronRight /></Button>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={!table.getCanNextPage()} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
+          </nav>
         </div>
-        <nav aria-label="Halaman daftar pegawai">
-          <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={!table.getCanPreviousPage()} onClick={() => go(0)}><ChevronsLeft /></Button>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={!table.getCanPreviousPage()} onClick={() => go(pageIndex - 1)}><ChevronLeft /></Button>
-          <span><strong>{pageIndex + 1}</strong> / {pageCount}</span>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={!table.getCanNextPage()} onClick={() => go(pageIndex + 1)}><ChevronRight /></Button>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={!table.getCanNextPage()} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
-        </nav>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }
 
-/* Kartu pegawai: identitas di kiri, riwayat perjalanan di kanan, tindakan di kaki. */
-function EmployeeCard({ person, deleted, busy, onOpen, onEdit, onRemove, onRestore }: {
-  person: EmployeeRow; deleted: boolean; busy: boolean; onOpen: (id: string) => void;
+/* Berkas pegawai: menggantikan daftar selama dibuka; daftar kembali lewat tombol, Escape, atau "/". */
+function EmployeeRecord({ person, busy, nav, onBack, onOpen, onEdit, onRemove, onRestore }: {
+  person: EmployeeRow; busy: boolean; nav: RecordNav; onBack: () => void; onOpen: (id: string) => void;
   onEdit: (person: Employee) => void; onRemove: (person: Employee) => void; onRestore: (person: Employee) => void;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const narrow = useIsNarrow();
   const aliases = person.identities
     .filter(identity => identity.startsWith("name:"))
     .map(identity => identity.slice(5))
     .filter(alias => alias !== person.name.trim().toLocaleLowerCase("id-ID"));
   const days = person.journeys.reduce((sum, trip) => sum + duration(trip), 0);
-  const value = (text: string) => text.trim() ? text : <span className="pegawai-empty">Belum dicatat</span>;
+  const spent = person.journeys.reduce((sum, trip) => sum + (totalCost(trip) ?? 0), 0);
+  const unpriced = person.journeys.filter(trip => totalCost(trip) === null).length;
+  const year = person.lastTrip ? Number(person.lastTrip.startDate.slice(0, 4)) : new Date().getFullYear();
+  const perMonth = Array.from({ length: 12 }, (_, month) =>
+    person.journeys.filter(trip => Number(trip.startDate.slice(0, 4)) === year && Number(trip.startDate.slice(5, 7)) === month + 1).length);
+  const yearTrips = perMonth.reduce((sum, count) => sum + count, 0);
+  const level = (count: number) => (count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : 3);
+
+  /* Fokus pindah ke nama pegawai setiap berkas berganti; gulir agar kop berkas terlihat. */
+  useEffect(() => {
+    const heading = headingRef.current;
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    const top = heading.closest(".pegawai-roster")?.getBoundingClientRect().top ?? 0;
+    if (top < 72) heading.closest(".pegawai-roster")?.scrollIntoView({ block: "start" });
+  }, [person.id]);
+
+  const rank = person.rank.trim();
+  const nip = person.nip.trim();
+  const department = person.department.trim();
+
   return (
-    <section className="ledger-detail pegawai-detail" aria-label={`Kartu pegawai ${person.name}`}>
-      <div className="pegawai-detail-grid">
-        <dl className="pegawai-facts">
-          <div className="pegawai-facts-title">Identitas</div>
-          <div><dt>NIP</dt>{person.nip.trim() ? <dd className="pegawai-nip">{person.nip}</dd> : <dd>{value("")}</dd>}</div>
-          <div><dt>Jabatan</dt><dd>{value(person.position)}</dd></div>
-          <div><dt>Golongan</dt><dd>{value(person.rank)}</dd></div>
-          <div><dt>Bidang</dt><dd>{value(person.department)}</dd></div>
-          {aliases.length > 0 && (
-            <div><dt>Nama pada arsip lama</dt><dd><ul className="pegawai-aliases">{aliases.map(alias => <li key={alias}>{alias}</li>)}</ul></dd></div>
-          )}
-          {!person.complete && (
-            <div><dt>Kelengkapan</dt><dd className="pegawai-empty">Perlu dilengkapi</dd></div>
-          )}
-        </dl>
-        <div className="ledger-members pegawai-roster">
-          <div className="ledger-members-head">
-            <strong>Riwayat perjalanan dinas</strong>
-            <span>{person.journeys.length ? `${person.journeys.length} perjalanan, ${days} hari` : "Belum ada perjalanan tercatat"}</span>
-          </div>
-          {person.journeys.length ? person.journeys.map(trip => {
-            const total = totalCost(trip);
-            return (
-              <div className="ledger-member pegawai-member" key={trip.id}>
-                <div className="ledger-member-who">
-                  <span className="pegawai-trip-title">{trip.title}</span>
-                  <span className="pegawai-trip-meta">
-                    <span>{tripDates(trip)}</span>
-                    <span>{trip.destination}</span>
-                    {trip.sptNo && <span>ST <b>{trip.sptNo}</b></span>}
-                  </span>
-                </div>
-                <div className="ledger-member-cost">
-                  <strong>{money(total)}</strong>
-                  <small>{trip.participants.length > 1 ? `biaya ${trip.participants.length} peserta` : "biaya perjalanan"}</small>
-                </div>
-                <Button variant="outline" size="sm" className="pegawai-open" onClick={() => onOpen(trip.id)}>Buka arsip</Button>
-              </div>
-            );
-          }) : (
-            <p className="pegawai-roster-empty">Nama atau NIP pegawai ini belum muncul pada arsip perjalanan mana pun.</p>
-          )}
+    <div className="pegawai-record">
+      <div className="pegawai-record-bar">
+        <button type="button" className="pegawai-back" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" /> Daftar pegawai</button>
+        <div className="pegawai-record-nav" role="group" aria-label="Pindah berkas">
+          <Button variant="outline" size="icon-sm" aria-label="Pegawai sebelumnya" disabled={!nav.prev} onClick={() => nav.prev?.()}><ChevronLeft /></Button>
+          <span aria-live="polite">{nav.index >= 0 ? `${nav.index + 1} dari ${nav.total}` : "Di luar daftar"}</span>
+          <Button variant="outline" size="icon-sm" aria-label="Pegawai berikutnya" disabled={!nav.next} onClick={() => nav.next?.()}><ChevronRight /></Button>
         </div>
       </div>
-      <div className="pegawai-detail-foot">
-        <span>Versi data {person.version}</span>
-        <div className="pegawai-detail-actions">
-          {deleted
-            ? <Button variant="outline" size="sm" disabled={busy} onClick={() => onRestore(person)}><RotateCcw /> Pulihkan pegawai</Button>
+
+      <header className="pegawai-record-head" data-deleted={Boolean(person.deletedAt)}>
+        <div className="pegawai-record-who">
+          <span className="pegawai-mono is-record" aria-hidden="true">{monogram(person.name)}</span>
+          <div>
+            <span className="pegawai-record-kind">{person.deletedAt ? "Berkas pegawai, pada daftar Terhapus" : "Berkas pegawai"}</span>
+            <h2 ref={headingRef} tabIndex={-1}>{person.name}</h2>
+            <p className={person.position.trim() ? "" : "is-empty"}>{person.position.trim() || "Jabatan belum dicatat"}</p>
+          </div>
+        </div>
+        <dl className="pegawai-record-ids">
+          <div><dt>NIP</dt><dd className={nip ? "pegawai-nip" : "is-empty"}>{nip || "Belum dicatat"}</dd></div>
+          <div><dt>Golongan</dt><dd className={rank ? "pegawai-rank" : "is-empty"}>{rank || "Belum dicatat"}</dd></div>
+          <div><dt>Bidang</dt><dd className={department ? "" : "is-empty"}>{department || "Belum dicatat"}</dd></div>
+        </dl>
+        <div className="pegawai-record-actions">
+          {person.deletedAt
+            ? <Button size="sm" disabled={busy} onClick={() => onRestore(person)}><RotateCcw /> Pulihkan pegawai</Button>
             : <>
               <Button variant="outline" size="sm" disabled={busy} onClick={() => onEdit(person)}><Pencil /> Edit pegawai</Button>
-              <Button variant="outline" size="sm" className="is-danger" disabled={busy} onClick={() => onRemove(person)}><Trash2 /> Hapus pegawai</Button>
+              <Button variant="outline" size="sm" className="is-danger" disabled={busy} onClick={() => onRemove(person)}><Trash2 /> Hapus</Button>
             </>}
         </div>
+      </header>
+
+      <dl className="pegawai-record-stats">
+        <div><dt>Perjalanan dinas</dt><dd>{person.journeys.length ? person.journeys.length : <span className="is-empty">Belum ada</span>}</dd></div>
+        <div><dt>Hari bertugas</dt><dd>{person.journeys.length ? days : <span className="is-empty">–</span>}</dd></div>
+        <div><dt>{unpriced ? `Biaya tercatat, ${unpriced} belum bernominal` : "Total biaya tercatat"}</dt><dd>{person.journeys.length ? money(spent) : <span className="is-empty">–</span>}</dd></div>
+        <div><dt>Terakhir bertugas</dt><dd>{person.lastTrip ? monthText(person.lastTrip.startDate) : <span className="is-empty">Belum pernah</span>}</dd></div>
+        <div><dt>Versi data</dt><dd>{person.version}</dd></div>
+      </dl>
+
+      <div className="pegawai-record-body">
+        {!person.complete && (
+          <div className="pegawai-record-note" role="note">
+            <p><strong>Data belum lengkap.</strong> {listText(person.missing.map(item => item.charAt(0).toUpperCase() + item.slice(1)))} belum dicatat, sehingga pegawai ini belum bisa dirujuk secara utuh saat mengisi arsip.</p>
+            {!person.deletedAt && <Button variant="outline" size="sm" disabled={busy} onClick={() => onEdit(person)}>Lengkapi data</Button>}
+          </div>
+        )}
+        {aliases.length > 0 && (
+          <section className="pegawai-record-section" aria-label="Nama pada arsip lama">
+            <div className="pegawai-record-heading">
+              <h3>Nama pada arsip lama</h3>
+              <span>Arsip yang dicatat sebelum NIP terisi dikenali lewat nama berikut</span>
+            </div>
+            <ul className="pegawai-aliases">{aliases.map(alias => <li key={alias}>{alias}</li>)}</ul>
+          </section>
+        )}
+
+        <section className="pegawai-record-section" aria-label="Perjalanan dinas">
+          <div className="pegawai-record-heading">
+            <h3>Perjalanan dinas</h3>
+            {person.journeys.length > 0 && <span>{person.journeys.length} perjalanan, terbaru di atas</span>}
+          </div>
+          {person.journeys.length > 0 ? <>
+            <div className="pegawai-months" aria-label={`Sebaran perjalanan sepanjang ${year}: ${yearTrips} perjalanan`}>
+              <div className="pegawai-months-head"><span>Sebaran {year}</span><span>{yearTrips} perjalanan</span></div>
+              <ol className="pegawai-months-grid">
+                {perMonth.map((count, month) => (
+                  <li key={monthNames[month]} data-level={level(count)} title={`${monthNames[month]} ${year}: ${count} perjalanan`}>
+                    <span aria-hidden="true">{monthShort[month]}</span>
+                    <b aria-hidden="true">{count || "–"}</b>
+                    <span className="sr-only">{monthNames[month]}: {count} perjalanan</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            {narrow ? (
+              <ol className="pegawai-trip-list">
+                {person.journeys.map(trip => (
+                  <li key={trip.id}>
+                    <div className="pegawai-trip-main">
+                      <span className="pegawai-trip-title">{trip.title}</span>
+                      <span className="pegawai-trip-meta">
+                        <span>{tripDates(trip)}</span>
+                        <span>{trip.destination}</span>
+                        {trip.sptNo && <span>ST <b>{trip.sptNo}</b></span>}
+                      </span>
+                    </div>
+                    <div className="pegawai-trip-cost">
+                      <strong>{money(totalCost(trip))}</strong>
+                      <small>{trip.participants.length} peserta</small>
+                    </div>
+                    <Button variant="outline" size="sm" className="pegawai-open-archive" onClick={() => onOpen(trip.id)}>Buka arsip</Button>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="pegawai-trip-table-wrap">
+                <Table className="pegawai-trip-table" aria-label={`Perjalanan dinas ${person.name}`}>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead data-column="dates">Tanggal</TableHead>
+                      <TableHead data-column="trip">Perjalanan</TableHead>
+                      <TableHead data-column="cost">Biaya</TableHead>
+                      <TableHead data-column="open"><span className="sr-only">Buka arsip</span></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {person.journeys.map(trip => (
+                      <TableRow key={trip.id}>
+                        <TableCell data-column="dates">
+                          <span className="pegawai-trip-dates">{tripDates(trip)}</span>
+                          <span className="pegawai-trip-days">{duration(trip)} hari</span>
+                        </TableCell>
+                        <TableCell data-column="trip">
+                          <span className="pegawai-trip-title">{trip.title}</span>
+                          <span className="pegawai-trip-meta">
+                            <span>{trip.destination}</span>
+                            {trip.sptNo ? <span>ST <b>{trip.sptNo}</b></span> : <span>ST belum dicatat</span>}
+                          </span>
+                        </TableCell>
+                        <TableCell data-column="cost">
+                          <span className="pegawai-trip-amount">{money(totalCost(trip))}</span>
+                          <span className="pegawai-trip-people">{trip.participants.length} peserta</span>
+                        </TableCell>
+                        <TableCell data-column="open">
+                          <Button variant="outline" size="sm" className="pegawai-open-archive" onClick={() => onOpen(trip.id)}>Buka arsip</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </> : (
+            <p className="pegawai-record-empty">Nama atau NIP pegawai ini belum muncul pada arsip perjalanan mana pun.</p>
+          )}
+        </section>
       </div>
-    </section>
+    </div>
   );
 }
 
-/* Lembar isian pegawai: kepala biru laut dengan kicker emas, seperti formulir register lain. */
+/* Lembar isian pegawai: kepala biru laut dengan kicker emas, seperti formulir lain. */
 function EmployeeForm({ employee, departments, onClose, onSaved }: {
   employee: Employee | null; departments: string[]; onClose: () => void; onSaved: (person: Employee) => void;
 }) {
@@ -621,7 +769,7 @@ function EmployeeForm({ employee, departments, onClose, onSaved }: {
     <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
       <DialogContent className="form-dialog pegawai-dialog" showCloseButton={!busy}>
         <DialogHeader>
-          <div className="dialog-kicker">{employee ? (employee.nip.trim() ? `NIP ${employee.nip}` : "NIP belum dicatat") : "Buku induk pegawai"}</div>
+          <div className="dialog-kicker">{employee ? (employee.nip.trim() ? `NIP ${employee.nip}` : "NIP belum dicatat") : "Direktori pegawai"}</div>
           <DialogTitle>{employee ? "Edit pegawai" : "Tambah pegawai"}</DialogTitle>
           <DialogDescription>Data ini menjadi rujukan saat mengisi arsip baru. Identitas pada arsip lama tetap tersimpan apa adanya.</DialogDescription>
         </DialogHeader>

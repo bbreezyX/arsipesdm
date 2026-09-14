@@ -1,225 +1,570 @@
 /*
-  Pegawai: buku induk pegawai di atas lapisan register (arsip.css).
-  Memakai warna, tipe, dan kelas ledger-* yang sama dengan register lain.
-  Yang khas di halaman ini: lidah bidang pada punggung buku, rel golongan
-  I–IV dalam angka Romawi seperti Daftar Urut Kepangkatan, bilah kelengkapan
-  data, dan kartu pegawai beserta riwayat perjalanannya yang terbuka di baris.
+  Pegawai: direktori dan berkas pegawai, bukan buku register.
+  Dimuat setelah arsip.css dan memakai token --ledger-* yang sama.
+  Tiga bagian: kolom indeks (bidang, komposisi golongan, kelengkapan, riwayat),
+  daftar pegawai, dan berkas pegawai yang terbuka sebagai panel geser dari kanan
+  sehingga daftar tetap terlihat. Emas hanya menandai baris yang berkasnya terbuka.
 */
+.pegawai-page {
+  --pegawai-l1: #cfdcea;
+  --pegawai-l2: #91acc8;
+  --pegawai-l3: #476f9a;
+  --pegawai-l4: #1b3a5e;
+  --pegawai-none: #d3dae2;
+  --pegawai-shadow: 0 1px 2px rgba(20, 39, 63, 0.04), 0 14px 36px -28px rgba(20, 39, 63, 0.3);
+}
 .pegawai-page {
   min-width: 0;
 }
-.pegawai-sheet {
-  border-top-left-radius: 0;
-}
 
-/* ----- Lidah bidang: nama unit, bukan angka tahun ----- */
-.pegawai-page .ledger-year {
-  min-width: 0;
-  padding: 12px 16px 14px;
-}
-.pegawai-page .ledger-year strong {
-  font-size: 1rem;
-  font-weight: 600;
-  font-stretch: 100%;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-.pegawai-page .ledger-year[aria-pressed="true"] {
-  padding-bottom: 15px;
-}
-
-/* ----- Rel golongan I–IV ----- */
-.pegawai-index {
+/* ----- Judul halaman ----- */
+.pegawai-head {
   display: flex;
-  align-items: stretch;
-  background: var(--ledger-tint);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.pegawai-head h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ledger-ink);
+}
+.pegawai-head p {
+  margin-top: 6px;
+  max-width: 64ch;
+  font-size: var(--type-body);
+  line-height: 1.6;
+  color: var(--ledger-muted);
+}
+.pegawai-add[data-slot="button"] {
+  flex-shrink: 0;
+  height: 40px;
+  padding-inline: 16px;
+  border-radius: 10px;
+  background: var(--ledger-navy);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(12, 26, 47, 0.24);
+}
+.pegawai-add[data-slot="button"]:hover {
+  background: var(--ledger-navy-soft);
+}
+
+/* ----- Kerangka dua kolom ----- */
+.pegawai-body {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ----- Kolom indeks ----- */
+.pegawai-index {
+  position: sticky;
+  top: 84px;
+  max-height: calc(100dvh - 104px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Ruang tetap untuk bilah gulir supaya angka pada faset tidak tertutup. */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c3cfdb transparent;
+  /* Faset menjorok 10px ke kiri saat aktif; sediakan ruangnya di dalam kontainer gulir agar tidak terpotong. */
+  margin-left: -10px;
+  padding: 2px 18px 8px 10px;
+}
+.pegawai-index::-webkit-scrollbar {
+  width: 6px;
+}
+.pegawai-index::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pegawai-index::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: #c3cfdb;
+}
+.pegawai-index:hover::-webkit-scrollbar-thumb {
+  background: #a9b8c8;
+}
+.pegawai-index-toggle {
+  display: none;
+}
+.pegawai-index-panel {
+  display: grid;
+  gap: 22px;
+}
+.pegawai-index-total {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 18px;
   border-bottom: 1px solid var(--ledger-line);
 }
-.pegawai-index-all {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 156px;
-  padding: 12px 22px 12px 24px;
-  text-align: left;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line);
-  transition: background 0.15s, color 0.15s;
-}
-.pegawai-index-all strong {
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: inherit;
-  white-space: nowrap;
-}
-.pegawai-index-all span {
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.pegawai-groups {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.3fr);
-  min-width: 0;
-}
-.pegawai-group {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 1px;
-  min-width: 0;
-  padding: 11px 8px 10px;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line-soft);
-  transition: background 0.15s, color 0.15s;
-}
-.pegawai-group:last-child {
-  border-right: 0;
-}
-.pegawai-group strong {
-  font-size: 1.375rem;
+.pegawai-index-total strong {
+  font-size: 2.5rem;
   font-weight: 650;
   font-stretch: var(--ledger-condensed);
-  letter-spacing: 0.04em;
-  line-height: 1.1;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: var(--ledger-ink);
-}
-.pegawai-group span {
-  font-size: var(--type-micro);
-  line-height: 1.4;
-}
-.pegawai-group b {
-  margin-top: 3px;
-  font-size: var(--type-meta);
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--ledger-text);
 }
-.pegawai-group.is-none {
-  gap: 3px;
-}
-.pegawai-group.is-none span {
+.pegawai-index-total span {
   font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.pegawai-index-group {
+  display: grid;
+  gap: 2px;
+}
+.pegawai-index-group h2 {
+  margin-bottom: 6px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ledger-ink);
+}
+.pegawai-facet {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% + 20px);
+  height: 34px;
+  margin: 0 -10px;
+  padding: 0 10px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: var(--type-data);
+  color: var(--ledger-text);
+  transition: background 0.15s, color 0.15s;
+}
+.pegawai-facet > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pegawai-facet > b {
   font-weight: 500;
-  color: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-muted);
 }
-.pegawai-group:disabled {
-  cursor: default;
-  color: #aab6c3;
-}
-.pegawai-group:disabled strong,
-.pegawai-group:disabled b {
-  color: #aab6c3;
-  font-weight: 500;
-}
-.pegawai-group:not(:disabled):hover,
-.pegawai-index-all:hover {
+.pegawai-facet:not(:disabled):hover {
   background: var(--ledger-surface);
   color: var(--ledger-ink);
 }
-.pegawai-group[aria-pressed="true"],
-.pegawai-index-all[aria-pressed="true"] {
+.pegawai-facet[aria-pressed="true"] {
   background: var(--ledger-surface);
   color: var(--ledger-ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--ledger-line);
 }
-.pegawai-group[aria-pressed="true"]::after,
-.pegawai-index-all[aria-pressed="true"]::after {
+.pegawai-facet[aria-pressed="true"]::before {
   content: "";
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--ledger-gold);
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ledger-navy);
 }
-.pegawai-index-all[aria-pressed="true"]::after {
-  left: 24px;
-  right: 22px;
+.pegawai-facet[aria-pressed="true"] > b {
+  color: var(--ledger-ink);
+  font-weight: 600;
 }
-.pegawai-group:focus-visible,
-.pegawai-index-all:focus-visible {
+.pegawai-facet:disabled {
+  color: #9aa8b7;
+  cursor: default;
+}
+.pegawai-facet:focus-visible {
   outline: 2px solid var(--ledger-action);
   outline-offset: -2px;
-  z-index: 1;
+}
+.pegawai-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.pegawai-swatch[data-group="I"], .pegawai-composition i[data-group="I"] { background: var(--pegawai-l1); }
+.pegawai-swatch[data-group="II"], .pegawai-composition i[data-group="II"] { background: var(--pegawai-l2); }
+.pegawai-swatch[data-group="III"], .pegawai-composition i[data-group="III"] { background: var(--pegawai-l3); }
+.pegawai-swatch[data-group="IV"], .pegawai-composition i[data-group="IV"] { background: var(--pegawai-l4); }
+.pegawai-swatch[data-group="none"], .pegawai-composition i[data-group="none"] { background: var(--pegawai-none); }
+.pegawai-facet:disabled .pegawai-swatch {
+  opacity: 0.45;
+}
+/* Bilah komposisi: lebar tiap ruas sebanding dengan jumlah pegawai pada golongan itu. */
+.pegawai-composition {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 2px 0 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--ledger-line-soft);
+}
+.pegawai-composition i {
+  flex-basis: 0;
+  min-width: 4px;
+}
+.pegawai-index-note {
+  margin-top: 6px;
+  font-size: var(--type-micro);
+  line-height: 1.5;
+  color: var(--ledger-muted);
 }
 
-/* ----- Pita ringkasan: jumlah pegawai dan kelengkapan data ----- */
-.pegawai-summary .ledger-figure {
-  margin-bottom: 12px;
+/* ----- Daftar pegawai ----- */
+.pegawai-roster {
+  min-width: 0;
+  /* Saat digulir ke atas, bingkai berhenti di bawah bilah atas yang melekat. */
+  scroll-margin-top: 80px;
+  background: var(--ledger-surface);
+  border: 1px solid var(--ledger-line);
+  border-radius: 16px;
+  box-shadow: var(--pegawai-shadow);
+  overflow: clip;
 }
-.pegawai-summary .ledger-figure small {
-  font-size: 1.125rem;
+.pegawai-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 20px 12px;
 }
-
-/* ----- Kepala register dan tabel ----- */
-.ledger-register-tools .custom-select.pegawai-sort {
+.pegawai-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 260px;
+  min-width: 220px;
+  height: 42px;
+  padding: 0 10px 0 14px;
+  gap: 10px;
+  background: var(--ledger-tint);
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.pegawai-search:focus-within {
+  background: var(--ledger-surface);
+  border-color: var(--ledger-action);
+  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.12);
+}
+.pegawai-search > svg {
+  flex-shrink: 0;
+  color: var(--ledger-muted);
+}
+/* Harus mengalahkan aturan input global di globals.css. */
+.pegawai-roster .pegawai-search input:not([type="checkbox"]) {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--type-data);
+  color: var(--ledger-ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pegawai-roster .pegawai-search input:not([type="checkbox"]):focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+.pegawai-search input::-webkit-search-cancel-button,
+.pegawai-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pegawai-search kbd {
+  font: inherit;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 5px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+}
+.pegawai-search > button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--ledger-muted);
+}
+.pegawai-search > button:hover {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+}
+.pegawai-status {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ledger-tint);
+  border-radius: 11px;
+}
+.pegawai-status > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.pegawai-status > button b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  opacity: 0.75;
+}
+.pegawai-status > button:hover {
+  color: var(--ledger-ink);
+}
+.pegawai-status > button[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 39, 63, 0.12), 0 0 0 1px var(--ledger-line);
+}
+.pegawai-toolbar .custom-select.pegawai-sort {
   width: auto;
   min-width: 176px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 32px 0 12px;
-  border-radius: 9px;
-  border-color: #d3dbe4;
-  font-size: var(--type-label);
+  height: 40px;
+  min-height: 40px;
+  padding: 0 34px 0 14px;
+  border-radius: 10px;
+  border-color: #cfd8e2;
+  font-size: var(--type-data);
   font-weight: 500;
   color: var(--ledger-text);
 }
-.pegawai-register .ledger-filters {
-  padding-top: 2px;
+.pegawai-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 20px 12px;
+}
+.pegawai-scope p {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.pegawai-scope p strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.pegawai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pegawai-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 10px;
+  border-radius: 7px;
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+  font-size: var(--type-label);
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.pegawai-chips button:hover {
+  background: #d9e5f0;
+}
+.pegawai-chips button svg {
+  opacity: 0.7;
+}
+.pegawai-chips .pegawai-chips-clear {
+  padding: 0 6px;
+  background: transparent;
+  color: var(--ledger-muted);
+}
+.pegawai-chips .pegawai-chips-clear:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
 }
 .pegawai-error {
-  margin: 0 24px 14px;
+  margin: 0 20px 12px;
 }
-.pegawai-table [data-column="name"] {
-  min-width: 300px;
+
+/* Tabel. */
+.pegawai-table-wrap [data-slot="table-container"] {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b6c5d3 transparent;
+  border-top: 1px solid var(--ledger-line);
 }
-.pegawai-table [data-column="nip"] {
-  width: 210px;
-  min-width: 210px;
+.pegawai-table {
+  min-width: 720px;
+  font-size: var(--type-data);
+  border-collapse: separate;
+  border-spacing: 0;
 }
-.pegawai-table [data-column="rank"] {
-  width: 120px;
-  min-width: 120px;
+.pegawai-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 42px;
+  padding: 0 12px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: inset 0 -1px var(--ledger-line);
 }
-.pegawai-table [data-column="department"] {
-  width: 210px;
-  min-width: 210px;
+.pegawai-table td {
+  padding: 13px 12px;
+  vertical-align: middle;
+  white-space: normal;
+  line-height: 1.5;
+  color: var(--ledger-text);
+  border-bottom: 1px solid var(--ledger-line-soft);
+  transition: background 0.12s;
 }
-.pegawai-table [data-column="trips"] {
-  width: 200px;
-  min-width: 200px;
-}
-.pegawai-table [data-column="actions"] {
-  width: 88px;
-  min-width: 88px;
-  text-align: right;
-  padding-inline: 10px 16px;
+.pegawai-table tbody > tr:last-child > td {
+  border-bottom: 0;
 }
 .pegawai-table th:first-child,
 .pegawai-table td:first-child {
-  padding-left: 24px;
+  padding-left: 20px;
 }
+.pegawai-table [data-column="name"] { min-width: 220px; }
+.pegawai-table [data-column="nip"] { width: 1%; white-space: nowrap; }
+.pegawai-table [data-column="rank"] { width: 1%; white-space: nowrap; }
+.pegawai-table [data-column="department"] { min-width: 110px; max-width: 220px; }
+.pegawai-table [data-column="trips"] { width: 1%; white-space: nowrap; }
+.pegawai-table [data-column="actions"] {
+  width: 76px;
+  min-width: 76px;
+  text-align: right;
+  padding-inline: 8px 14px;
+}
+.pegawai-table td[data-column="actions"] {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--ledger-surface);
+}
+.pegawai-table th[data-column="actions"] {
+  right: 0;
+  z-index: 3;
+}
+.pegawai-sort-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+}
+.pegawai-sort-head svg {
+  flex-shrink: 0;
+  color: #a4b2c0;
+}
+.pegawai-table th[aria-sort="ascending"],
+.pegawai-table th[aria-sort="descending"] {
+  color: var(--ledger-ink);
+}
+.pegawai-table th[aria-sort="ascending"] svg,
+.pegawai-table th[aria-sort="descending"] svg {
+  color: var(--ledger-ink);
+}
+.pegawai-table tbody > tr:hover > td {
+  background: #f8fafc;
+}
+.pegawai-table tbody > tr[data-open="true"] > td {
+  background: #f6f8fb;
+}
+.pegawai-table tbody > tr[data-open="true"] > td:first-child {
+  box-shadow: inset 3px 0 var(--ledger-gold);
+}
+
+/* Isi sel. */
 .pegawai-identity {
-  display: grid;
-  gap: 3px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
-  max-width: 520px;
+  max-width: 560px;
 }
-.pegawai-name.ledger-ref {
-  font-size: 1rem;
-  font-stretch: 100%;
-  letter-spacing: -0.01em;
+.pegawai-identity > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.pegawai-mono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--ledger-action-soft);
+  color: var(--ledger-navy);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.pegawai-name {
+  /* Tombol tidak mau menyusut di tabel; jadikan blok agar kolom nama bisa melipat. */
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  color: var(--ledger-ink);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+/* Seluruh sel identitas menjadi sasaran klik; NIP di sel sebelah tetap bisa disalin. */
+.pegawai-table .pegawai-name::after {
+  content: "";
+  position: absolute;
+  inset: -13px -12px -13px -20px;
+}
+.pegawai-identity:hover .pegawai-name {
+  color: var(--ledger-navy);
+  text-decoration: underline;
+  text-decoration-color: var(--ledger-gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 .pegawai-position {
   font-size: var(--type-meta);
+  line-height: 1.45;
   color: var(--ledger-text);
-  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .pegawai-position.is-empty,
@@ -237,15 +582,16 @@
   white-space: nowrap;
 }
 .pegawai-rank {
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   color: var(--ledger-ink);
 }
 .pegawai-trips {
   display: grid;
-  gap: 3px;
-  text-align: left;
-  border-radius: 4px;
+  gap: 2px;
 }
 .pegawai-trips strong {
   font-weight: 600;
@@ -262,99 +608,567 @@
   color: var(--ledger-muted);
 }
 .pegawai-row-tools {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
 }
-.pegawai-menu[data-slot="button"] {
+.pegawai-menu[data-slot="button"],
+.pegawai-open-file[data-slot="button"] {
   width: 30px;
   height: 30px;
   border-radius: 8px;
   color: var(--ledger-muted);
 }
-.pegawai-menu[data-slot="button"]:hover {
+.pegawai-menu[data-slot="button"]:hover,
+.pegawai-open-file[data-slot="button"]:hover {
   color: var(--ledger-ink);
 }
+.pegawai-table tr:hover .pegawai-open-file[data-slot="button"] {
+  color: var(--ledger-navy);
+}
+.pegawai-roster .empty-state {
+  border-top: 1px solid var(--ledger-line);
+}
 
-/* ----- Kartu pegawai yang terbuka di dalam baris ----- */
-.pegawai-table .ledger-detail-row > td {
-  padding-left: 24px;
+/* Paginasi. */
+.pegawai-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--ledger-line);
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
 }
-.pegawai-detail-grid {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.65fr);
-  gap: 16px;
-  align-items: start;
+.pegawai-pagination p {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
 }
-.pegawai-facts {
-  display: grid;
-  margin: 0;
-  background: var(--ledger-surface);
-  border: 1px solid var(--ledger-line);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.pegawai-facts-title {
-  padding: 12px 18px;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line-soft);
-  font-size: var(--type-data);
+.pegawai-pagination strong {
   font-weight: 600;
   color: var(--ledger-ink);
 }
-.pegawai-facts > div:not(.pegawai-facts-title) {
+.pegawai-page-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pegawai-page-size .custom-select {
+  width: 70px;
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: var(--type-meta);
+}
+.pegawai-pagination nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pegawai-pagination nav > span {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pegawai-pagination nav [data-slot="button"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+
+/* ----- Berkas pegawai: menggantikan daftar di dalam bingkai yang sama ----- */
+.pegawai-record {
   display: grid;
-  gap: 2px;
-  padding: 11px 18px;
-  border-bottom: 1px solid var(--ledger-line-soft);
+  min-width: 0;
 }
-.pegawai-facts > div:last-child {
-  border-bottom: 0;
+/* Anak grid harus boleh menyusut; tanpa ini tabel perjalanan melebarkan seluruh berkas. */
+.pegawai-record > *,
+.pegawai-record-body > * {
+  min-width: 0;
 }
-.pegawai-facts dt {
-  font-size: var(--type-micro);
-  font-weight: 500;
+.pegawai-record-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px 12px 14px;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.pegawai-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 8px;
+  border-radius: 9px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-action);
+  transition: background 0.15s;
+}
+.pegawai-back:hover {
+  background: var(--ledger-action-soft);
+}
+.pegawai-back svg {
+  transition: transform 0.15s;
+}
+.pegawai-back:hover svg {
+  transform: translateX(-2px);
+}
+.pegawai-record-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pegawai-record-nav span {
+  min-width: 78px;
+  text-align: center;
+  font-size: var(--type-meta);
   color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
 }
-.pegawai-facts dd {
-  margin: 0;
-  font-size: var(--type-data);
-  color: var(--ledger-ink);
-  line-height: 1.55;
+.pegawai-record-nav [data-slot="button"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+
+/* Kop berkas: biru laut dengan garis emas di kaki, seperti kop dokumen resmi. */
+.pegawai-record-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 32px;
+  padding: 22px 28px 24px;
+  background: var(--ledger-navy);
+  color: #fff;
+}
+.pegawai-record-head[data-deleted="true"] {
+  background: #33404f;
+}
+.pegawai-record-head::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 0;
+  height: 2px;
+  background: var(--ledger-gold);
+}
+.pegawai-record-who {
+  grid-column: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+.pegawai-record-who > div {
+  min-width: 0;
+}
+.pegawai-mono.is-record {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.25rem;
+}
+.pegawai-record-kind {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--type-meta);
+  color: #9fb0c4;
+}
+.pegawai-record-head h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #fff;
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+}
+.pegawai-record-head h2:focus-visible {
+  outline: 2px solid var(--ledger-gold);
+  outline-offset: 4px;
+}
+.pegawai-record-head p {
+  margin-top: 4px;
+  font-size: var(--type-body);
+  line-height: 1.45;
+  color: #c9d4e2;
   overflow-wrap: anywhere;
 }
-.pegawai-facts dd.pegawai-nip {
+.pegawai-record-head p.is-empty {
+  color: #8fa2b8;
+}
+.pegawai-record-actions {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  align-self: start;
+}
+.pegawai-record-actions [data-slot="button"] {
+  height: 34px;
+  border-radius: 9px;
+  font-weight: 600;
+  box-shadow: none;
+}
+.pegawai-record-actions [data-variant="outline"] {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.pegawai-record-actions [data-variant="outline"]:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.pegawai-record-actions [data-slot="button"].is-danger {
+  color: #f3c8c3;
+}
+.pegawai-record-actions [data-slot="button"].is-danger:hover {
+  background: rgba(166, 58, 50, 0.4);
+  color: #fff;
+}
+.pegawai-record-actions [data-variant="default"] {
+  background: var(--ledger-gold);
+  color: var(--ledger-navy-deep);
+}
+.pegawai-record-actions [data-variant="default"]:hover {
+  background: #e3b658;
+}
+.pegawai-record-ids {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 40px;
+  margin: 0;
+}
+.pegawai-record-ids > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.pegawai-record-ids dt {
+  font-size: var(--type-micro);
+  color: #9fb0c4;
+}
+.pegawai-record-ids dd {
+  margin: 0;
+  font-size: var(--type-data);
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.pegawai-record-ids dd.pegawai-nip,
+.pegawai-record-ids dd.pegawai-rank {
+  color: #fff;
+  font-size: 1.125rem;
+}
+.pegawai-record-ids dd.is-empty {
+  color: #8fa2b8;
+}
+
+/* Angka ringkas dalam satu baris, dipisah garis tipis. */
+.pegawai-record-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, auto));
+  justify-content: start;
+  gap: 12px 0;
+  margin: 0;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--ledger-line);
+  background: var(--ledger-tint);
+}
+.pegawai-record-stats > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 28px;
+}
+.pegawai-record-stats > div + div {
+  padding-left: 28px;
+  border-left: 1px solid var(--ledger-line);
+}
+.pegawai-record-stats dt {
+  font-size: var(--type-micro);
+  line-height: 1.4;
+  color: var(--ledger-muted);
+}
+.pegawai-record-stats dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pegawai-record-stats dd .is-empty {
+  font-weight: 500;
+  font-stretch: 100%;
+  font-size: var(--type-data);
+  color: var(--ledger-muted);
+}
+
+.pegawai-record-body {
+  display: grid;
+  gap: 26px;
+  padding: 22px 28px 28px;
+}
+.pegawai-record-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 14px 16px;
+  border: 1px solid #ecd9a6;
+  border-radius: 12px;
+  background: var(--ledger-amber-soft);
+  color: #5b4708;
+  font-size: var(--type-data);
+  line-height: 1.55;
+}
+.pegawai-record-note strong {
+  font-weight: 600;
+  color: #3f3106;
+}
+.pegawai-record-note [data-slot="button"] {
+  height: 32px;
+  border-radius: 8px;
+  border-color: #dcc687;
+  background: #fff;
+  color: #5b4708;
+  box-shadow: none;
+}
+.pegawai-record-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+.pegawai-record-heading h3 {
   font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+}
+.pegawai-record-heading span {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
 }
 .pegawai-aliases {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.pegawai-roster .ledger-members-head {
+.pegawai-aliases li {
+  padding: 4px 10px;
+  border: 1px solid var(--ledger-line-soft);
+  border-radius: 7px;
+  background: var(--ledger-tint);
+  font-size: var(--type-data);
+  color: var(--ledger-text);
+}
+.pegawai-months {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
   background: var(--ledger-tint);
 }
-.pegawai-member {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+.pegawai-months-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
 }
-.pegawai-member .ledger-member-who {
+.pegawai-months-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.pegawai-trip-title {
+.pegawai-months-grid li {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-height: 46px;
+  padding: 6px 2px;
+  border-radius: 8px;
+  background: #e6ebf1;
+  color: var(--ledger-muted);
+}
+.pegawai-months-grid li > span {
+  font-size: var(--type-micro);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.pegawai-months-grid li > b {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  line-height: 1.1;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.pegawai-months-grid li[data-level="0"] > b {
+  font-weight: 500;
+  opacity: 0.6;
+}
+.pegawai-months-grid li[data-level="1"] { background: var(--pegawai-l2); color: var(--ledger-navy-deep); }
+.pegawai-months-grid li[data-level="2"] { background: var(--pegawai-l3); color: #fff; }
+.pegawai-months-grid li[data-level="3"] { background: var(--pegawai-l4); color: #fff; }
+
+/* Tabel perjalanan di dalam berkas. */
+.pegawai-trip-table-wrap {
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  overflow: clip;
+}
+.pegawai-trip-table-wrap [data-slot="table-container"] {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b6c5d3 transparent;
+}
+.pegawai-trip-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 640px;
+  font-size: var(--type-data);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.pegawai-trip-table th {
+  height: 40px;
+  padding: 0 14px;
+  background: var(--ledger-tint);
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.pegawai-trip-table td {
+  padding: 12px 14px;
+  vertical-align: top;
+  white-space: normal;
+  line-height: 1.5;
+  color: var(--ledger-text);
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.pegawai-trip-table tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+.pegawai-trip-table tbody > tr:hover > td {
+  background: #f8fafc;
+}
+/* Lebar tetap: kolom perjalanan mengambil sisa ruang dan judul melipat maksimal dua baris. */
+.pegawai-trip-table [data-column="dates"] { width: 156px; white-space: nowrap; }
+.pegawai-trip-table [data-column="cost"] { width: 136px; text-align: right; white-space: nowrap; }
+.pegawai-trip-table [data-column="open"] { width: 116px; text-align: right; }
+.pegawai-trip-table .pegawai-trip-meta {
+  margin-top: 3px;
+}
+.pegawai-trip-dates,
+.pegawai-trip-days,
+.pegawai-trip-people {
+  display: block;
+}
+.pegawai-trip-people {
+  margin-top: 2px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.pegawai-trip-dates {
   font-weight: 600;
   color: var(--ledger-ink);
-  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.pegawai-trip-days {
+  margin-top: 2px;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.pegawai-trip-title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ledger-ink);
+  overflow-wrap: anywhere;
+}
+.pegawai-trip-amount {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.pegawai-open-archive[data-slot="button"] {
+  height: 30px;
+  border-radius: 8px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-action);
+}
+.pegawai-open-archive[data-slot="button"]:hover {
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+}
+/* Daftar perjalanan untuk layar sempit. */
+.pegawai-trip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ledger-line-soft);
+}
+.pegawai-trip-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.pegawai-trip-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 .pegawai-trip-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 14px;
+  gap: 2px 12px;
   font-size: var(--type-meta);
   color: var(--ledger-muted);
   font-variant-numeric: tabular-nums;
@@ -365,85 +1179,36 @@
   letter-spacing: 0.01em;
   color: var(--ledger-text);
 }
-.pegawai-member .ledger-member-cost {
-  align-self: start;
-}
-.pegawai-open[data-slot="button"] {
-  height: 32px;
-  align-self: start;
-}
-.pegawai-roster-empty {
-  padding: 22px 18px;
-  font-size: var(--type-data);
-  line-height: 1.6;
-  color: var(--ledger-muted);
-}
-.pegawai-detail-foot {
+.pegawai-trip-cost {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  padding-top: 2px;
-  font-size: var(--type-meta);
-  color: var(--ledger-muted);
-}
-.pegawai-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
+  align-items: baseline;
   gap: 8px;
 }
-.pegawai-detail-actions [data-slot="button"] {
-  height: 34px;
-  border-radius: 9px;
-  border-color: #d3dbe4;
-  box-shadow: none;
+.pegawai-trip-cost strong {
+  font-size: 1rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
 }
-.pegawai-detail-actions [data-slot="button"].is-danger {
-  color: var(--ledger-danger);
-}
-.pegawai-detail-actions [data-slot="button"].is-danger:hover {
-  background: #fbeeed;
-}
-
-/* ----- Kartu ponsel ----- */
-.pegawai-card-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-  margin-top: 10px;
-}
-.pegawai-card-meta > div {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-.pegawai-card-meta dt {
+.pegawai-trip-cost small {
   font-size: var(--type-micro);
   color: var(--ledger-muted);
 }
-.pegawai-card-meta dd {
-  margin: 0;
-  font-size: var(--type-meta);
-  color: var(--ledger-ink);
-  overflow-wrap: anywhere;
+.pegawai-trip-list .pegawai-open-archive[data-slot="button"] {
+  justify-self: start;
 }
-.pegawai-card-meta dd.pegawai-nip {
+.pegawai-record-empty {
+  padding: 18px 16px;
+  border-radius: 12px;
+  background: var(--ledger-tint);
   font-size: var(--type-data);
-  white-space: normal;
-}
-
-/* ----- Catatan kaki ----- */
-.pegawai-footnote {
-  margin: 14px 4px 0;
-  max-width: 92ch;
-  font-size: var(--type-meta);
   line-height: 1.6;
   color: var(--ledger-muted);
 }
 
-/* ----- Formulir: lembar isian dengan kepala biru laut ----- */
+/* ----- Formulir dan dialog hapus ----- */
 .pegawai-dialog[data-slot="dialog-content"] {
   max-width: 640px;
 }
@@ -470,88 +1235,320 @@
 }
 
 /* ----- Responsif ----- */
-@media (max-width: 1250px) {
-  .pegawai-index-all {
-    min-width: 136px;
-    padding-inline: 18px;
-  }
-  .pegawai-group strong {
-    font-size: 1.1875rem;
+@media (max-width: 1400px) {
+  .pegawai-body {
+    grid-template-columns: 216px minmax(0, 1fr);
+    gap: 20px;
   }
 }
-@media (max-width: 900px) {
-  .pegawai-index {
-    flex-direction: column;
+@media (max-width: 1250px) {
+  .pegawai-body {
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 18px;
   }
-  .pegawai-index-all {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    min-width: 0;
-    padding: 12px 20px;
-    border-right: 0;
-    border-bottom: 1px solid var(--ledger-line);
-  }
-  .pegawai-index-all[aria-pressed="true"]::after {
-    left: 20px;
-    right: 20px;
-  }
-  .pegawai-detail-grid {
+}
+@media (max-width: 1050px) {
+  .pegawai-body {
     grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
-  .ledger-register-tools .custom-select.pegawai-sort {
-    flex: 1;
+  .pegawai-index {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    margin-left: 0;
+    padding: 0;
+    scrollbar-gutter: auto;
+  }
+  .pegawai-index-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 14px 0 12px;
+    border: 1px solid #cfd8e2;
+    border-radius: 10px;
+    background: var(--ledger-surface);
+    font-size: var(--type-label);
+    font-weight: 600;
+    color: var(--ledger-ink);
+  }
+  .pegawai-index-toggle svg {
+    color: var(--ledger-muted);
+  }
+  .pegawai-index-toggle b {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--ledger-navy);
+    color: #fff;
+    font-size: var(--type-micro);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .pegawai-index[data-open="true"] .pegawai-index-toggle {
+    border-color: var(--ledger-navy);
+  }
+  .pegawai-index-panel {
+    display: none;
+  }
+  .pegawai-index[data-open="true"] .pegawai-index-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 32px;
+    margin-top: 10px;
+    padding: 16px 20px 20px;
+    border: 1px solid var(--ledger-line);
+    border-radius: 14px;
+    background: var(--ledger-surface);
+  }
+  .pegawai-index-total {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+  .pegawai-index-total strong {
+    font-size: 1.75rem;
+  }
+  .pegawai-facet:not(:disabled):hover,
+  .pegawai-facet[aria-pressed="true"] {
+    background: var(--ledger-tint);
+  }
+  .pegawai-facet[aria-pressed="true"] {
+    box-shadow: none;
   }
 }
 @media (max-width: 760px) {
-  .pegawai-page .ledger-year strong {
-    font-size: 0.9375rem;
+  .pegawai-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 16px;
   }
-  .pegawai-index-all {
-    padding-inline: 16px;
+  .pegawai-head h1 {
+    font-size: 1.5rem;
   }
-  .pegawai-index-all[aria-pressed="true"]::after {
-    left: 16px;
-    right: 16px;
+  .pegawai-add[data-slot="button"] {
+    align-self: flex-start;
   }
-  .pegawai-group {
-    padding: 10px 4px 9px;
+  .pegawai-index[data-open="true"] .pegawai-index-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 14px 16px 16px;
   }
-  .pegawai-group strong {
-    font-size: 1.0625rem;
+  .pegawai-roster {
+    border-radius: 14px;
   }
-  .pegawai-group.is-none span {
-    font-size: var(--type-micro);
-    text-align: center;
+  .pegawai-toolbar {
+    padding: 12px 14px 10px;
+  }
+  .pegawai-search {
+    flex-basis: 100%;
+  }
+  .pegawai-toolbar .custom-select.pegawai-sort {
+    flex: 1 1 168px;
+    min-width: 0;
+  }
+  .pegawai-scope,
+  .pegawai-error {
+    padding-inline: 14px;
   }
   .pegawai-error {
-    margin-inline: 16px;
-  }
-  .pegawai-footnote {
     margin-inline: 0;
   }
-  .pegawai-member {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .pegawai-cards {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--ledger-line);
   }
-  .pegawai-member .ledger-member-cost {
-    align-self: auto;
+  .pegawai-card {
+    position: relative;
+    padding: 14px 14px 14px 16px;
+    border-bottom: 1px solid var(--ledger-line-soft);
   }
-  .pegawai-open[data-slot="button"] {
-    grid-column: 1 / -1;
-    justify-self: start;
+  .pegawai-cards li:last-child .pegawai-card {
+    border-bottom: 0;
+  }
+  .pegawai-card[data-open="true"] {
+    background: #f6f8fb;
+    box-shadow: inset 3px 0 var(--ledger-gold);
+  }
+  .pegawai-card .pegawai-identity {
+    align-items: flex-start;
+    max-width: none;
+  }
+  .pegawai-card .pegawai-identity > div {
+    flex: 1;
+  }
+  .pegawai-card .pegawai-name::after {
+    content: "";
+    position: absolute;
+    inset: -14px 44px -14px -16px;
+  }
+  .pegawai-card .pegawai-menu {
+    position: relative;
+    z-index: 1;
+    margin: -4px -4px 0 0;
   }
   .pegawai-card-meta {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    margin: 12px 0 0 50px;
+  }
+  .pegawai-card-meta > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .pegawai-card-meta dt {
+    font-size: var(--type-micro);
+    color: var(--ledger-muted);
+  }
+  .pegawai-card-meta dd {
+    margin: 0;
+    font-size: var(--type-data);
+    color: var(--ledger-ink);
+    overflow-wrap: anywhere;
+  }
+  .pegawai-card-meta dd.pegawai-nip {
+    white-space: normal;
+  }
+  .pegawai-card-meta dd small {
+    font-size: var(--type-meta);
+    color: var(--ledger-muted);
+  }
+  .pegawai-pagination {
+    padding: 12px 14px;
+    gap: 10px 14px;
+  }
+  .pegawai-pagination p {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+  .pegawai-page-size {
+    margin-right: auto;
+  }
+  .pegawai-record-bar {
+    padding: 10px 14px 10px 8px;
+  }
+  .pegawai-record-nav span {
+    min-width: 0;
+  }
+  .pegawai-record-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px 18px 22px;
+  }
+  .pegawai-record-head::after {
+    left: 18px;
+    right: 18px;
+  }
+  .pegawai-record-who {
+    gap: 12px;
+  }
+  .pegawai-mono.is-record {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    font-size: 1.0625rem;
+  }
+  .pegawai-record-head h2 {
+    font-size: 1.25rem;
+  }
+  .pegawai-record-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+  }
+  .pegawai-record-ids {
+    gap: 12px 28px;
+  }
+  .pegawai-record-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+    padding: 14px 18px;
+  }
+  .pegawai-record-stats > div,
+  .pegawai-record-stats > div + div {
+    padding: 0;
+    border-left: 0;
+  }
+  .pegawai-record-stats dd {
+    font-size: 1.125rem;
+    white-space: normal;
+  }
+  .pegawai-record-body {
+    gap: 22px;
+    padding: 18px 18px 22px;
+  }
+  .pegawai-record-note {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .pegawai-record-note [data-slot="button"] {
+    justify-self: start;
+  }
+}
+@media (max-width: 400px) {
+  .pegawai-card-meta {
+    margin-left: 0;
+  }
+  .pegawai-card-meta > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .pegawai-months-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pegawai-group,
-  .pegawai-index-all {
+  .pegawai-facet,
+  .pegawai-status > button,
+  .pegawai-search,
+  .pegawai-chips button,
+  .pegawai-table td {
+    transition: none;
+  }
+  .pegawai-back,
+  .pegawai-back svg {
     transition: none;
   }
 }
 @media print {
-  .pegawai-index {
+  .pegawai-index,
+  .pegawai-toolbar,
+  .pegawai-pagination,
+  .pegawai-add,
+  .pegawai-row-tools,
+  .pegawai-record-bar,
+  .pegawai-record-actions,
+  .pegawai-open-archive {
     display: none;
+  }
+  .pegawai-record-head {
+    background: none;
+    color: var(--ledger-ink);
+    border-bottom: 2px solid var(--ledger-navy);
+  }
+  .pegawai-record-head h2,
+  .pegawai-record-head p,
+  .pegawai-record-ids dt,
+  .pegawai-record-ids dd,
+  .pegawai-record-kind {
+    color: inherit;
+  }
+  .pegawai-roster {
+    border: 0;
+    box-shadow: none;
+  }
+  .pegawai-table-wrap [data-slot="table-container"] {
+    max-height: none;
+    overflow: visible;
   }
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from "react";
 import {
-  Camera, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, FolderOpen, ImagePlus,
-  LoaderCircle, MapPin, Search, Trash2, X,
+  ArrowLeft, BedDouble, Camera, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, FileBadge, FileCheck,
+  FileSignature, FileText, FolderOpen, ImagePlus, LoaderCircle, Paperclip, Receipt, Search, Ticket, Trash2, X, type LucideIcon,
 } from "lucide-react";
 import { dateText, docLabels, type DocumentItem, type Trip } from "@/lib/model";
 import { api, Empty, ErrorMessage } from "./fields";
@@ -12,16 +12,22 @@ import { CustomSelect, SelectOption } from "./ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 
 /*
-  Dokumen: daftar kelengkapan berkas.
+  Dokumen: papan kelengkapan berkas.
   Setiap rekap adalah satu map; setiap jenis dokumen adalah satu kantong di dalam map.
-  Tabel di kiri adalah matriks kelengkapan (baris rekap, kolom jenis dokumen);
-  panel di kanan adalah map yang sedang terbuka, tempat foto dijatuhkan ke kantongnya.
+  Papan di atas merangkum tujuh jenis dokumen sekaligus menjadi saringan; daftar di bawahnya
+  adalah matriks kelengkapan (baris map, kolom jenis dokumen). Map yang dibuka menggantikan
+  daftar di bingkai yang sama, dengan kantong-kantong sebagai zona jatuh berkas.
 */
 
 export const docTypes = ["spt", "sppd", "report", "receipt", "ticket", "hotel", "other"] as const;
 export type DocType = (typeof docTypes)[number];
 export const docShort: Record<DocType, string> = {
   spt: "SPT", sppd: "SPPD", report: "Laporan", receipt: "Kuitansi", ticket: "Tiket", hotel: "Hotel", other: "Lainnya",
+};
+
+/* Ikon tiap jenis dokumen pada papan kelengkapan. */
+const docIcons: Record<DocType, LucideIcon> = {
+  spt: FileSignature, sppd: FileBadge, report: FileCheck, receipt: Receipt, ticket: Ticket, hotel: BedDouble, other: Paperclip,
 };
 
 /* Empat berkas baku perjalanan dinas; berlaku bila rekap tidak menetapkan daftar sendiri. */
@@ -92,12 +98,26 @@ const tripDates = (t: Trip) => t.startDate === t.endDate
   : `${dateText(t.startDate, { day: "numeric", month: "short" })} – ${dateText(t.endDate)}`;
 
 type SlotState = { uploading?: string; error?: string };
+type FolderNav = { index: number; total: number; prev: (() => void) | null; next: (() => void) | null; nextIncomplete: (() => void) | null };
+const pageSizes = [20, 50, 100];
 
-/* Lebar map di samping (px): baku 420, dijepit 300–620 dan tidak memakan matriks. */
-const SIDE_DEFAULT = 420;
-const SIDE_MIN = 300;
-const SIDE_MAX = 620;
-const SIDE_KEY = "dokumen-side-width";
+/* Layar sempit memakai kartu, bukan matriks; hanya satu yang dirender. */
+const narrowQuery = "(max-width: 760px)";
+function subscribeNarrow(callback: () => void) {
+  const media = window.matchMedia(narrowQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+const useIsNarrow = () => useSyncExternalStore(subscribeNarrow, () => window.matchMedia(narrowQuery).matches, () => false);
+
+const cellState = (slot: Slot) => (slot.docs.length ? "present" : slot.required ? "missing" : "none");
+const cellLabel = (f: Folder, slot: Slot) => {
+  const state = cellState(slot);
+  return `${docLabels[slot.type]}: ${state === "present" ? `${slot.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`;
+};
+const folderStateText = (f: Folder) => f.required
+  ? (f.complete ? "lengkap" : f.present === 0 ? "belum ada berkas" : `kurang ${f.missing.map((m) => docShort[m]).join(", ")}`)
+  : f.trip.documents.length ? `${f.trip.documents.length} berkas, tanpa syarat` : "kosong, tanpa syarat";
 
 export default function Dokumen({ trips, onChange, notify, onOpen }: {
   trips: Trip[];
@@ -118,63 +138,34 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
   const [openId, setOpenId] = useState<string | null>(null);
   const [focusType, setFocusType] = useState<DocType | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
-  const [narrow, setNarrow] = useState(false);
-  const [phone, setPhone] = useState(false);
   const [slotState, setSlotState] = useState<Record<string, SlotState>>({});
-  const [sideWidth, setSideWidth] = useState(SIDE_DEFAULT);
-  const [splitDragging, setSplitDragging] = useState(false);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(pageSizes[0]);
+  const narrow = useIsNarrow();
   const searchRef = useRef<HTMLInputElement>(null);
+  const rosterRef = useRef<HTMLElement>(null);
   const busyRef = useRef(false);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const splitStart = useRef({ x: 0, width: SIDE_DEFAULT });
-
-  const clampSide = useCallback((value: number) => {
-    const body = bodyRef.current?.clientWidth ?? 1200;
-    const max = Math.max(SIDE_MIN, Math.min(SIDE_MAX, body - 360));
-    return Math.min(max, Math.max(SIDE_MIN, Math.round(value)));
-  }, []);
-  useEffect(() => {
-    try {
-      const saved = Number(window.localStorage.getItem(SIDE_KEY));
-      if (Number.isFinite(saved) && saved > 0) setSideWidth(Math.min(SIDE_MAX, Math.max(SIDE_MIN, Math.round(saved))));
-    } catch { /* abaikan: penyimpanan tidak tersedia */ }
-  }, []);
-  useEffect(() => {
-    try { window.localStorage.setItem(SIDE_KEY, String(Math.round(sideWidth))); } catch { /* abaikan */ }
-  }, [sideWidth]);
-  useEffect(() => {
-    if (!splitDragging) return;
-    const style = document.body.style;
-    const cursor = style.cursor;
-    const select = style.userSelect;
-    style.cursor = "col-resize";
-    style.userSelect = "none";
-    return () => { style.cursor = cursor; style.userSelect = select; };
-  }, [splitDragging]);
 
   useEffect(() => {
     if (year !== "all" && !years.includes(year)) setYear(years[0] ?? "all");
   }, [years, year]);
-  useEffect(() => {
-    const tablet = window.matchMedia("(max-width: 1100px)");
-    const handset = window.matchMedia("(max-width: 760px)");
-    const apply = () => { setNarrow(tablet.matches); setPhone(handset.matches); };
-    apply();
-    tablet.addEventListener("change", apply);
-    handset.addEventListener("change", apply);
-    return () => { tablet.removeEventListener("change", apply); handset.removeEventListener("change", apply); };
-  }, []);
+  /* "/" memfokuskan pencarian (menutup map bila terbuka); Escape kembali ke daftar selama penampil tidak terbuka. */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "Escape" && openId && !document.querySelector('[data-slot="dialog-content"]')) {
+        setOpenId(null); return;
+      }
+      if (event.key !== "/") return;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       event.preventDefault();
-      searchRef.current?.focus();
+      if (openId) { setOpenId(null); requestAnimationFrame(() => searchRef.current?.focus()); }
+      else searchRef.current?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [openId]);
 
   const inYear = useMemo(
     () => folders.filter((f) => year === "all" || f.trip.startDate.startsWith(year)),
@@ -184,6 +175,9 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
     () => [...new Set(inYear.map((f) => f.trip.department))].sort((a, b) => a.localeCompare(b, "id")),
     [inYear],
   );
+  useEffect(() => {
+    if (department !== "all" && !departments.includes(department)) setDepartment("all");
+  }, [departments, department]);
   const scoped = useMemo(
     () => inYear.filter((f) => department === "all" || f.trip.department === department),
     [inYear, department],
@@ -218,22 +212,55 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
     );
     return list.sort((a, b) => b.trip.startDate.localeCompare(a.trip.startDate) || a.trip.sptNo.localeCompare(b.trip.sptNo));
   }, [scoped, kind, status, query]);
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const page = Math.min(pageIndex, pageCount - 1);
+  const pageRows = rows.slice(page * pageSize, (page + 1) * pageSize);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: kembali ke halaman pertama saat saringan berubah
+  useEffect(() => { setPageIndex(0); }, [kind, status, query, department, year, pageSize]);
 
   const open = folders.find((f) => f.trip.id === openId) ?? null;
   const viewer = open?.trip.documents.find((d) => d.id === viewerId) ?? null;
   const scopeLabel = [year === "all" ? "semua tahun" : `tahun ${year}`, department === "all" ? "" : department]
     .filter(Boolean).join(", ");
   const completeShare = summary.withRules ? Math.round((summary.complete / summary.withRules) * 100) : 0;
-  const filtered = kind !== "all" || status !== "all" || query.trim() !== "";
+
+  const chips = useMemo(() => {
+    const list: { key: string; label: string; clear: () => void }[] = [];
+    if (department !== "all") list.push({ key: "department", label: department, clear: () => setDepartment("all") });
+    if (kind !== "all") list.push({ key: "kind", label: `Belum ada ${docShort[kind]}`, clear: () => setKind("all") });
+    if (status !== "all") list.push({ key: "status", label: status === "complete" ? "Lengkap" : "Masih kurang", clear: () => setStatus("all") });
+    if (query.trim()) list.push({ key: "query", label: `“${query.trim()}”`, clear: () => setQuery("") });
+    return list;
+  }, [department, kind, status, query]);
+  const clearAll = useCallback(() => { setDepartment("all"); setKind("all"); setStatus("all"); setQuery(""); }, []);
 
   const openFolder = useCallback((id: string, type: DocType | null = null) => {
     setOpenId(id);
     setFocusType(type);
     setViewerId(null);
   }, []);
-  const reset = () => { setKind("all"); setStatus("all"); setQuery(""); };
   const patchSlot = (id: string, type: DocType, patch: SlotState) =>
     setSlotState((s) => ({ ...s, [`${id}:${type}`]: { ...s[`${id}:${type}`], ...patch } }));
+
+  /* Navigasi map mengikuti urutan daftar yang tampil; "berikutnya yang masih kurang" melingkar ke awal bila perlu. */
+  const openIndex = open ? rows.findIndex((f) => f.trip.id === open.trip.id) : -1;
+  const jumpTo = (target: Folder | undefined) => {
+    if (!target) return;
+    openFolder(target.trip.id);
+    const at = rows.findIndex((f) => f.trip.id === target.trip.id);
+    if (at >= 0) setPageIndex(Math.floor(at / pageSize));
+  };
+  const nextIncomplete = (() => {
+    if (!open) return undefined;
+    const order = openIndex >= 0 ? [...rows.slice(openIndex + 1), ...rows.slice(0, Math.max(openIndex, 0))] : rows;
+    return order.find((f) => f.required > 0 && !f.complete && f.trip.id !== open.trip.id);
+  })();
+  const nav: FolderNav = {
+    index: openIndex, total: rows.length,
+    prev: openIndex > 0 ? () => jumpTo(rows[openIndex - 1]) : null,
+    next: openIndex >= 0 && openIndex < rows.length - 1 ? () => jumpTo(rows[openIndex + 1]) : null,
+    nextIncomplete: nextIncomplete ? () => jumpTo(nextIncomplete) : null,
+  };
 
   async function upload(folder: Folder, type: DocType, files: File[]) {
     if (!files.length || busyRef.current) return;
@@ -243,7 +270,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
     patchSlot(folder.trip.id, type, { error: "" });
     try {
       for (const [index, file] of files.entries()) {
-        patchSlot(folder.trip.id, type, { uploading: files.length > 1 ? `Menyimpan ${index + 1} dari ${files.length}` : "Menyimpan foto" });
+        patchSlot(folder.trip.id, type, { uploading: files.length > 1 ? `Menyimpan ${index + 1} dari ${files.length}` : "Menyimpan berkas" });
         const data = new FormData();
         data.set("tripId", current.id);
         data.set("version", String(current.version));
@@ -303,182 +330,162 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
       busyRef.current = false;
     }
   }
+  function go(next: number) {
+    setPageIndex(next);
+    if (narrow) rosterRef.current?.scrollIntoView({ block: "start" });
+  }
 
-  const panel = open ? (
-    <MapPanel
-      key={open.trip.id}
-      folder={open}
-      focusType={focusType}
-      slotState={slotState}
-      onUpload={upload}
-      onNote={notePhysical}
-      onView={(id) => setViewerId(id)}
-      onOpenArchive={() => onOpen(open.trip.id)}
-      onClose={() => setOpenId(null)}
-      closable={narrow}
-    />
-  ) : (
-    <div className="dokumen-map dokumen-map-empty">
-      <FolderOpen aria-hidden="true" />
-      <h2>Pilih map dari daftar</h2>
-      <p>Map yang terbuka menampilkan tujuh kantong dokumen. Jatuhkan foto ke kantongnya, atau gunakan tombol Tambah foto pada setiap kantong.</p>
-    </div>
+  const identity = (f: Folder) => (
+    <button type="button" className="dokumen-open" onClick={() => openFolder(f.trip.id)} aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
+      <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
+      <span className="dokumen-names">{f.names}</span>
+      <span className="dokumen-meta">{f.trip.destination}, {tripDates(f.trip)}</span>
+    </button>
+  );
+  const stateCell = (f: Folder) => (
+    <span className={`dokumen-state ${f.complete ? "is-complete" : f.required ? "is-missing" : "is-none"}`}>
+      <b>{f.required ? `${f.present} dari ${f.required}` : f.trip.documents.length ? `${f.trip.documents.length} berkas` : "Kosong"}</b>
+      <span>{f.required ? folderStateText(f) : "tanpa syarat"}</span>
+    </span>
   );
 
   return (
     <div className="dokumen-page">
-      <header className="ledger-head">
+      <header className="dokumen-head">
         <div>
           <h1>Dokumen</h1>
-          <p>Daftar kelengkapan berkas setiap perjalanan. Foto surat tugas, SPPD, kuitansi, dan bukti lainnya tersimpan pada map perjalanannya masing-masing.</p>
+          <p>Kelengkapan berkas setiap perjalanan dinas. Foto atau PDF surat tugas, SPPD, laporan, dan bukti biaya tersimpan pada map perjalanannya.</p>
         </div>
+        <CustomSelect aria-label="Tahun pelaksanaan" className="dokumen-year" value={year}
+          onValueChange={(v) => { setYear(v); setOpenId(null); }}>
+          {years.map((y) => <SelectOption key={y} value={y}>Tahun {y}</SelectOption>)}
+          <SelectOption value="all">Semua tahun</SelectOption>
+        </CustomSelect>
       </header>
 
-      <nav className="ledger-years" aria-label="Tahun pelaksanaan">
-        {years.map((y) => (
-          <button type="button" key={y} className="ledger-year" aria-pressed={year === y} onClick={() => { setYear(y); setOpenId(null); }}>
-            <strong>{y}</strong>
-            <span>{folders.filter((f) => f.trip.startDate.startsWith(y)).length} map</span>
-          </button>
-        ))}
-        <button type="button" className="ledger-year ledger-year-all" aria-pressed={year === "all"} onClick={() => { setYear("all"); setOpenId(null); }}>
-          <strong>Semua</strong>
-          <span>{folders.length} map</span>
-        </button>
-      </nav>
-
-      <section className="ledger-sheet dokumen-sheet" aria-label="Daftar kelengkapan berkas">
-        {!phone && <div className="dokumen-index" role="group" aria-label="Jenis dokumen">
-          <button type="button" className="dokumen-index-all" aria-pressed={kind === "all"} onClick={() => setKind("all")}>
-            <strong>Semua jenis</strong>
-            <span>{scoped.length} map</span>
-          </button>
-          <div className="dokumen-kinds">
+      {!open && (
+        <section className="dokumen-board" aria-labelledby="dokumen-board-title">
+          <div className="dokumen-board-head">
+            <div>
+              <h2 id="dokumen-board-title">Kelengkapan berkas, {scopeLabel}</h2>
+              <p>Angka pada tiap jenis dokumen adalah map yang sudah punya berkasnya dari seluruh map yang memerlukannya. Pilih jenis untuk melihat map yang masih kekurangannya.</p>
+            </div>
+            <div className="dokumen-board-total" role="group" aria-label="Map dengan berkas lengkap">
+              {summary.withRules
+                ? <p><strong>{summary.complete.toLocaleString("id-ID")}</strong><span>dari {summary.withRules} map lengkap</span></p>
+                : <p className="is-empty">Belum ada map dengan syarat dokumen</p>}
+              <div className="dokumen-board-bar" role="img" aria-label={`${completeShare} persen map lengkap`}>
+                <span style={{ width: `${completeShare}%` }} />
+              </div>
+              <ul className="dokumen-board-facts">
+                <li><strong>{summary.photos}</strong> foto</li>
+                <li><strong>{summary.pdfs}</strong> PDF</li>
+                <li><strong>{summary.physical}</strong> catatan fisik</li>
+                {summary.empty > 0 && <li className="is-warning"><strong>{summary.empty}</strong> map kosong</li>}
+              </ul>
+            </div>
+          </div>
+          <ol className="dokumen-board-kinds">
             {docTypes.map((type) => {
               const counts = kindCounts.get(type)!;
-              const disabled = counts.present === 0 && counts.missing === 0;
+              const total = counts.present + counts.missing;
+              const share = total ? Math.round((counts.present / total) * 100) : 0;
+              const idle = total === 0;
+              const Icon = docIcons[type];
               return (
-                <button type="button" key={type} className="dokumen-kind" aria-pressed={kind === type} disabled={disabled}
-                  data-missing={counts.missing > 0 ? "true" : undefined}
-                  aria-label={`${docLabels[type]}: ${counts.present} map sudah ada, ${counts.missing} map belum ada`}
-                  title={docLabels[type]}
-                  onClick={() => setKind(kind === type ? "all" : type)}>
-                  <strong>{docShort[type]}</strong>
-                  <span><b>{counts.present}</b> ada</span>
-                  <span className={counts.missing ? "is-missing" : ""}>
-                    {disabled ? "tidak ada" : counts.missing ? <><b>{counts.missing}</b> belum</> : "lengkap"}
-                  </span>
-                </button>
+                <li key={type}>
+                  <button type="button" className="dokumen-board-kind" aria-pressed={kind === type} disabled={idle && kind !== type}
+                    data-missing={counts.missing > 0 ? "true" : undefined}
+                    aria-label={`${docLabels[type]}: ${counts.present} map sudah ada, ${counts.missing} map belum ada`}
+                    onClick={() => setKind(kind === type ? "all" : type)}>
+                    <span className="dokumen-board-tile" aria-hidden="true">
+                      <Icon size={20} strokeWidth={1.75} />
+                      <span className="dokumen-board-count">
+                        {idle ? <b>–</b> : <><b>{counts.present}</b><small>/{total}</small></>}
+                      </span>
+                      <span className="dokumen-board-fill"><i style={{ width: `${share}%` }} /></span>
+                    </span>
+                    <strong>{docShort[type]}</strong>
+                    <span className="dokumen-board-figure">
+                      {idle ? "tidak diminta" : counts.missing ? <><b>{counts.missing}</b> belum</> : <><b>{counts.present}</b> lengkap</>}
+                    </span>
+                  </button>
+                </li>
               );
             })}
-          </div>
-        </div>}
+          </ol>
+        </section>
+      )}
 
-        <div className="ledger-summary dokumen-summary" role="group" aria-label={`Ringkasan kelengkapan ${scopeLabel}`}>
-          <div>
-            <span className="ledger-summary-label">Map dengan berkas lengkap, {scopeLabel}</span>
-            {summary.withRules
-              ? <p className="ledger-figure">{summary.complete.toLocaleString("id-ID")}<small>dari {summary.withRules} map</small></p>
-              : <p className="ledger-figure is-empty">Belum ada map</p>}
-            <div className="ledger-summary-facts">
-              <span><strong>{summary.photos}</strong> foto</span>
-              <span><strong>{summary.pdfs}</strong> PDF</span>
-              <span><strong>{summary.physical}</strong> catatan berkas fisik</span>
-              {summary.empty > 0 && <span className="is-warning"><strong>{summary.empty}</strong> map masih kosong</span>}
+      <section className={`dokumen-roster ${open ? "is-folder" : ""}`} ref={rosterRef} aria-label={open ? `Map berkas ${open.trip.sptNo || open.names}` : "Daftar map berkas"}>
+        {open ? (
+          <FolderView key={open.trip.id} folder={open} focusType={focusType} slotState={slotState} nav={nav}
+            onBack={() => setOpenId(null)} onUpload={upload} onNote={notePhysical} onView={(id) => setViewerId(id)}
+            onOpenArchive={() => onOpen(open.trip.id)} />
+        ) : <>
+          <div className="dokumen-toolbar">
+            <div className="dokumen-search">
+              <Search size={17} aria-hidden="true" />
+              <input ref={searchRef} aria-label="Cari map" aria-keyshortcuts="/" type="search" autoComplete="off"
+                placeholder="Cari nomor surat, nama pegawai, tujuan, atau lokasi map"
+                value={query} onChange={(e) => setQuery(e.target.value)} />
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
             </div>
-          </div>
-          <div>
-            <div className="ledger-summary-row"><span>Berkas lengkap</span><strong>{summary.complete} dari {summary.withRules}</strong></div>
-            <div className={`ledger-bar ${summary.withRules ? "" : "is-empty"}`} role="img" aria-label={`${completeShare} persen map berkas lengkap`}>
-              {summary.withRules > 0 && <span style={{ width: `${completeShare}%` }} />}
+            <div className="dokumen-status-switch" role="group" aria-label="Kelengkapan map">
+              <button type="button" aria-pressed={status === "all"} onClick={() => setStatus("all")}>Semua <b>{scoped.length}</b></button>
+              <button type="button" aria-pressed={status === "incomplete"} onClick={() => setStatus("incomplete")}>Masih kurang <b>{summary.withRules - summary.complete}</b></button>
+              <button type="button" aria-pressed={status === "complete"} onClick={() => setStatus("complete")}>Lengkap <b>{summary.complete}</b></button>
             </div>
-            <div className="ledger-legend">
-              <span><i /><strong>{summary.complete}</strong> lengkap</span>
-              <span><i className="draft" /><strong>{summary.withRules - summary.complete}</strong> masih kurang</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="ledger-register dokumen-register">
-        <div className="ledger-register-head dokumen-register-head">
-          <div className="ledger-register-title">
-            <h2>Daftar kelengkapan berkas</h2>
-            <span>{scopeLabel}</span>
-          </div>
-          <div className="ledger-status" role="group" aria-label="Kelengkapan map">
-            <button type="button" aria-pressed={status === "all"} onClick={() => setStatus("all")}>Semua <b>{scoped.length}</b></button>
-            <button type="button" aria-pressed={status === "incomplete"} onClick={() => setStatus("incomplete")}>Masih kurang <b>{summary.withRules - summary.complete}</b></button>
-            <button type="button" aria-pressed={status === "complete"} onClick={() => setStatus("complete")}>Lengkap <b>{summary.complete}</b></button>
-          </div>
-        </div>
-        <div className="ledger-filters dokumen-filters">
-          <div className="ledger-search">
-            <Search size={17} aria-hidden="true" />
-            <input ref={searchRef} aria-label="Cari map" aria-keyshortcuts="/"
-              placeholder="Cari nomor surat, nama pegawai, tujuan, atau lokasi map"
-              value={query} onChange={(e) => setQuery(e.target.value)} />
-            {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
-          </div>
-          <div className="ledger-filter-group">
-            {phone && (
-              <CustomSelect aria-label="Jenis dokumen" className="ledger-select dokumen-kind-select" value={kind}
-                onValueChange={(v) => setKind(v as DocType | "all")} data-active={kind !== "all"}>
-                <SelectOption value="all">Semua jenis</SelectOption>
-                {docTypes.filter((type) => kind === type || (kindCounts.get(type)?.missing ?? 0) > 0).map((type) => (
-                  <SelectOption key={type} value={type}>Perlu {docShort[type]}, {kindCounts.get(type)?.missing ?? 0} map</SelectOption>
-                ))}
-              </CustomSelect>
-            )}
-            <CustomSelect aria-label="Bidang" className="ledger-select" value={department}
-              onValueChange={(v) => { setDepartment(v); setOpenId(null); }} data-active={department !== "all"}>
+            <CustomSelect aria-label="Bidang" className="dokumen-select" value={department}
+              onValueChange={(v) => setDepartment(v)} data-active={department !== "all"}>
               <SelectOption value="all">Semua bidang</SelectOption>
               {departments.map((d) => <SelectOption key={d} value={d}>{d}</SelectOption>)}
             </CustomSelect>
           </div>
-          <div className="ledger-filters-end">
-            <span className="ledger-result"><strong>{rows.length}</strong> map</span>
+          <div className="dokumen-scope">
+            <p role="status"><strong>{rows.length.toLocaleString("id-ID")}</strong> map{chips.length > 0 && " sesuai saringan"}</p>
+            {chips.length > 0 && (
+              <ul className="dokumen-chips" aria-label="Saringan aktif">
+                {chips.map((chip) => (
+                  <li key={chip.key}>
+                    <button type="button" onClick={chip.clear} aria-label={`Hapus saringan ${chip.label}`}>{chip.label}<X size={13} aria-hidden="true" /></button>
+                  </li>
+                ))}
+                <li><button type="button" className="dokumen-chips-clear" onClick={clearAll}>Bersihkan semua</button></li>
+              </ul>
+            )}
           </div>
-        </div>
 
-        <div
-          ref={bodyRef}
-          className={`dokumen-body ${open ? "has-open" : ""}`}
-          style={!narrow ? ({ "--dokumen-side": `${sideWidth}px` } as CSSProperties) : undefined}
-        >
-          {phone && rows.length > 0 && (
+          {rows.length === 0 ? (
+            <Empty
+              icon={<FolderOpen size={28} />}
+              heading={scoped.length ? "Tidak ada map yang cocok" : "Belum ada perjalanan pada lingkup ini"}
+              description={scoped.length
+                ? "Ubah kata kunci, jenis dokumen, atau status kelengkapan."
+                : "Map berkas mengikuti arsip perjalanan. Tambahkan arsip terlebih dahulu."}
+              action={chips.length > 0 ? <Button variant="outline" size="sm" onClick={clearAll}>Bersihkan saringan</Button> : undefined}
+            />
+          ) : narrow ? (
             <ul className="dokumen-cards" aria-label="Daftar map">
-              {rows.map((f) => (
+              {pageRows.map((f) => (
                 <li key={f.trip.id} className="dokumen-card" data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
-                  <button type="button" className="dokumen-card-open" onClick={() => openFolder(f.trip.id)} aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
-                    <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
-                    <span className="dokumen-names">{f.names}</span>
-                    <span className="dokumen-meta">{f.trip.destination}, {tripDates(f.trip)}</span>
-                  </button>
+                  {identity(f)}
                   <div className="dokumen-card-marks">
-                    {f.slots.map((s) => {
-                      const state = s.docs.length ? "present" : s.required ? "missing" : "none";
-                      return (
-                        <span key={s.type} className={`dokumen-mark ${kind === s.type ? "is-active" : ""}`}>
-                          <button type="button" className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
-                            aria-label={`${docLabels[s.type]}: ${state === "present" ? `${s.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`}>
-                            {state === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
-                          </button>
-                          <small>{docShort[s.type]}</small>
-                        </span>
-                      );
-                    })}
+                    {f.slots.map((s) => (
+                      <span key={s.type} className={`dokumen-mark ${kind === s.type ? "is-active" : ""}`}>
+                        <button type="button" className="dokumen-cell" data-state={cellState(s)} onClick={() => openFolder(f.trip.id, s.type)} aria-label={cellLabel(f, s)}>
+                          {cellState(s) === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
+                        </button>
+                        <small>{docShort[s.type]}</small>
+                      </span>
+                    ))}
                   </div>
-                  <span className={`dokumen-card-state ${f.complete ? "is-complete" : f.required ? "is-missing" : "is-none"}`}>
-                    {f.required
-                      ? `${f.present} dari ${f.required}, ${f.complete ? "lengkap" : f.present === 0 ? "belum ada foto" : `kurang ${f.missing.map((m) => docShort[m]).join(", ")}`}`
-                      : f.trip.documents.length ? `${f.trip.documents.length} berkas, tanpa syarat` : "Kosong, tanpa syarat"}
-                  </span>
+                  {stateCell(f)}
                 </li>
               ))}
             </ul>
-          )}
-          <div className="dokumen-matrix-wrap" hidden={phone && rows.length > 0}>
-            {rows.length ? (
+          ) : (
+            <div className="dokumen-matrix-wrap">
               <table className="dokumen-matrix" aria-label="Matriks kelengkapan berkas">
                 <thead>
                   <tr>
@@ -489,109 +496,53 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
                       </th>
                     ))}
                     <th scope="col" className="dokumen-col-state">Kelengkapan</th>
+                    <th scope="col" className="dokumen-col-open"><span className="sr-only">Buka map</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((f) => (
-                    <tr key={f.trip.id} className="dokumen-row" data-open={open?.trip.id === f.trip.id ? "true" : undefined}
-                      data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
-                      <td className="dokumen-col-map">
-                        <button type="button" className="dokumen-open" onClick={() => openFolder(f.trip.id)} aria-expanded={open?.trip.id === f.trip.id}
-                          aria-label={`Buka map ${f.trip.sptNo || f.names}`}>
-                          <span className="dokumen-ref">{f.trip.sptNo || "Tanpa nomor ST"}</span>
-                          <span className="dokumen-names">{f.names}</span>
-                          <span className="dokumen-meta">{f.trip.destination}, {tripDates(f.trip)}</span>
-                        </button>
-                      </td>
-                      {f.slots.map((s) => {
-                        const state = s.docs.length ? "present" : s.required ? "missing" : "none";
-                        return (
-                          <td key={s.type} className={`dokumen-col-kind ${kind === s.type ? "is-active" : ""}`}>
-                            <button type="button" className="dokumen-cell" data-state={state} onClick={() => openFolder(f.trip.id, s.type)}
-                              aria-label={`${docLabels[s.type]}: ${state === "present" ? `${s.docs.length} berkas` : state === "missing" ? (f.explicit ? "belum ada, wajib" : "belum difoto") : "tidak diminta"}`}>
-                              {state === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
-                            </button>
-                          </td>
-                        );
-                      })}
-                      <td className="dokumen-col-state">
-                        {f.required ? (
-                          <span className={`dokumen-state ${f.complete ? "is-complete" : "is-missing"}`}>
-                            <b>{f.present} dari {f.required}</b>
-                            <span>{f.complete ? "lengkap" : f.present === 0 ? "belum ada foto" : `kurang ${f.missing.map((m) => docShort[m]).join(", ")}`}</span>
-                          </span>
-                        ) : (
-                          <span className="dokumen-state is-none">
-                            <b>{f.trip.documents.length ? `${f.trip.documents.length} berkas` : "Kosong"}</b>
-                            <span>tanpa syarat</span>
-                          </span>
-                        )}
+                  {pageRows.map((f) => (
+                    <tr key={f.trip.id} className="dokumen-row" data-complete={f.complete ? "true" : f.required ? "false" : "none"}>
+                      <td className="dokumen-col-map">{identity(f)}</td>
+                      {f.slots.map((s) => (
+                        <td key={s.type} className={`dokumen-col-kind ${kind === s.type ? "is-active" : ""}`}>
+                          <button type="button" className="dokumen-cell" data-state={cellState(s)} onClick={() => openFolder(f.trip.id, s.type)} aria-label={cellLabel(f, s)}>
+                            {cellState(s) === "present" ? (s.docs.length > 1 ? s.docs.length : <Check size={14} strokeWidth={2.5} aria-hidden="true" />) : null}
+                          </button>
+                        </td>
+                      ))}
+                      <td className="dokumen-col-state">{stateCell(f)}</td>
+                      <td className="dokumen-col-open">
+                        <Button variant="ghost" size="icon-sm" className="dokumen-open-folder" aria-label={`Buka map ${f.trip.sptNo || f.names}`} onClick={() => openFolder(f.trip.id)}>
+                          <ChevronRight size={16} />
+                        </Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            ) : (
-              <Empty
-                icon={<FolderOpen size={28} />}
-                heading={scoped.length ? "Tidak ada map yang cocok" : "Belum ada perjalanan pada lingkup ini"}
-                description={scoped.length
-                  ? "Ubah kata kunci, jenis dokumen, atau status kelengkapan."
-                  : "Map berkas mengikuti arsip perjalanan. Tambahkan arsip terlebih dahulu."}
-                action={filtered ? <Button variant="outline" size="sm" onClick={reset}>Tampilkan semua map</Button> : undefined}
-              />
-            )}
-          </div>
-          {!narrow && (
-            <div
-              className="dokumen-splitter"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Pengatur lebar map berkas"
-              aria-valuemin={SIDE_MIN}
-              aria-valuemax={SIDE_MAX}
-              aria-valuenow={Math.round(sideWidth)}
-              title="Seret untuk mengatur lebar, klik ganda untuk mengembalikan"
-              tabIndex={0}
-              data-dragging={splitDragging ? "true" : undefined}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch { /* abaikan: tetap seret tanpa tangkapan */ }
-                splitStart.current = { x: event.clientX, width: sideWidth };
-                setSplitDragging(true);
-              }}
-              onPointerMove={(event) => {
-                if (!splitDragging) return;
-                setSideWidth(clampSide(splitStart.current.width + (splitStart.current.x - event.clientX)));
-              }}
-              onPointerUp={() => setSplitDragging(false)}
-              onPointerCancel={() => setSplitDragging(false)}
-              onKeyDown={(event) => {
-                const step = event.shiftKey ? 48 : 16;
-                if (event.key === "ArrowLeft") { event.preventDefault(); setSideWidth(clampSide(sideWidth + step)); }
-                else if (event.key === "ArrowRight") { event.preventDefault(); setSideWidth(clampSide(sideWidth - step)); }
-                else if (event.key === "Home") { event.preventDefault(); setSideWidth(SIDE_MIN); }
-                else if (event.key === "End") { event.preventDefault(); setSideWidth(clampSide(SIDE_MAX)); }
-              }}
-              onDoubleClick={() => setSideWidth(SIDE_DEFAULT)}
-            >
-              <span aria-hidden="true" />
             </div>
           )}
-          {!narrow && <aside className="dokumen-side" aria-label="Map berkas terbuka">{panel}</aside>}
-        </div>
-        </div>
-      </section>
 
-      {narrow && open && (
-        <Dialog open onOpenChange={(o) => { if (!o) setOpenId(null); }}>
-          <DialogContent className="dokumen-map-dialog" showCloseButton={false}>
-            <DialogTitle className="sr-only">Map berkas {open.trip.sptNo || open.names}</DialogTitle>
-            <DialogDescription className="sr-only">Kantong dokumen perjalanan</DialogDescription>
-            {panel}
-          </DialogContent>
-        </Dialog>
-      )}
+          {rows.length > 0 && (
+            <div className="dokumen-pagination">
+              <p role="status">Menampilkan <strong>{page * pageSize + 1}–{Math.min((page + 1) * pageSize, rows.length)}</strong> dari <strong>{rows.length}</strong> map</p>
+              <div className="dokumen-page-size">
+                <label htmlFor="dokumen-page-size">Per halaman</label>
+                <CustomSelect id="dokumen-page-size" value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  {pageSizes.map((size) => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
+                </CustomSelect>
+              </div>
+              <nav aria-label="Halaman daftar map">
+                <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={page === 0} onClick={() => go(0)}><ChevronsLeft /></Button>
+                <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={page === 0} onClick={() => go(page - 1)}><ChevronLeft /></Button>
+                <span><strong>{page + 1}</strong> / {pageCount}</span>
+                <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={page >= pageCount - 1} onClick={() => go(page + 1)}><ChevronRight /></Button>
+                <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={page >= pageCount - 1} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
+              </nav>
+            </div>
+          )}
+        </>}
+      </section>
 
       {open && viewer && (
         <Viewer folder={open} doc={viewer} onClose={() => setViewerId(null)} onSelect={(id) => setViewerId(id)}
@@ -601,58 +552,93 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
   );
 }
 
-function MapPanel({ folder, focusType, slotState, onUpload, onNote, onView, onOpenArchive, onClose, closable }: {
+/* Map terbuka: menggantikan daftar di bingkai yang sama; tujuh kantong jadi zona jatuh berkas. */
+function FolderView({ folder, focusType, slotState, nav, onBack, onUpload, onNote, onView, onOpenArchive }: {
   folder: Folder;
   focusType: DocType | null;
   slotState: Record<string, SlotState>;
+  nav: FolderNav;
+  onBack: () => void;
   onUpload: (folder: Folder, type: DocType, files: File[]) => void;
   onNote: (folder: Folder, type: DocType, location: string) => Promise<boolean>;
   onView: (id: string) => void;
   onOpenArchive: () => void;
-  onClose: () => void;
-  closable: boolean;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fokus ulang saat berpindah map
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fokus ulang saat berpindah map atau kantong
   useEffect(() => {
-    if (!focusType || !listRef.current) return;
-    const target = listRef.current.querySelector<HTMLElement>(`[data-type="${focusType}"]`);
-    target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    target?.querySelector<HTMLElement>("label, button")?.focus({ preventScroll: true });
+    const roster = headingRef.current?.closest(".dokumen-roster");
+    if (roster && roster.getBoundingClientRect().top < 72) roster.scrollIntoView({ block: "start" });
+    if (focusType && listRef.current) {
+      const target = listRef.current.querySelector<HTMLElement>(`[data-type="${focusType}"]`);
+      target?.scrollIntoView({ block: "nearest" });
+      target?.querySelector<HTMLElement>("label, button")?.focus({ preventScroll: true });
+    } else {
+      headingRef.current?.focus({ preventScroll: true });
+    }
   }, [focusType, folder.trip.id]);
   const t = folder.trip;
   const ordered = [...folder.slots].sort((a, b) => Number(b.required) - Number(a.required));
+  const contents = [folder.photos ? `${folder.photos} foto` : "", folder.pdfs ? `${folder.pdfs} PDF` : "", folder.physical ? `${folder.physical} catatan fisik` : ""].filter(Boolean).join(", ");
   return (
-    <div className="dokumen-map">
-      <div className="dokumen-map-head">
-        <div className="dokumen-map-kicker">
-          <span>Map berkas</span>
-          {closable && (
-            <button type="button" className="dokumen-map-close" onClick={onClose} aria-label="Tutup map"><X size={18} /></button>
-          )}
-        </div>
-        <h2 className="dokumen-map-ref">{t.sptNo || "Tanpa nomor ST"}</h2>
-        <p className="dokumen-map-names">{folder.names}</p>
-        <p className="dokumen-map-meta">{t.destination}, {tripDates(t)}. Bidang {t.department}.</p>
-        <div className="dokumen-map-facts">
-          <span className={`dokumen-map-state ${folder.complete ? "is-complete" : folder.required ? "is-missing" : ""}`}>
-            {folder.required ? `${folder.present} dari ${folder.required} berkas ${folder.explicit ? "wajib" : "baku"}` : "Tanpa syarat dokumen"}
-          </span>
-          <button type="button" className="dokumen-map-link" onClick={onOpenArchive}>Buka rekap <ExternalLink size={13} aria-hidden="true" /></button>
+    <div className="dokumen-folder">
+      <div className="dokumen-folder-bar">
+        <button type="button" className="dokumen-back" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" /> Daftar map</button>
+        <div className="dokumen-folder-nav" role="group" aria-label="Pindah map">
+          <Button variant="outline" size="icon-sm" aria-label="Map sebelumnya" disabled={!nav.prev} onClick={() => nav.prev?.()}><ChevronLeft /></Button>
+          <span aria-live="polite">{nav.index >= 0 ? `${nav.index + 1} dari ${nav.total}` : "Di luar daftar"}</span>
+          <Button variant="outline" size="icon-sm" aria-label="Map berikutnya" disabled={!nav.next} onClick={() => nav.next?.()}><ChevronRight /></Button>
         </div>
       </div>
-      <div className="dokumen-map-location">
-        <MapPin size={15} aria-hidden="true" />
-        {folder.location
-          ? <span>Berkas fisik di <strong>{folder.location}</strong></span>
-          : <span className="is-empty">Lokasi berkas fisik belum dicatat</span>}
+
+      <header className="dokumen-folder-head" data-tone={folder.complete ? "complete" : folder.required ? "missing" : "none"}>
+        <div className="dokumen-folder-who">
+          <span className="dokumen-folder-kind">Map berkas</span>
+          <h2 ref={headingRef} tabIndex={-1}>{t.sptNo || "Tanpa nomor ST"}</h2>
+          <p className="dokumen-folder-names">{folder.names}</p>
+          <p className="dokumen-folder-meta">{t.destination}, {tripDates(t)}. Bidang {t.department}.</p>
+        </div>
+        <div className="dokumen-folder-actions">
+          <Button variant="outline" size="sm" onClick={onOpenArchive}><ExternalLink /> Buka rekap</Button>
+        </div>
+        <dl className="dokumen-folder-facts">
+          <div>
+            <dt>{folder.explicit ? "Berkas wajib" : "Berkas baku"}</dt>
+            <dd className={folder.complete ? "is-complete" : folder.required ? "is-missing" : ""}>
+              {folder.required ? `${folder.present} dari ${folder.required}` : "Tanpa syarat"}
+              {folder.required > 0 && (
+                <span className="dokumen-folder-steps" aria-hidden="true">
+                  {folder.slots.filter((s) => s.required).map((s) => <i key={s.type} data-done={s.docs.length > 0} />)}
+                </span>
+              )}
+            </dd>
+          </div>
+          <div><dt>Isi map</dt><dd>{contents || <span className="is-empty">Belum ada berkas</span>}</dd></div>
+          <div><dt>Lokasi berkas fisik</dt><dd>{folder.location || <span className="is-empty">Belum dicatat</span>}</dd></div>
+        </dl>
+      </header>
+
+      <div className="dokumen-folder-body">
+        {folder.missing.length > 0 && (
+          <p className="dokumen-folder-note" role="note">
+            <strong>Masih kurang {folder.missing.map((m) => docShort[m]).join(", ")}.</strong> Jatuhkan foto atau PDF ke kantongnya, atau catat lokasi berkas fisiknya.
+          </p>
+        )}
+        <ol className="dokumen-slots" ref={listRef}>
+          {ordered.map((slot) => (
+            <SlotItem key={slot.type} slot={slot} folder={folder} state={slotState[`${t.id}:${slot.type}`] ?? {}}
+              highlighted={focusType === slot.type} onUpload={onUpload} onNote={onNote} onView={onView} />
+          ))}
+        </ol>
       </div>
-      <ol className="dokumen-slots" ref={listRef}>
-        {ordered.map((slot) => (
-          <SlotItem key={slot.type} slot={slot} folder={folder} state={slotState[`${t.id}:${slot.type}`] ?? {}}
-            highlighted={focusType === slot.type} onUpload={onUpload} onNote={onNote} onView={onView} />
-        ))}
-      </ol>
+
+      <div className="dokumen-folder-foot">
+        <span>{nav.index >= 0 ? `Map ${nav.index + 1} dari ${nav.total} pada daftar` : "Map ini berada di luar saringan daftar"}</span>
+        <Button size="sm" className="dokumen-next-missing" disabled={!nav.nextIncomplete} onClick={() => nav.nextIncomplete?.()}>
+          Map berikutnya yang masih kurang <ChevronRight />
+        </Button>
+      </div>
     </div>
   );
 }
