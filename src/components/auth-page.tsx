@@ -12,7 +12,7 @@ export default function AuthPage({ children }: { children: ReactNode }) {
               src="/art/auth-archive-sketch.png"
               alt=""
               fill
-              sizes="(max-width: 760px) 65vw, (max-width: 1680px) 50vw, 820px"
+              sizes="(max-width: 760px) 65vw, 50vw"
               loading="eager"
               fetchPriority="high"
             />
