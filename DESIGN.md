@@ -46,6 +46,12 @@ The page's own device is the matrix: rows are maps (ST number in condensed figur
 
 Opening a rekap from any register shows one card of the same book. The navy head names the employee (or the participants), then their NIP, position and bidang, and carries four facts on one line: the ST number in condensed figures, destination, dates with the day count, and the realised cost in crest gold. Tabs sit on a tinted rail with the gold marker; the dialog keeps a fixed height so the rail never jumps between tabs. Ringkasan holds the full purpose text and an administrative list where unknown values read "Belum dicatat" in muted grey, never a dash. The cost tab is a small ledger (component, for whom, amount, total band) followed by payment facts; the employee list appears only when a rekap has more than one participant. Documents, history and the Lampiran 6 facts follow the same list rhythm. The `rincian-*` classes live in `src/app/arsip-rincian.css`.
 
+## Sign-in page
+
+The archive's frontispiece uses one rounded white frame with an illustrated navy panel on the left and a centered sign-in form on the right. The original white-ink sketch combines an open register, shelves of records, and an imagined Indonesian civic pavilion. It lives at `public/art/auth-archive-sketch.png`, with its generation prompt in `docs/design/auth-art-prompt.md`. The illustration uses the existing navy and white palette; the provincial crest remains the official identity.
+
+Instrument Serif is reserved for the two welcome headings; Instrument Sans remains the face for every label, control, and workspace page. The auth layout lives in `src/components/auth-page.tsx` and its styles in `src/app/auth.css`. Below 761px the art becomes a compact header above the form. Email/password sign-in, account provisioning by the administrator, and session notices keep their existing behavior.
+
 ## Brand provenance
 
 The unmodified logo at public/logo-esdm-jambi.png comes from https://esdm.jambiprov.go.id/asset_2024/ico.png, the header identity on the official provincial department website, verified 2026-09-08. It contains the Jambi provincial crest and the department wordmark. Do not substitute the national ministry logo.

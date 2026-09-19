@@ -5,7 +5,8 @@ import { useJakartaDay } from "./use-jakarta-day";
 import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useId } from "react";
+import AuthPage from "./auth-page";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-navigation";
@@ -1250,6 +1251,7 @@ function OfficialLetterhead({ compact = false }: { compact?: boolean }) {
   );
 }
 function LoginForm() {
+  const passwordId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1276,7 +1278,7 @@ function LoginForm() {
     }
   }
   return (
-    <form className="auth-form" onSubmit={submit}>
+    <form className="auth-form" onSubmit={submit} aria-busy={busy}>
       {notice && (
         <p className="auth-form-notice" role="status">
           {notice}
@@ -1288,16 +1290,19 @@ function LoginForm() {
           name="email"
           placeholder="nama@instansi.go.id"
           autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
           required
-          // biome-ignore lint/a11y/noAutofocus: halaman login hanya berisi form ini, fokus langsung ke email
-          autoFocus
         />
       </Field>
-      <Field label="Kata sandi">
+      <div className="field">
+        <label className="field-label" htmlFor={passwordId}>Kata sandi</label>
         <span className="auth-password">
           <input
+            id={passwordId}
             type={showPassword ? "text" : "password"}
             name="password"
+            placeholder="Masukkan kata sandi"
             autoComplete="current-password"
             required
           />
@@ -1312,7 +1317,7 @@ function LoginForm() {
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </span>
-      </Field>
+      </div>
       <ErrorMessage message={error} />
       <Button className="auth-submit w-full" type="submit" disabled={busy}>
         {busy ? <LoaderCircle className="animate-spin" /> : null}
@@ -1327,49 +1332,7 @@ function LoginForm() {
 function Login({ forced, onClose, standalone = false }: { forced: boolean; onClose: () => void; standalone?: boolean }) {
   if (standalone) {
     return (
-      <main className="auth-page">
-        <section className="auth-brand" aria-label="Sambutan">
-          <p className="auth-brand-tag">
-            <span>Arsip perjalanan dinas</span>
-          </p>
-          <div className="auth-brand-hero">
-            <h1>
-              Arsip rapi,
-              <br />
-              laporan siap.
-            </h1>
-            <p>
-              Surat tugas, rekap biaya, honorarium, dan dokumen perjalanan
-              dinas tersimpan dalam satu ruang arsip kantor.
-            </p>
-          </div>
-        </section>
-        <section className="auth-side" aria-labelledby="auth-title">
-          <div className="auth-brand-mark">
-            <span className="auth-crest">
-              <img
-                src="/logo-jambi.svg"
-                alt="Lambang Provinsi Jambi"
-                width="100"
-                height="104"
-              />
-            </span>
-            <span className="auth-brand-label">
-              <strong>Dinas ESDM</strong>
-              <span>Provinsi Jambi</span>
-            </span>
-          </div>
-          <div className="auth-panel">
-            <h2 id="auth-title">Masuk</h2>
-            <p>Masukkan email dan kata sandi akun Anda untuk membuka arsip kantor.</p>
-            <LoginForm />
-          </div>
-          <footer className="auth-foot">
-            <span>© {new Date().getFullYear()} Dinas ESDM Provinsi Jambi</span>
-            <span>Akses hanya untuk pengguna terdaftar</span>
-          </footer>
-        </section>
-      </main>
+      <AuthPage><LoginForm /></AuthPage>
     );
   }
   return (
