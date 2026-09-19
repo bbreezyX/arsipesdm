@@ -7,6 +7,7 @@ import { can, canAccessSection } from "@/lib/permissions";
 import { visibleTrips } from "@/lib/archive-access";
 import { redirect } from "next/navigation";
 import { sectionPaths } from "@/lib/workspace-navigation";
+import { OnboardingProvider } from "./onboarding";
 export default async function WorkspacePage({ initialSection = "archives" }: { initialSection?: Section }) {
   try {
     const c = await context();
@@ -18,17 +19,19 @@ export default async function WorkspacePage({ initialSection = "archives" }: { i
       can(c.user, "archives:write") ? getDepartments() : [],
     ]);
     return (
-      <Workspace
-        initialSection={initialSection}
-        initialTrips={visibleTrips(trips, c.user)}
-        initialEmployees={employees}
-        initialHonorariums={honorariums}
-        departments={departments}
-        initialNow={new Date().toISOString()}
-        user={c.user}
-        demo={c.workspace === "demo"}
-        session={c.session}
-      />
+      <OnboardingProvider key={c.user.id} user={c.user} demo={c.workspace === "demo"}>
+        <Workspace
+          initialSection={initialSection}
+          initialTrips={visibleTrips(trips, c.user)}
+          initialEmployees={employees}
+          initialHonorariums={honorariums}
+          departments={departments}
+          initialNow={new Date().toISOString()}
+          user={c.user}
+          demo={c.workspace === "demo"}
+          session={c.session}
+        />
+      </OnboardingProvider>
     );
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

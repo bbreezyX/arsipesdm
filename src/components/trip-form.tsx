@@ -1,4 +1,5 @@
 "use client";
+import { OnboardingHint } from "./onboarding";
 import { Combobox } from "./ui/combobox";
 import DestinationFields from "./destination-fields";
 import AccountCodeField from "./account-code-field";
@@ -180,6 +181,7 @@ function GeneralTripForm({
         </DialogHeader>
         <form onSubmit={save} className="editor-form">
           <div className="form-body">
+            {!trip && <OnboardingHint id="create-archive" />}
             <section className="form-section">
               <h3>
                 <MapPin size={17} /> Informasi perjalanan

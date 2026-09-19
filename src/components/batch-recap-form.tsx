@@ -1,4 +1,5 @@
 "use client";
+import { OnboardingHint } from "./onboarding";
 
 import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, FileSpreadsheet, LoaderCircle, Save } from "lucide-react";
@@ -163,6 +164,7 @@ export default function BatchRecapForm({ initialState, knownPeople, departments,
           </TabsList>
         </Tabs>
         <div className="form-body lampiran-form-body batch-form-body">
+          {step === 0 && <OnboardingHint id="create-archive" />}
           <h2 ref={heading} tabIndex={-1} className="sr-only">{steps[step]}</h2>
           <fieldset disabled={busy} className="batch-fields">
             {step === 0 && <JourneyEmployeeWorkspace

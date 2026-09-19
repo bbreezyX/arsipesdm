@@ -2597,6 +2597,7 @@ table td {
   padding: 29px;
 }
 .help-dialog[data-slot="dialog-content"] {
+  width: calc(100% - 32px);
   max-width: 560px;
   max-height: 90dvh;
   overflow: auto;

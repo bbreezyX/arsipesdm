@@ -1,4 +1,5 @@
 "use client";
+import { OnboardingHint } from "./onboarding";
 import { Combobox } from "./ui/combobox";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { useMemo, useState } from "react";
@@ -256,6 +257,7 @@ export default function ImportDialog({
           ))}
         </div>
         <div className="import-scroll">
+          {step === 1 && <OnboardingHint id="import-excel" />}
           {step === 1 && (
             <>
               <label

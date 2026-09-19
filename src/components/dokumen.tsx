@@ -1,4 +1,5 @@
 "use client";
+import { OnboardingHint } from "./onboarding";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from "react";
 import {
@@ -363,6 +364,7 @@ export default function Dokumen({ trips, onChange, notify, onOpen }: {
         </CustomSelect>
       </header>
 
+      {!open && <OnboardingHint id="documents" />}
       {!open && (
         <section className="dokumen-board" aria-labelledby="dokumen-board-title">
           <div className="dokumen-board-head">

@@ -155,7 +155,7 @@ export default function ArchiveGroups({
         cell: ({ row }) => (
           <div className="ledger-identity">
             <button type="button"
-              className="ledger-ref"
+              className="ledger-ref" data-tour="archive-record"
               onClick={() => row.toggleExpanded()}
               aria-expanded={row.getIsExpanded()}
               aria-controls={`detail-${encodeURIComponent(row.id)}`}
@@ -317,7 +317,7 @@ export default function ArchiveGroups({
   );
 
   return (
-    <div className="ledger-register" data-density={density} ref={registerRef}>
+    <div className="ledger-register" data-tour="archive-results" data-density={density} ref={registerRef}>
       <div className="ledger-register-head">
         <div className="ledger-register-title">
           <h2>Register perjalanan</h2>
@@ -530,7 +530,7 @@ export default function ArchiveGroups({
                     aria-label={`Pilih ${reference(row.original)}`}
                   />}
                   <button type="button"
-                    className="ledger-ref"
+                    className="ledger-ref" data-tour="archive-record"
                     onClick={() => row.toggleExpanded()}
                     aria-expanded={row.getIsExpanded()}
                     aria-controls={`mobile-detail-${encodeURIComponent(row.id)}`}

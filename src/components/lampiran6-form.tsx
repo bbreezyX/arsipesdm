@@ -1,4 +1,5 @@
 "use client";
+import { OnboardingHint } from "./onboarding";
 
 import FlightCostFields from "./flight-cost-fields";
 import RecapLedger from "./recap-ledger";
@@ -390,6 +391,7 @@ export default function Lampiran6Form({
               ref={bodyRef}
             >
               <TabsContent value="journey">
+                {!trip && <OnboardingHint id="create-archive" />}
                 <section className="form-section">
                   <h3>Pegawai</h3>
                   <div className="form-grid">

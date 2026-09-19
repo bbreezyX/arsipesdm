@@ -20,7 +20,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   if (!ready) throw new Error("Test server did not become ready: " + logs);
-  for (const script of ["scripts/integration.mjs", "scripts/role-access-integration.mjs"]) {
+  for (const script of ["scripts/integration.mjs", "scripts/role-access-integration.mjs", "scripts/onboarding-integration.mjs"]) {
     const test = spawn(process.execPath, [script], {env, stdio: "inherit"});
     const [code] = await once(test, "exit");
     if (code) throw new Error(`${script} failed: ` + logs);

@@ -13,6 +13,7 @@ import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-nav
 import type { SessionInfo } from "@/lib/session-policy";
 import { takeSessionNotice } from "@/lib/session-client";
 import SessionGuard from "./session-guard";
+import { OnboardingNotice, useOnboarding } from "./onboarding";
 import { can, canAccessSection, roleLabels } from "@/lib/permissions";
 import { downloadArchiveExport } from "@/lib/archive-export-client";
 export type { Section } from "@/lib/workspace-navigation";
@@ -91,6 +92,7 @@ const Laporan = dynamic(() => import("./laporan"));
 const TripForm = dynamic(() => import("./trip-form"));
 const TripDetail = dynamic(() => import("./trip-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
+const ArchiveGuide = dynamic(() => import("./archive-guide"), { ssr: false });
 
 const sectionNames: Record<Section, string> = {
   home: "Beranda",
@@ -142,6 +144,7 @@ export default function Workspace({
   session?: SessionInfo | null;
 }) {
   const accessUser = user ?? (demo ? { role: "operator" as const } : null);
+  const onboarding = useOnboarding();
   const editable = can(accessUser, "archives:write");
   const exportable = can(accessUser, "archives:export");
   const canReadEmployees = can(accessUser, "employees:read");
@@ -169,6 +172,15 @@ export default function Workspace({
   const [importing, setImporting] = useState(false);
   const [login, setLogin] = useState(!user && !demo);
   const [help, setHelp] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (section === "archives" && url.searchParams.get("panduan") === "1") {
+      url.searchParams.delete("panduan");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      setGuideOpen(true);
+    }
+  }, [section]);
   const [navOpen, setNavOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [trashTrip, setTrashTrip] = useState<Trip | null>(null);
@@ -249,6 +261,7 @@ export default function Workspace({
   };
   const go = (s: Section, nextFilters?: Partial<Filters>) => {
     if (!canAccessSection(accessUser, s)) return;
+    setGuideOpen(false);
     if (s === "honorarium" && section !== "honorarium") {
       window.location.assign(nextFilters?.entry ? `/honorarium?entry=${nextFilters.entry}` : "/honorarium");
       return;
@@ -262,6 +275,16 @@ export default function Workspace({
     setNavOpen(false);
     setSelected(new Set());
   };
+  function startGuide() {
+    setHelp(false);
+    // Honorarium uses a separate page load in the existing workspace navigation.
+    if (section === "honorarium") {
+      window.location.assign(`${sectionPaths.archives}?panduan=1`);
+      return;
+    }
+    go("archives");
+    setGuideOpen(true);
+  }
   function update(t: Trip) {
     setTrips((ts) => {
       const i = ts.findIndex((x) => x.id === t.id);
@@ -494,11 +517,14 @@ export default function Workspace({
             )}
             <span className="topbar-divider" />
             <button type="button"
-              className="help-button"
+              className="help-button guide-button"
+              data-tour="help"
               aria-label="Buka panduan"
-              onClick={() => setHelp(true)}
+              title="Panduan penggunaan"
+              onClick={() => { setGuideOpen(false); setHelp(true); }}
             >
-              <HelpCircle size={19} />
+              <HelpCircle size={17} aria-hidden="true" />
+              <span>Panduan</span>
             </button>
             <div className="avatar header-avatar">
               {demo ? "OP" : (user?.name.slice(0, 2).toUpperCase() ?? "OP")}
@@ -506,6 +532,7 @@ export default function Workspace({
           </div>
         </header>
         <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : section === "home" ? "workspace-beranda" : ""}`}>
+          <OnboardingNotice />
           {section === "taskLetters" ? (
             <header className="ledger-head">
               <div>
@@ -514,7 +541,7 @@ export default function Workspace({
               </div>
             </header>
           ) : section === "archives" ? (
-            <header className="ledger-head">
+            <header className="ledger-head" data-tour="archive-heading">
               <div>
                 <h1>Arsip perjalanan</h1>
                 <p>Register perjalanan dinas yang sudah dilaksanakan, dikelompokkan per Surat Tugas beserta rekap dan dokumen setiap pegawai.</p>
@@ -542,7 +569,7 @@ export default function Workspace({
           )}
           {section === "archives" && (
             <>
-              <nav className="ledger-years" aria-label="Tahun pelaksanaan">
+              <nav className="ledger-years" aria-label="Tahun pelaksanaan" data-tour="archive-years">
                 {years.map((year) => (
                   <button type="button"
                     key={year}
@@ -603,7 +630,7 @@ export default function Workspace({
                   filterCount={[filters.department !== "all", filters.month !== "all"].filter(Boolean).length}
                   filters={
                     <>
-                      <div className="ledger-search">
+                      <div className="ledger-search" data-tour="archive-search">
                         <Search size={17} aria-hidden="true" />
                         <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
                           placeholder="Cari nomor surat, tujuan, atau nama pegawai" value={filters.search}
@@ -775,7 +802,7 @@ export default function Workspace({
                 ? "Ruang contoh · Semua nama, perjalanan, dan biaya bersifat fiktif."
                 : "Arsip perjalanan Dinas ESDM Provinsi Jambi"}
             </span>
-            <button type="button" onClick={() => setHelp(true)}>
+            <button type="button" onClick={() => { setGuideOpen(false); setHelp(true); }}>
               Butuh panduan? <ArrowUpRight size={12} />
             </button>
           </footer>
@@ -885,7 +912,7 @@ export default function Workspace({
         </DialogContent>
       </Dialog>
       <Dialog open={help} onOpenChange={setHelp}>
-        <DialogContent className="help-dialog">
+        <DialogContent className="help-dialog" onCloseAutoFocus={event => { if (guideOpen) event.preventDefault(); }}>
           <DialogHeader>
             <div className="dialog-kicker">
               <BookOpen size={17} /> Panduan singkat
@@ -926,6 +953,10 @@ export default function Workspace({
               </div>
             ))}
           </div>
+          <div className="help-tour-action">
+            <span>5 langkah untuk menemukan dan membaca arsip.</span>
+            <Button onClick={startGuide}><BookOpen size={16} /> {onboarding?.progress["archive-guide"] ? "Ulangi Panduan" : "Mulai Panduan"}</Button>
+          </div>
           <div className="note-box">
             <strong>Biaya dan kelengkapan</strong>
             <p>
@@ -946,6 +977,10 @@ export default function Workspace({
           </Button>}
         </DialogContent>
       </Dialog>
+      {guideOpen && section === "archives" && <ArchiveGuide
+        onClose={() => setGuideOpen(false)}
+        onError={() => { setGuideOpen(false); setToast("Panduan belum bisa dibuka. Coba lagi melalui tombol bantuan."); }}
+      />}
     </div>
   );
 }
