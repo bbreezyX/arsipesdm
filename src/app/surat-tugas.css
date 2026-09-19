@@ -117,8 +117,8 @@
 }
 .surat-month:focus-visible,
 .surat-index-all:focus-visible {
-  outline: 2px solid var(--ledger-action);
-  outline-offset: -2px;
+  outline: 1px solid var(--ledger-action);
+  outline-offset: -1px;
   z-index: 1;
 }
 
@@ -236,8 +236,8 @@
 }
 .surat-place:focus-visible,
 .surat-places-all:focus-visible {
-  outline: 2px solid var(--ledger-action);
-  outline-offset: -2px;
+  outline: 1px solid var(--ledger-action);
+  outline-offset: -1px;
   z-index: 1;
 }
 .surat-place-menu [role="menuitem"] {

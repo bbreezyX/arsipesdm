@@ -91,9 +91,8 @@ input,
 textarea {
   outline-offset: 3px;
 }
-button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #668fae;
+  outline: 1px solid #668fae;
 }
 input:not([type="checkbox"]):not([type="file"]),
 .custom-select,
@@ -113,11 +112,28 @@ textarea {
   font-size: var(--type-input);
   line-height: 1.5;
 }
-input:not([type="checkbox"]):focus,
+/* One inset stroke is shared by fields and composite search controls. */
+input:not([type="checkbox"], [type="radio"], [type="file"]):focus,
+input[type="file"]:focus-visible,
+select:focus,
 .custom-select:focus,
-textarea:focus {
-  border-color: #6e92b1;
-  box-shadow: 0 0 0 3px #375f8610;
+textarea:focus,
+.custom-select[data-state="open"],
+:is(.search-control, .ledger-search, .pegawai-search, .dokumen-search, .dropzone):focus-within {
+  border-color: var(--primary);
+  outline: 1px solid var(--primary);
+  outline-offset: -1px;
+  box-shadow: none;
+}
+/* The wrapper owns the focus border, including its search icon and clear button. */
+:is(.search-control, .ledger-search, .pegawai-search, .dokumen-search, .dropzone) input:focus {
+  outline: none;
+  box-shadow: none;
+}
+button:focus-visible,
+input:is([type="checkbox"], [type="radio"]):focus-visible {
+  outline: 1px solid #668fae;
+  outline-offset: -1px;
 }
 input::placeholder,
 textarea::placeholder {
@@ -770,10 +786,6 @@ nav {
   max-width: 410px;
   color: var(--muted);
   background: white;
-}
-.search-control:focus-within {
-  border-color: #7197b6;
-  box-shadow: 0 0 0 2px #487ba810;
 }
 .search-control input {
   width: 100%;
@@ -1778,8 +1790,8 @@ table td {
   display: none;
 }
 .archive-actions > button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
+  outline: 1px solid var(--primary);
+  outline-offset: -1px;
   z-index: 1;
 }
 .subheading {
@@ -2072,7 +2084,7 @@ table td {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px dashed #cddce8;
+  border: 1px dashed #cddce8;
   background: #f9fbfd;
   border-radius: 9px;
   padding: 30px 20px;
@@ -2673,7 +2685,7 @@ table td {
 }
 .auth-form input:not([type="checkbox"]):focus {
   background: #fff;
-  border-color: #6e92b1;
+  border-color: var(--primary);
 }
 .auth-password {
   position: relative;
@@ -4476,7 +4488,6 @@ table td {
 .custom-select > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .select-chevron { display: flex; flex: 0 0 auto; color: var(--icon); transition: transform .15s; }
 .custom-select[data-state="open"] .select-chevron { transform: rotate(180deg); }
-.custom-select[data-state="open"] { border-color: #6e92b1; box-shadow: 0 0 0 3px #375f8610; }
 .custom-select:disabled { opacity: .55; cursor: not-allowed; }
 input.select-validation { position: absolute; width: 1px !important; height: 1px; min-height: 0 !important; padding: 0 !important; opacity: 0; pointer-events: none; }
 .select-popup {
@@ -4549,18 +4560,12 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
   flex: 1;
   min-width: 0;
   width: 100%;
-  min-height: 28px;
-  padding: 3px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  outline: none;
+  min-height: 36px;
+  padding: 6px 10px;
   color: var(--ink);
   font: inherit;
   font-size: var(--type-input);
 }
-.combobox-caption:focus-within { border-bottom-color: #6e92b1; }
 .combobox-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 .combobox-options { padding: 5px; overflow-y: auto; min-height: 0; max-height: 250px; overscroll-behavior: contain; }
 .combobox-option { min-height: 40px; }
@@ -4608,7 +4613,7 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .batch-recap-dialog input[type="checkbox"] { width: 15px; height: 15px; min-height: 0; accent-color: #315d7c; flex-shrink: 0; }
 /* Outline pada label hanya untuk kontrol yang inputnya disembunyikan (radio mode isian).
    Label dengan kotak centang yang terlihat tidak diberi outline agar tidak ada dua penanda fokus. */
-.recap-entry-mode label:focus-within { outline: 2px solid #658ca9; outline-offset: 2px; }
+.recap-entry-mode label:focus-within { outline: 1px solid var(--primary); outline-offset: -1px; }
 .batch-mode-fieldset, .batch-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
 .batch-recap-dialog.batch-step-1[data-slot="dialog-content"] { max-width: 1280px; }
 .batch-recap-dialog.batch-step-2[data-slot="dialog-content"] { max-width: 940px; }
@@ -5174,7 +5179,7 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .letter-participant small { display: block; color: var(--muted); font-size: var(--type-meta); line-height: 1.6; margin-top: 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .archive-open-badge[data-slot="button"] { min-height: 28px; padding: 4px 10px; border: 1px solid #c5d5e3; border-radius: 6px; background: #edf3f8; color: var(--primary); font-size: var(--type-micro); font-weight: 600; box-shadow: none; }
 .archive-open-badge[data-slot="button"]:hover { background: #dfeaf3; border-color: #9db6cb; color: #183e5d; }
-.archive-open-badge[data-slot="button"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.archive-open-badge[data-slot="button"]:focus-visible { outline: 1px solid var(--primary); outline-offset: 3px; }
 @media (max-width: 760px) {
   .letter-breakdown-desktop { display: none; }
   .letter-breakdown-mobile { display: block; }

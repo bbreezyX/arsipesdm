@@ -70,23 +70,9 @@
   /* Ruang tetap untuk bilah gulir supaya angka pada faset tidak tertutup. */
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #c3cfdb transparent;
   /* Faset menjorok 10px ke kiri saat aktif; sediakan ruangnya di dalam kontainer gulir agar tidak terpotong. */
   margin-left: -10px;
   padding: 2px 18px 8px 10px;
-}
-.pegawai-index::-webkit-scrollbar {
-  width: 6px;
-}
-.pegawai-index::-webkit-scrollbar-track {
-  background: transparent;
-}
-.pegawai-index::-webkit-scrollbar-thumb {
-  border-radius: 6px;
-  background: #c3cfdb;
-}
-.pegawai-index:hover::-webkit-scrollbar-thumb {
-  background: #a9b8c8;
 }
 .pegawai-index-toggle {
   display: none;
@@ -162,16 +148,6 @@
   font-weight: 600;
   box-shadow: 0 0 0 1px var(--ledger-line);
 }
-.pegawai-facet[aria-pressed="true"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--ledger-navy);
-}
 .pegawai-facet[aria-pressed="true"] > b {
   color: var(--ledger-ink);
   font-weight: 600;
@@ -181,8 +157,9 @@
   cursor: default;
 }
 .pegawai-facet:focus-visible {
-  outline: 2px solid var(--ledger-action);
-  outline-offset: -2px;
+  outline: 1px solid var(--ledger-action);
+  outline-offset: -1px;
+  box-shadow: none;
 }
 .pegawai-swatch {
   flex-shrink: 0;
@@ -253,8 +230,6 @@
 }
 .pegawai-search:focus-within {
   background: var(--ledger-surface);
-  border-color: var(--ledger-action);
-  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.12);
 }
 .pegawai-search > svg {
   flex-shrink: 0;
@@ -275,11 +250,6 @@
   color: var(--ledger-ink);
   -webkit-appearance: none;
   appearance: none;
-}
-.pegawai-roster .pegawai-search input:not([type="checkbox"]):focus {
-  border: 0;
-  box-shadow: none;
-  outline: none;
 }
 .pegawai-search input::-webkit-search-cancel-button,
 .pegawai-search input::-webkit-search-decoration {
@@ -416,8 +386,33 @@
   max-height: min(70vh, 720px);
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: #b6c5d3 transparent;
   border-top: 1px solid var(--ledger-line);
+}
+
+/* Keep the scroll area stable; reveal its thumb on hover or keyboard focus. */
+:is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"]) {
+  --pegawai-scrollbar-thumb: #b6c5d3;
+  scrollbar-color: var(--pegawai-scrollbar-thumb) transparent;
+}
+:is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"])::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"])::-webkit-scrollbar-track {
+  background: transparent;
+}
+:is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"])::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: var(--pegawai-scrollbar-thumb);
+}
+@media (hover: hover) {
+  :is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"]) {
+    --pegawai-scrollbar-thumb: transparent;
+  }
+  :is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"]):hover,
+  :is(.pegawai-index, .pegawai-table-wrap [data-slot="table-container"]):has(:focus-visible) {
+    --pegawai-scrollbar-thumb: #a9b8c8;
+  }
 }
 .pegawai-table {
   min-width: 720px;
@@ -800,7 +795,7 @@
   border-radius: 4px;
 }
 .pegawai-record-head h2:focus-visible {
-  outline: 2px solid var(--ledger-gold);
+  outline: 1px solid var(--ledger-gold);
   outline-offset: 4px;
 }
 .pegawai-record-head p {

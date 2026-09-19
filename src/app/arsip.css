@@ -44,10 +44,10 @@
   color: #c9d4e2;
 }
 .official-brand {
-  height: 72px;
+  height: 64px;
   padding: 0 18px;
   gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0;
 }
 .official-brand-mark {
   width: 40px;
@@ -102,7 +102,7 @@
 .sidebar-user {
   height: auto;
   min-height: 72px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 0;
   padding: 14px 16px;
 }
 .sidebar-user strong {
@@ -542,10 +542,6 @@
   border-radius: 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.ledger-search:focus-within {
-  border-color: var(--ledger-action);
-  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.12);
-}
 .ledger-search > svg {
   flex-shrink: 0;
   color: var(--ledger-muted);
@@ -563,11 +559,6 @@
   box-shadow: none;
   font-size: var(--type-data);
   color: var(--ledger-ink);
-}
-.ledger-register .ledger-search input:not([type="checkbox"]):focus {
-  border: 0;
-  box-shadow: none;
-  outline: none;
 }
 .ledger-search kbd {
   font: inherit;
@@ -619,7 +610,7 @@
 }
 .entry-today strong { font-variant-numeric: tabular-nums; }
 .entry-today:hover { background: var(--ledger-action-soft); }
-.entry-today:focus-visible { outline: 2px solid var(--ledger-action); outline-offset: 3px; }
+.entry-today:focus-visible { outline: 1px solid var(--ledger-action); outline-offset: 3px; }
 .entry-summary-note { display: block; margin-top: 5px; }
 .ledger-summary .ledger-summary-facts > .entry-recap-count { display: inline; }
 @media (max-width: 700px) {
@@ -1792,8 +1783,8 @@
   background: var(--ledger-gold);
 }
 .lampiran-dialog .lampiran-step-tabs [data-slot="tabs-trigger"]:focus-visible {
-  outline: 2px solid var(--ledger-gold);
-  outline-offset: -2px;
+  outline: 1px solid var(--ledger-gold);
+  outline-offset: -1px;
   box-shadow: none;
   border-color: transparent;
 }
@@ -2043,13 +2034,6 @@
 .lampiran-dialog .field textarea {
   min-height: 92px;
   line-height: 1.6;
-}
-.form-dialog input:not([type="checkbox"]):not([type="file"]):not([type="radio"]):focus,
-.form-dialog .custom-select:focus,
-.form-dialog .custom-select[data-state="open"],
-.form-dialog textarea:focus {
-  border-color: var(--ledger-action);
-  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.14);
 }
 .form-dialog input[readonly]:not([type="checkbox"]) {
   background: var(--ledger-tint);
@@ -2343,7 +2327,7 @@
   background: var(--ledger-gold);
 }
 .flight-direction:focus-visible {
-  outline: 2px solid var(--ledger-gold);
+  outline: 1px solid var(--ledger-gold);
   outline-offset: 2px;
 }
 .flight-direction-label {
@@ -3372,7 +3356,7 @@
   color: #f2b3b3;
 }
 .journey-panel-heading-shared.is-in-dialog-header > .journey-section-nav button:focus-visible {
-  outline: 2px solid var(--ledger-gold);
+  outline: 1px solid var(--ledger-gold);
   outline-offset: 2px;
 }
 .journey-panel-heading-shared.is-in-dialog-header .recap-status {

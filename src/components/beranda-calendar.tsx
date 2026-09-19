@@ -45,7 +45,7 @@ export default function BerandaCalendar({ year, days, today, peak, peopleDays }:
   }));
   const currentMonth = today.startsWith(year) ? Number(today.slice(5, 7)) - 1 : -1;
   const summary = peak
-    ? `Kalender dinas ${year}: ${peopleDays} hari-pegawai bertugas, terpadat ${dateText(peak.date)} dengan ${peak.people} pegawai.`
+    ? `Kalender dinas ${year}: ${peopleDays} hari-pegawai bertugas. Pegawai dinas terbanyak pada ${dateText(peak.date)}, ${peak.people} orang.`
     : `Kalender dinas ${year}: belum ada hari bertugas yang tercatat.`;
 
   // Di layar sempit kalender bergulir; mulai dari hari ini, bukan Januari.
