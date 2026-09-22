@@ -109,6 +109,7 @@ export default function ImportDialog({
       await selectSheet(
         b,
         b.SheetNames.find((name) => lampiranHeaderRow(b.Sheets[name])) ??
+          (b.Sheets.Perjadin && b.Sheets.Perjalanan ? "Perjalanan" : undefined) ??
           b.SheetNames[0],
       );
     } catch (e) {

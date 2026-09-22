@@ -6,7 +6,7 @@ import { lampiran6Schema, lampiranCosts, lampiranReview } from "./lampiran6-sche
 import { tripSchema, totalCost, type Trip, type TripInput } from "./model";
 import { copyRecapAmount, newBatchRow, prepareRecap, setRecapAmount, sharedJourney, updateSharedJourney } from "./batch-recap";
 import { recapSectionStates } from "./recap-visual-state";
-import { createTripWorkbook } from "./export";
+import { legacyLampiranWorkbook } from "./test-lampiran6-workbook";
 import { convertLampiran6 } from "./lampiran6-import";
 import { setupTestDatabase } from "./test-database";
 
@@ -89,7 +89,7 @@ test("validation rejects inconsistent 30 percent totals and invalid inputs", () 
 
 test("30 percent basis survives Excel export and import, with legacy workbooks still manual", async () => {
   const input = withAllowance();
-  const book = await createTripWorkbook([archive(input)]);
+  const book = await legacyLampiranWorkbook([archive(input)]);
   const reopened = XLSX.read(Buffer.from(await book.xlsx.writeBuffer()), { type: "buffer", cellDates: true });
   const sheet = reopened.Sheets["Luar Daerah (Dalam Provinsi)"];
   const rows = convertLampiran6(sheet, "allowance.xlsx", "Luar Daerah (Dalam Provinsi)");

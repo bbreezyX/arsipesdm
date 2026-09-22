@@ -1,24 +1,16 @@
 import type { CellValue, Workbook, Worksheet } from "exceljs";
 import type { Trip } from "./model";
-import { totalCost, isComplete, paymentLabel, docLabels, duration } from "./model";
-import { resolveFundTrack } from "./fund-track";
-import { createLampiran6Sheet } from "./lampiran6-export";
-import { lampiranReview } from "./lampiran6-schema";
+import { addLampiran8Sheet } from "./lampiran8-export";
 import {
   addEmptyNotice,
   addTableHeader,
   addTitleBlock,
   addTotalRow,
-  appendSheetJsSheet,
-  excelDate,
   finishSheet,
   font,
-  institution,
   loadExcelJs,
   palette,
-  solid,
   styleDataRow,
-  thinBorder,
   type ColumnSpec,
   type GroupSpec,
 } from "./excel-layout";
@@ -83,47 +75,6 @@ export function addTable(book: Workbook, spec: TableSpec): Worksheet {
   return sheet;
 }
 
-// Only the purpose, the per-line destinations and the participant list wrap; other text stays on one line.
-const tripColumns: ColumnSpec[] = [
-  { header: "No", width: 5, kind: "center" },
-  { header: "ID arsip", width: 15 },
-  { header: "Uraian perjalanan", width: 50, kind: "wrap" },
-  { header: "Nomor SPT", width: 20 },
-  { header: "Nomor SPPD", width: 20 },
-  { header: "Bidang", width: 22 },
-  { header: "Tujuan", width: 26 },
-  { header: "Rincian tujuan (satu per baris)", width: 26, kind: "wrap" },
-  { header: "Cakupan perjalanan", width: 19 },
-  { header: "Provinsi tujuan", width: 15 },
-  { header: "Tanggal berangkat", width: 12, kind: "date" },
-  { header: "Tanggal pulang", width: 12, kind: "date" },
-  { header: "Lama (hari)", width: 7, kind: "int" },
-  { header: "Pegawai", width: 42, kind: "wrap" },
-  { header: "Total realisasi", width: 16, kind: "money" },
-  { header: "Sudah dibayar", width: 16, kind: "money" },
-  { header: "Status pembayaran", width: 17, kind: "center" },
-  { header: "Kelengkapan", width: 12, kind: "center" },
-  { header: "Kegiatan / subkegiatan", width: 30 },
-  { header: "Kode rekening", width: 16 },
-  { header: "Jenis dana", width: 12 },
-  { header: "Lokasi berkas fisik", width: 22 },
-  { header: "Catatan", width: 40 },
-];
-const tripGroups: GroupSpec[] = [
-  { title: "Identitas arsip", span: 6 },
-  { title: "Perjalanan", span: 7 },
-  { title: "Pegawai", span: 1 },
-  { title: "Biaya (Rp)", span: 4 },
-  { title: "Anggaran", span: 3 },
-  { title: "Berkas dan catatan", span: 2 },
-];
-const scopeLabel = (t: Trip) =>
-  t.lampiran6 ? (t.lampiran6.format === "luar-provinsi" ? "Luar Provinsi Jambi" : "Dalam Provinsi Jambi") : "";
-const provinceLabel = (t: Trip) =>
-  t.lampiran6 ? (t.lampiran6.format === "luar-provinsi" ? t.lampiran6.destinationProvince : "Jambi") : "";
-const participantName = (t: Trip, id: string) =>
-  id === "shared" ? "Biaya bersama" : (t.participants.find((p) => p.id === id)?.name ?? "");
-
 export async function createTripWorkbook(trips: Trip[], options: ExportOptions = {}) {
   const ExcelJS = await loadExcelJs();
   const XLSX = await import("xlsx");
@@ -131,206 +82,8 @@ export async function createTripWorkbook(trips: Trip[], options: ExportOptions =
   book.creator = "Arsip Perjalanan";
   book.created = options.exportedAt ?? new Date();
   book.calcProperties.fullCalcOnLoad = true;
-
-  addTable(book, {
-    name: "Perjalanan",
-    title: "REKAPITULASI ARSIP PERJALANAN DINAS",
-    columns: tripColumns,
-    groups: tripGroups,
-    rows: trips.map((t, index) => [
-      index + 1,
-      t.code,
-      t.title,
-      t.sptNo,
-      t.sppdNo,
-      t.department,
-      t.destination,
-      t.destinations?.join("\n") ?? "",
-      scopeLabel(t),
-      provinceLabel(t),
-      excelDate(t.startDate),
-      excelDate(t.endDate),
-      (row: number) => ({ formula: `L${row}-K${row}+1`, result: duration(t) }),
-      t.participants.map((p) => p.name).join("; "),
-      totalCost(t),
-      t.paid,
-      paymentLabel(t),
-      isComplete(t) ? "Lengkap" : "Draft",
-      t.activity,
-      t.account,
-      resolveFundTrack(t),
-      t.physicalLocation,
-      t.notes,
-    ]),
-    sums: [15, 16],
-    frozenColumns: 2,
-    empty: "Tidak ada rekap perjalanan pada pilihan ini.",
-  });
-
-  const costs = trips.flatMap((t) => t.costs.map((c) => ({ trip: t, cost: c })));
-  addTable(book, {
-    name: "Rincian biaya",
-    title: "RINCIAN BIAYA PERJALANAN DINAS",
-    columns: [
-      { header: "No", width: 5, kind: "center" },
-      { header: "ID arsip", width: 16 },
-      { header: "Uraian perjalanan", width: 50, kind: "wrap" },
-      { header: "Pegawai", width: 30 },
-      { header: "Kategori", width: 16 },
-      { header: "Keterangan", width: 40 },
-      { header: "Jumlah (Rp)", width: 16, kind: "money" },
-    ],
-    rows: costs.map(({ trip, cost }, index) => [
-      index + 1,
-      trip.code,
-      trip.title,
-      participantName(trip, cost.participantId),
-      cost.category,
-      cost.label,
-      cost.amount,
-    ]),
-    sums: [7],
-    frozenColumns: 2,
-    empty: "Belum ada rincian biaya yang dicatat.",
-  });
-
-  const documents = trips.flatMap((t) => t.documents.map((d) => ({ trip: t, doc: d })));
-  addTable(book, {
-    name: "Daftar dokumen",
-    title: "DAFTAR DOKUMEN PENDUKUNG PERJALANAN DINAS",
-    columns: [
-      { header: "No", width: 5, kind: "center" },
-      { header: "ID arsip", width: 16 },
-      { header: "Uraian perjalanan", width: 50, kind: "wrap" },
-      { header: "Jenis", width: 24 },
-      { header: "Bentuk", width: 10, kind: "center" },
-      { header: "Nama berkas", width: 40 },
-      { header: "Lokasi fisik", width: 30 },
-    ],
-    rows: documents.map(({ trip, doc }, index) => [
-      index + 1,
-      trip.code,
-      trip.title,
-      docLabels[doc.type],
-      doc.kind === "file" ? "Digital" : "Fisik",
-      doc.name,
-      doc.location,
-    ]),
-    frozenColumns: 2,
-    empty: "Belum ada dokumen pendukung yang dicatat.",
-  });
-
-  if (trips.some((t) => t.lampiran6)) {
-    for (const format of ["dalam-provinsi", "luar-provinsi"] as const) {
-      if (!trips.some((t) => t.lampiran6?.format === format)) continue;
-      const sheet = appendSheetJsSheet(
-        book,
-        createLampiran6Sheet(trips, XLSX, format),
-        format === "luar-provinsi" ? "Luar Daerah (Luar Provinsi)" : "Luar Daerah (Dalam Provinsi)",
-        XLSX,
-      );
-      styleLampiranSheet(sheet);
-    }
-    const reviews = trips.flatMap((t) =>
-      t.lampiran6
-        ? [...new Set([...t.lampiran6.sourceIssues, ...lampiranReview(t.lampiran6, t.startDate, t.endDate)])]
-            .map((note) => ({ trip: t, note }))
-        : [],
-    );
-    if (reviews.length)
-      addTable(book, {
-        name: "Catatan rekap",
-        title: "CATATAN PEMERIKSAAN REKAP PERJALANAN DINAS",
-        columns: [
-          { header: "No", width: 5, kind: "center" },
-          { header: "ID arsip", width: 16 },
-          { header: "Pegawai", width: 30 },
-          { header: "Uraian perjalanan", width: 40, kind: "wrap" },
-          { header: "Catatan pemeriksaan", width: 70, kind: "wrap" },
-          { header: "Sumber", width: 30 },
-        ],
-        rows: reviews.map(({ trip, note }, index) => [
-          index + 1,
-          trip.code,
-          trip.participants[0].name,
-          trip.title,
-          note,
-          trip.source,
-        ]),
-        frozenColumns: 2,
-        empty: "Tidak ada catatan pemeriksaan.",
-      });
-  }
+  addLampiran8Sheet(book, trips, XLSX);
   return book;
-}
-
-/** The source-shaped sheet keeps every cell address; only presentation changes. */
-function styleLampiranSheet(sheet: Worksheet) {
-  const width = sheet.columnCount;
-  const lastRow = sheet.rowCount;
-  // Keep related extension columns in the same colour family without moving their source addresses.
-  const sections = [
-    { ranges: [["R", "AA"]], header: "FF285E8C", body: "FFEDF4FB" }, // Biaya perjalanan dan total
-    { ranges: [["AC", "AL"], ["BP", "BR"]], header: "FF326C50", body: "FFEDF7F0" }, // Penginapan
-    { ranges: [["AM", "AO"], ["BI", "BI"]], header: "FF9A4F2F", body: "FFFCF0E8" }, // Transport darat dan mobil
-    { ranges: [["AP", "BG"]], header: "FF695096", body: "FFF3EFFA" }, // Transport udara
-    { ranges: [["BJ", "BK"], ["BM", "BM"]], header: "FF87620D", body: "FFFFF7DC" }, // BBM; BL tetap rincian tujuan
-    { ranges: [["BS", "BS"]], header: "FF1F3864" }, // Jenis dana (Keterangan BKU)
-  ];
-  const columnColors = new Map<number, (typeof sections)[number]>();
-  for (const section of sections) {
-    for (const [first, last] of section.ranges) {
-      for (let c = sheet.getColumn(first).number; c <= sheet.getColumn(last).number; c++) columnColors.set(c, section);
-    }
-  }
-  const heading = { bold: true, color: palette.black };
-  const titleFonts = [font(14, heading), font(11, heading), font(10, { color: palette.black })];
-  titleFonts.forEach((style, index) => {
-    const row = sheet.getRow(index + 1);
-    row.height = index === 0 ? 24 : 16;
-    const cell = row.getCell(1);
-    cell.font = style;
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-  });
-  for (let r = 4; r <= 6; r++) {
-    const row = sheet.getRow(r);
-    row.height = 26;
-    for (let c = 1; c <= width; c++) {
-      const cell = row.getCell(c);
-      cell.font = font(10, { bold: true, color: palette.white });
-      cell.fill = solid(columnColors.get(c)?.header ?? palette.navy);
-      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-      cell.border = thinBorder();
-    }
-  }
-  sheet.getRow(7).height = 6;
-  sheet.getRow(8).height = 6;
-  for (let r = 9; r <= lastRow; r++) {
-    const row = sheet.getRow(r);
-    for (let c = 1; c <= width; c++) {
-      const cell = row.getCell(c);
-      cell.font = font(10);
-      const colors = columnColors.get(c);
-      if (colors?.body) cell.fill = solid(colors.body);
-      cell.border = thinBorder();
-      const numeric = typeof cell.value === "number";
-      cell.alignment = {
-        vertical: "middle",
-        horizontal: numeric ? "right" : cell.value instanceof Date ? "center" : "left",
-        wrapText: c === 12 || c === 28 || c === 64 || c === 71,
-      };
-    }
-  }
-  sheet.views = [{ state: "frozen", xSplit: 2, ySplit: 6, showGridLines: false }];
-  sheet.pageSetup = {
-    orientation: "landscape",
-    paperSize: 9,
-    printTitlesRow: "4:6",
-    printTitlesColumn: "A:B",
-    margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
-  };
-  sheet.headerFooter.oddFooter = `&L&"Arial"&8${institution.footer}&R&"Arial"&8Halaman &P dari &N`;
-  sheet.properties.tabColor = { argb: "FFE8B748" };
 }
 
 export async function createTemplateWorkbook() {

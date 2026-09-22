@@ -177,8 +177,7 @@ test("atomic batch save, duplicates, retry, workspace isolation, grouping and ex
     const output = JSON.stringify(sheets);
     for (const person of people) assert.ok(output.includes(person.name));
     assert.ok(output.includes("250000"));
-    assert.ok(output.includes("REKENING-UJI-A"));
-    assert.ok(output.includes("REKENING-UJI-B"));
+    assert.deepEqual(workbook.SheetNames, ["Perjadin"]);
   } finally {
     await db.close(); await cleanupDatabase(); rmSync(directory, { recursive: true, force: true });
   }
