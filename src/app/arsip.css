@@ -1542,8 +1542,43 @@
   }
 }
 @media (max-width: 700px) {
+  /* Ponsel: tepat dua baris, yaitu remah dan tombol di atas, jam di bawah. Grid
+     (bukan flex-wrap) supaya judul halaman yang panjang terpotong, alih-alih
+     membungkus ke baris ketiga dan mendorong jam keluar dari kepala 99px
+     hingga menimpa judul halaman. Tepi kiri-kanan sama dengan isi halaman. */
   .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 56px 42px;
     height: var(--shell-header-height);
+    padding: 0 16px;
+    /* Kepala dua baris menutupi lebih banyak isi yang digulir; teks di baliknya
+       tidak boleh ikut terbaca di sela jam dan remah. */
+    background: rgba(255, 255, 255, 0.96);
+  }
+  .topbar > .breadcrumb {
+    grid-area: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .topbar .breadcrumb strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar > .topbar-right {
+    grid-area: 1 / 2;
+  }
+  .topbar > .navbar-clock {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+}
+@media (max-width: 360px) {
+  /* Ponsel sempit: nama hari mengalah supaya tanggal tidak menempel ke jam.
+     Teks lengkap tetap dibacakan lewat label sr-only jam. */
+  .navbar-clock-day {
+    display: none;
   }
 }
 @media (max-width: 400px) {
