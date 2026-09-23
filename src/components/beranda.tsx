@@ -14,6 +14,7 @@ import BerandaCalendar, { calendarLegend } from "./beranda-calendar";
 import BerandaActivity from "./beranda-activity";
 import { AnimatedNumber } from "./animated-number";
 import BerandaHero from "./beranda-hero";
+import BerandaTotal from "./beranda-total";
 import { Button } from "./ui/button";
 
 const jakartaDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -60,7 +61,7 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
   const date = new Date(now);
   const today = jakartaDate.format(date);
   const summary = useMemo(() => berandaSummary({ trips, employees, honorariums, today }), [trips, employees, honorariums, today]);
-  const { year, hero, monthlyDetails, calendar, registers, activity, latest: entries } = summary;
+  const { year, hero, monthly, monthlyDetails, calendar, registers, activity, latest: entries } = summary;
   const attention = summary.attention.filter(item => canAccessSection(accessUser, attentionCopy[item.id].section));
   const firstName = (user?.name ?? (demo ? "Operator contoh" : "Operator")).split(",")[0].trim();
   const registerItems: { section: Section; icon: typeof Archive; name: string; figure: ReactNode; unit?: string; detail: string }[] = [
@@ -91,13 +92,8 @@ export default function Beranda({ trips, employees, honorariums, user, demo, ini
       </header>
 
       <nav className="beranda-overview" aria-label={`Ringkasan arsip ${year}`}>
-        <button type="button" className="beranda-stat beranda-stat-total" onClick={() => onGo("archives", { year })}>
-          <span className="beranda-stat-label">Total realisasi <ArrowUpRight size={15} aria-hidden="true" /></span>
-          <strong className="beranda-stat-value" data-empty={!hero.known || undefined}>
-            {hero.known ? <><small>Rp</small> <AnimatedNumber value={hero.total} duration={700} /></> : hero.recaps ? "Belum bernominal" : "Belum ada arsip"}
-          </strong>
-          <span className="beranda-stat-detail">Perjalanan dinas sepanjang {year}</span>
-        </button>
+        <BerandaTotal year={year} today={today} total={hero.total} known={hero.known} unknown={hero.unknown} recaps={hero.recaps}
+          monthly={monthly} onOpen={() => onGo("archives", { year })} />
         {registerItems.filter(item => canAccessSection(accessUser, item.section)).map(item => (
           <button key={item.section} type="button" className="beranda-stat" onClick={() => onGo(item.section)}>
             <span className="beranda-stat-label">{item.name}<item.icon size={16} strokeWidth={1.6} aria-hidden="true" /></span>
