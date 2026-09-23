@@ -17,13 +17,9 @@ import {
   Info,
   LoaderCircle,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
+import { Dialog, DialogContent } from "./ui/dialog";
+import { FormRail, RailSlip, RailStepHead, RailStepLabel, useSectionSpy, type RailStatus } from "./form-rail";
+import { useDiscardConfirm } from "./discard-confirm";
 import { Button } from "./ui/button";
 import { Field, ErrorMessage, api } from "./fields";
 import ArchiveDateInput from "./archive-date-input";
@@ -40,6 +36,20 @@ import {
   isComplete,
   tripSchema,
 } from "@/lib/model";
+
+const generalSections = [
+  ["trip", "Informasi perjalanan"],
+  ["people", "Peserta"],
+  ["costs", "Biaya & keterangan"],
+] as const;
+type GeneralSection = (typeof generalSections)[number][0];
+const generalSectionKeys = generalSections.map(([key]) => key);
+function generalSectionFor(path: PropertyKey[]): GeneralSection {
+  const field = String(path[0]);
+  if (field === "participants") return "people";
+  if (["costs", "paid", "notes", "physicalLocation", "activity", "correctionReason"].includes(field)) return "costs";
+  return "trip";
+}
 
 function GeneralTripForm({
   trip,
@@ -83,11 +93,15 @@ function GeneralTripForm({
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
   const [person, setPerson] = useState("");
+  const [errorSection, setErrorSection] = useState<GeneralSection>();
+  const { bodyRef, active, jump } = useSectionSpy(generalSectionKeys);
   const needsCorrectionReason = trip !== null && isComplete(trip);
   const savingDraft = !isComplete(form);
   function patch(p: Partial<TripInput>) {
     setForm((f) => ({ ...f, ...p }));
     setDirty(true);
+    setError("");
+    setErrorSection(undefined);
   }
   function addPerson() {
     const name = person.trim();
@@ -110,9 +124,14 @@ function GeneralTripForm({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setErrorSection(undefined);
     const parsed = tripSchema.safeParse(form);
     if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
+      const issue = parsed.error.issues[0];
+      const section = generalSectionFor(issue.path);
+      setError(issue.message);
+      setErrorSection(section);
+      jump(section);
       return;
     }
     setBusy(true);
@@ -132,15 +151,22 @@ function GeneralTripForm({
       setBusy(false);
     }
   }
+  const discard = useDiscardConfirm();
   const close = () => {
-    if (
-      !busy &&
-      (!dirty ||
-        window.confirm("Tutup formulir dan abaikan isian yang belum disimpan?"))
-    )
-      onClose();
+    if (busy) return;
+    if (dirty) discard.ask(onClose);
+    else onClose();
   };
-  return (
+  const total = totalCost(form);
+  const sectionStatus: Record<GeneralSection, [RailStatus, string]> = {
+    trip: form.title.trim().length >= 3 && form.destination.trim().length >= 2 && form.startDate && form.endDate && form.department.trim()
+      ? ["done", form.destination] : ["required", "Wajib diisi"],
+    people: form.participants.length ? ["done", `${form.participants.length} peserta`] : ["required", "Minimal satu peserta"],
+    costs: needsCorrectionReason && !form.correctionReason.trim() ? ["required", "Alasan perubahan wajib"]
+      : total === null ? ["open", "Belum ada biaya"] : ["done", money(total)],
+  };
+  if (errorSection) sectionStatus[errorSection] = ["error", "Perlu diperbaiki"];
+  return (<>
     <Dialog
       open
       onOpenChange={(open) => {
@@ -148,41 +174,58 @@ function GeneralTripForm({
       }}
     >
       <DialogContent
-        className="form-dialog"
+        className="form-dialog rail-dialog"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
-          <div className="dialog-kicker">
-            {trip ? trip.code : "Arsip perjalanan"}
-          </div>
-          <DialogTitle>
-            {trip ? (needsCorrectionReason ? "Edit perjalanan" : "Lengkapi draft") : "Tambah perjalanan"}
-          </DialogTitle>
-          <DialogDescription>
-            {needsCorrectionReason
-              ? "Perubahan pada arsip lengkap perlu disertai alasan."
-              : "Isi data dan biaya perjalanan. Dokumen pendukung opsional."}
-          </DialogDescription>
-          {onSwitch && (
-            <button
-              className="format-switch"
-              type="button"
-              onClick={() => {
-                if (
-                  !dirty ||
-                  window.confirm("Abaikan isian yang belum disimpan?")
-                )
-                  onSwitch();
-              }}
-            >
-              Gunakan rekap per pegawai
-            </button>
-          )}
-        </DialogHeader>
-        <form onSubmit={save} className="editor-form">
-          <div className="form-body">
-            {!trip && <OnboardingHint id="create-archive" />}
-            <section className="form-section">
+        <div className="rail-layout">
+          {/* Rel kiri: bagian formulir beserta statusnya dan slip total; satu halaman, jadi rel melompat ke bagian. */}
+          <FormRail
+            kicker={trip ? trip.code : "Arsip gabungan"}
+            title={trip ? (needsCorrectionReason ? "Edit perjalanan" : "Lengkapi draft") : "Tambah perjalanan"}
+            description={needsCorrectionReason ? "Perubahan pada arsip lengkap perlu disertai alasan." : undefined}
+            showDescription
+          >
+            {onSwitch && (
+              <div className="rail-modes">
+                <button
+                  className="rail-switch"
+                  type="button"
+                  onClick={() => {
+                    if (dirty) discard.ask(onSwitch);
+                    else onSwitch();
+                  }}
+                >
+                  <span>Gunakan rekap per pegawai</span><small>Satu rekap untuk setiap pegawai</small>
+                </button>
+              </div>
+            )}
+            <nav className="rail-steps" aria-label="Bagian formulir">
+              {generalSections.map(([key, label], index) => {
+                const [status, note] = sectionStatus[key];
+                return (
+                  <button key={key} type="button" className="rail-step" data-status={status}
+                    aria-current={active === key ? "true" : undefined} onClick={() => jump(key)}>
+                    <RailStepLabel index={index} status={status} label={label} note={note} />
+                  </button>
+                );
+              })}
+            </nav>
+            <RailSlip label="Total realisasi" value={money(total)} empty={total === null} complete={!savingDraft}>
+              <p>
+                <b>{savingDraft ? "Draft" : "Lengkap"}</b>
+                {savingDraft ? "Catat minimal satu biaya agar arsip lengkap." : "Arsip disimpan lengkap."}
+              </p>
+            </RailSlip>
+          </FormRail>
+          <form onSubmit={save} className="editor-form rail-main">
+            <RailStepHead
+              question="Siapa berangkat, ke mana, dan berapa biayanya?"
+              purpose="Satu arsip untuk seluruh peserta. Gunakan nominal pada dokumen lama; kosongkan yang belum diketahui."
+              describes={!needsCorrectionReason}
+            />
+            <div className="form-body" ref={bodyRef}>
+              {!trip && <OnboardingHint id="create-archive" />}
+              <section className="form-section" data-rail-section="trip">
               <h3>
                 <MapPin size={17} /> Informasi perjalanan
               </h3>
@@ -244,7 +287,7 @@ function GeneralTripForm({
                 </Field>
               </div>
             </section>
-            <section className="form-section">
+            <section className="form-section" data-rail-section="people">
               <h3>
                 <Users size={17} /> Peserta perjalanan{" "}
                 <span className="count-badge">{form.participants.length}</span>
@@ -337,7 +380,7 @@ function GeneralTripForm({
                 ))}
               </div>
             </section>
-            <section className="form-section">
+            <section className="form-section" data-rail-section="costs">
               <div className="section-heading">
                 <h3>
                   <Wallet size={17} /> Biaya realisasi
@@ -364,10 +407,6 @@ function GeneralTripForm({
                   <Plus /> Tambah biaya
                 </Button>
               </div>
-              <p className="section-note">
-                Gunakan nominal pada dokumen lama. Kosongkan jika belum
-                diketahui.
-              </p>
               {form.costs.map((c, i) => (
                 <div className="cost-editor" key={c.id}>
                   <Field label={`Komponen ${i + 1}`}>
@@ -530,15 +569,18 @@ function GeneralTripForm({
           <div className="form-footer">
             <ErrorMessage message={error} />
             <div className="footer-actions">
-              <span className="muted text-xs">
-                {dirty
-                  ? "Ada isian yang belum disimpan"
-                  : "Kolom bertanda * wajib diisi"}
-              </span>
-              <div>
+              <div className="form-step-meta">
+                <strong className="rail-footer-total">{money(total)}</strong>
+                <span>
+                  {dirty
+                    ? "Ada isian yang belum disimpan"
+                    : "Kolom bertanda * wajib diisi"}
+                </span>
+              </div>
+              <div className="form-action-buttons">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   onClick={close}
                   disabled={busy}
                 >
@@ -555,9 +597,12 @@ function GeneralTripForm({
               </div>
             </div>
           </div>
-        </form>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
+    {discard.dialog}
+  </>
   );
 }
 

@@ -741,7 +741,7 @@ function EmployeeRecord({ person, busy, nav, onBack, onOpen, onEdit, onRemove, o
   );
 }
 
-/* Lembar isian pegawai: kepala biru laut dengan kicker emas, seperti formulir lain. */
+/* Lembar isian pegawai: formulir pendek tanpa rel; kepala dan kaki mengikuti lembar isian formulir lain. */
 function EmployeeForm({ employee, departments, onClose, onSaved }: {
   employee: Employee | null; departments: string[]; onClose: () => void; onSaved: (person: Employee) => void;
 }) {
@@ -767,7 +767,7 @@ function EmployeeForm({ employee, departments, onClose, onSaved }: {
   }
   return (
     <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
-      <DialogContent className="form-dialog pegawai-dialog" showCloseButton={!busy}>
+      <DialogContent className="form-dialog pegawai-dialog sheet-dialog" showCloseButton={!busy}>
         <DialogHeader>
           <div className="dialog-kicker">{employee ? (employee.nip.trim() ? `NIP ${employee.nip}` : "NIP belum dicatat") : "Direktori pegawai"}</div>
           <DialogTitle>{employee ? "Edit pegawai" : "Tambah pegawai"}</DialogTitle>
@@ -801,9 +801,9 @@ function EmployeeForm({ employee, departments, onClose, onSaved }: {
           <div className="form-footer">
             <ErrorMessage message={error} />
             <div className="footer-actions">
-              <span className="muted text-xs">{dirty ? "Ada isian yang belum disimpan" : "Kolom bertanda * wajib diisi"}</span>
-              <div>
-                <Button type="button" variant="outline" disabled={busy} onClick={onClose}>Batal</Button>
+              <div className="form-step-meta"><span>{dirty ? "Ada isian yang belum disimpan" : "Kolom bertanda * wajib diisi"}</span></div>
+              <div className="form-action-buttons">
+                <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>Batal</Button>
                 <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Save />}{busy ? "Menyimpan…" : employee ? "Simpan perubahan" : "Simpan pegawai"}</Button>
               </div>
             </div>

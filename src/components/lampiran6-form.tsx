@@ -24,19 +24,15 @@ import { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Trash2,
-  FileSpreadsheet,
   LoaderCircle,
   ArrowRight,
   ArrowLeft,
   Info,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
+import { recapSectionStates } from "@/lib/recap-visual-state";
+import { Dialog, DialogContent } from "./ui/dialog";
+import { FormRail, RailSlip, RailStepHead, RailStepLabel, type RailStatus } from "./form-rail";
+import { useDiscardConfirm } from "./discard-confirm";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Field, ErrorMessage, api } from "./fields";
@@ -62,15 +58,27 @@ import {
   type GroundTransport,
 } from "@/lib/lampiran6-schema";
 
+// Urutan mengikuti tumpukan dokumen yang disalin operator, sama dengan mode beberapa pegawai.
 const steps = [
-  ["journey", "Pegawai & perjalanan"],
-  ["costs", "Biaya"],
-  ["hotel", "Penginapan"],
-  ["transport", "Transportasi"],
-  ["archive", "Arsip"],
-  ["review", "Ringkasan"],
+  ["person", "Pegawai", "Siapa yang melakukan perjalanan?", "Pilih dari daftar pegawai. NIP, jabatan, golongan, dan bidang terisi otomatis."],
+  ["journey", "Perjalanan", "Ke mana dan kapan perjalanannya?", "Salin dari Surat Tugas: nomor, kegiatan, tanggal, dan tujuan."],
+  ["costs", "SPPD & biaya", "Berapa biaya perjalanannya?", "Salin dari SPPD dan kuitansi. Kosongkan yang belum diketahui, isi 0 jika memang tidak ada."],
+  ["evidence", "Rincian bukti", "Ada bukti hotel, kendaraan, atau tiket?", "Opsional. Catat detail sesuai bukti pendukung, atau lewati langkah ini."],
+  ["review", "Periksa & simpan", "Sudah sesuai dengan dokumen?", "Periksa ringkasan rekap, tambahkan keterangan bila perlu, lalu simpan."],
 ] as const;
 type Step = (typeof steps)[number][0];
+const personFields = new Set(["participants", "department", "rank"]);
+const journeyFields = new Set(["title", "sptNo", "destination", "destinations", "startDate", "endDate", "origin", "claimedDays", "format", "destinationProvince", "program", "activityName", "subActivity"]);
+const evidenceFields = new Set(["lodgings", "lodgingMode", "lodgingBaseRate", "lodgingNights", "groundTransports", "outbound", "inbound"]);
+const reviewFields = new Set(["notes", "physicalLocation", "paid", "correctionReason", "sourceNo"]);
+function stepForIssue(path: PropertyKey[]): Step {
+  const field = String(path[0] === "lampiran6" ? path[1] : path[0]);
+  if (personFields.has(field)) return "person";
+  if (journeyFields.has(field)) return "journey";
+  if (evidenceFields.has(field)) return "evidence";
+  if (reviewFields.has(field)) return "review";
+  return "costs";
+}
 const numberValue = (value: string) => (value === "" ? null : Number(value));
 const hasValues = (value: object) =>
   Object.values(value).some((v) => v !== "" && v !== null);
@@ -84,7 +92,7 @@ export default function Lampiran6Form({
   onSave,
   onSwitch,
   initialDraft,
-  initialStep = "journey",
+  initialStep = "person",
   onDraftSave,
   onMultiple,
 }: {
@@ -168,7 +176,8 @@ export default function Lampiran6Form({
   }
   const [dirty, setDirty] = useState(Boolean(initialDraft)),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [errorStep, setErrorStep] = useState<Step>();
   const data = form.lampiran6!;
   const lodgingRows = useRowKeys(data.lodgings.length);
   const transportRows = useRowKeys(data.groundTransports.length);
@@ -177,6 +186,12 @@ export default function Lampiran6Form({
   const needsCorrectionReason = trip !== null && isComplete(trip);
   const savingDraft = !isComplete(form);
   const person = form.participants[0];
+  // Isian baru menggugurkan tanda galat lama; simpan berikutnya memeriksa ulang.
+  function edited() {
+    setDirty(true);
+    setError("");
+    setErrorStep(undefined);
+  }
   function patch(p: Partial<TripInput>) {
     setForm((f) => {
       const next = { ...f, ...p };
@@ -186,7 +201,7 @@ export default function Lampiran6Form({
       }
       return next;
     });
-    setDirty(true);
+    edited();
   }
   function patchData(p: Partial<Lampiran6>) {
     setForm((f) => {
@@ -202,7 +217,7 @@ export default function Lampiran6Form({
         activity: next.activityName,
       };
     });
-    setDirty(true);
+    edited();
   }
   function patchPerson(p: Partial<Participant>) {
     patch({
@@ -235,18 +250,18 @@ export default function Lampiran6Form({
         : {}),
     });
   }
+  const discard = useDiscardConfirm();
   function close(action = onClose) {
-    if (
-      !busy &&
-      (!dirty || window.confirm("Abaikan isian yang belum disimpan?"))
-    )
-      action();
+    if (busy) return;
+    if (dirty) discard.ask(action);
+    else action();
   }
   const reviews = lampiranReview(data, form.startDate, form.endDate);
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
     setError("");
+    setErrorStep(undefined);
     const prepared = {
       ...form,
       lampiran6: {
@@ -259,21 +274,15 @@ export default function Lampiran6Form({
     const parsed = tripSchema.safeParse(prepared);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      if (issue.path[0] !== "lampiran6")
-        setStep(issue.path[0] === "correctionReason" ? "archive" : "journey");
-      else if (issue.path[1] === "lodgings") setStep("hotel");
-      else if (
-        ["outbound", "inbound", "groundTransports"].includes(
-          String(issue.path[1]),
-        )
-      )
-        setStep("transport");
-      else setStep("costs");
+      const target = stepForIssue(issue.path);
+      setStep(target);
+      setErrorStep(target);
       setError(issue.message);
       return;
     }
     if (needsCorrectionReason && !form.correctionReason.trim()) {
-      setStep("archive");
+      setStep("review");
+      setErrorStep("review");
       setError("Tuliskan alasan perubahan arsip.");
       return;
     }
@@ -320,9 +329,52 @@ export default function Lampiran6Form({
         ) + 1
       : null;
   const stepIndex = steps.findIndex(([key]) => key === step);
+  const [, , question, purpose] = steps[stepIndex];
   const next = steps[stepIndex + 1]?.[0];
   const previous = steps[stepIndex - 1]?.[0];
-  return (
+  const total = totalCost(form);
+  const evidence = recapSectionStates(data);
+  const evidenceCount = evidence.hotel.count + evidence.vehicle.count + evidence.flight.count;
+  const stepStatus: Record<Step, [RailStatus, string]> = {
+    person: person.name.trim() && form.department.trim() ? ["done", person.name] : ["required", "Wajib diisi"],
+    journey: form.title.trim().length >= 3 && form.startDate && form.endDate && form.destination.trim()
+      ? ["done", form.destination] : ["required", "Wajib diisi"],
+    costs: total === null ? ["open", "Belum ada biaya"] : ["done", money(total)],
+    evidence: evidenceCount ? ["done", `${evidenceCount} rincian`] : ["optional", "Opsional"],
+    review: needsCorrectionReason && !form.correctionReason.trim() ? ["required", "Alasan perubahan wajib"] : ["open", "Ringkasan & keterangan"],
+  };
+  if (errorStep) stepStatus[errorStep] = ["error", "Perlu diperbaiki"];
+  // Rekap baru dituntun maju langkah demi langkah; rekap yang diedit dan rincian pegawai bisa langsung disimpan.
+  const advanceFirst = Boolean(next) && !trip && !onDraftSave;
+  const nextButton = next && (
+    <Button
+      key="next"
+      type="button"
+      variant={advanceFirst ? "default" : "outline"}
+      disabled={busy}
+      aria-label="Lanjut"
+      onClick={() => goStep(next)}
+    >
+      <span className="form-action-label">Lanjut</span> <ArrowRight />
+    </Button>
+  );
+  const saveButton = (
+    <Button
+      key="save"
+      type="submit"
+      variant={advanceFirst ? "outline" : "default"}
+      className="save-archive-button"
+      disabled={busy}
+    >
+      {busy && <LoaderCircle className="animate-spin" />}
+      {onDraftSave ? "Terapkan rincian" : busy
+        ? "Menyimpan…"
+        : savingDraft
+          ? "Simpan draft"
+          : trip ? "Simpan perubahan" : "Simpan rekap"}
+    </Button>
+  );
+  return (<>
     <Dialog
       open
       onOpenChange={(open) => {
@@ -330,77 +382,74 @@ export default function Lampiran6Form({
       }}
     >
       <DialogContent
-        className="form-dialog lampiran-dialog"
+        className="form-dialog lampiran-dialog rail-dialog"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        {/* Kepala ringkas: satu baris judul dan kendali, supaya ruang isian selebar mungkin. */}
-        <DialogHeader className="lampiran-header-compact">
-          <div className="lampiran-heading-row">
-            <div className="lampiran-heading-main">
-              <div className="dialog-kicker">
-                <FileSpreadsheet size={14} /> Rekap perjalanan dinas
-              </div>
-              <DialogTitle>
-                {onDraftSave ? `Rincian — ${person.name}` : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Tambah rekap pegawai"}
-              </DialogTitle>
-            </div>
-            <div className="lampiran-heading-tools">
-              {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
-              {onSwitch && (
-                <button
-                  className="format-switch"
-                  type="button"
-                  onClick={() => close(onSwitch)}
-                  title="Buka format satu arsip dengan peserta gabungan"
-                >
-                  Arsip gabungan
-                </button>
-              )}
-            </div>
-          </div>
-          <DialogDescription className={needsCorrectionReason ? undefined : "sr-only"}>
-            {onDraftSave ? "Perubahan berlaku untuk pegawai ini. Rekap disimpan bersama setelah ditinjau."
+        <Tabs
+          value={step}
+          onValueChange={(value) => setStep(value as Step)}
+          orientation="vertical"
+          className="rail-layout"
+        >
+          {/* Rel kiri: judul, cara mengisi, langkah beserta statusnya, dan slip total yang menjelaskan draft atau lengkap. */}
+          <FormRail
+            kicker="Rekap perjalanan dinas"
+            title={onDraftSave ? `Rincian — ${person.name}` : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Tambah rekap pegawai"}
+            showDescription={Boolean(onDraftSave) || needsCorrectionReason}
+            description={onDraftSave ? "Perubahan berlaku untuk pegawai ini. Rekap disimpan bersama setelah ditinjau."
               : needsCorrectionReason
               ? "Perubahan pada arsip lengkap perlu disertai alasan."
               : "Isi data perjalanan dan biaya pegawai ini. Dokumen pendukung opsional."}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="editor-form" onSubmit={save} noValidate>
-          <Tabs
-            value={step}
-            onValueChange={(value) => setStep(value as Step)}
-            className="lampiran-tabs"
           >
-            <TabsList
-              className="detail-tabs lampiran-step-tabs"
-              aria-label="Bagian isian perjalanan"
-            >
-              {steps.map(([key, title]) => (
-                <TabsTrigger
-                  key={key}
-                  value={key}
-                  ref={key === step ? activeTabRef : undefined}
-                >
-                  {title}
-                </TabsTrigger>
-              ))}
+            {(onMultiple || onSwitch) && (
+              <div className="rail-modes">
+                {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
+                {onSwitch && (
+                  <button className="rail-switch" type="button" onClick={() => close(onSwitch)}>
+                    <span>Arsip gabungan</span><small>Satu arsip untuk seluruh peserta</small>
+                  </button>
+                )}
+              </div>
+            )}
+            <TabsList className="rail-steps" aria-label="Langkah isian rekap">
+              {steps.map(([key, label], index) => {
+                const [state, note] = stepStatus[key];
+                return (
+                  <TabsTrigger
+                    key={key}
+                    value={key}
+                    className="rail-step"
+                    data-status={state}
+                    ref={key === step ? activeTabRef : undefined}
+                  >
+                    <RailStepLabel index={index} status={state} label={label} note={note} />
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
+            <RailSlip label="Total biaya" value={money(total)} empty={total === null} complete={!savingDraft}>
+              <p>
+                <b>{savingDraft ? "Draft" : "Lengkap"}</b>
+                {savingDraft ? "Catat minimal satu biaya agar rekap lengkap." : "Rekap disimpan sebagai arsip lengkap."}
+              </p>
+            </RailSlip>
+          </FormRail>
+          <form className="editor-form rail-main" onSubmit={save} noValidate>
+            <RailStepHead
+              counter={`Langkah ${stepIndex + 1} dari ${steps.length}`}
+              question={question}
+              purpose={onDraftSave && step === "person" ? "Identitas mengikuti pegawai yang dipilih pada rekap bersama." : purpose}
+            />
             <div
               className="form-body lampiran-form-body"
               key={step}
               ref={bodyRef}
             >
-              <TabsContent value="journey">
+              <TabsContent value="person">
                 {!trip && <OnboardingHint id="create-archive" />}
                 <section className="form-section">
-                  <h3>Pegawai</h3>
                   <div className="form-grid">
-                    <Field
-                      label="Nama pegawai"
-                      required
-                      className="span-2"
-                      hint={onDraftSave ? "Identitas mengikuti pegawai yang dipilih." : "Satu rekap untuk satu pegawai. Gunakan Beberapa pegawai untuk mengisi perjalanan yang sama sekaligus."}
-                    >
+                    <Field label="Nama pegawai" required className="span-2">
                       <Combobox
                         autoFocus
                         disabled={Boolean(onDraftSave)}
@@ -417,16 +466,18 @@ export default function Lampiran6Form({
                         }}
                       />
                     </Field>
-                    <Field
-                      label="NIP"
-                      hint="Isi NIP lengkap."
-                    >
+                    <Field label="NIP">
                       <input
                         value={person.nip}
                         readOnly={Boolean(onDraftSave)}
                         maxLength={250}
+                        inputMode="numeric"
+                        placeholder="18 digit"
                         onChange={(e) => patchPerson({ nip: e.target.value })}
                       />
+                    </Field>
+                    <Field label="Golongan">
+                      <Combobox aria-label="Golongan" value={data.rank} maxLength={1000} options={employeeRankOptions} onValueChange={rank => patchData({rank})} placeholder="Pilih atau ketik golongan" />
                     </Field>
                     <Field label="Jabatan">
                       <input
@@ -436,9 +487,6 @@ export default function Lampiran6Form({
                           patchPerson({ position: e.target.value })
                         }
                       />
-                    </Field>
-                    <Field label="Golongan">
-                      <Combobox aria-label="Golongan" value={data.rank} maxLength={1000} options={employeeRankOptions} onValueChange={rank => patchData({rank})} placeholder="Pilih atau ketik golongan" />
                     </Field>
                     <Field label="Bidang / unit kerja" required>
                       <CustomSelect
@@ -461,35 +509,31 @@ export default function Lampiran6Form({
                     </Field>
                   </div>
                 </section>
+              </TabsContent>
+              <TabsContent value="journey">
                 <section className="form-section">
-                  <h3>Surat dan pelaksanaan</h3>
+                  <h3>Surat tugas</h3>
                   <div className="form-grid">
-                    <AccountCodeField value={form.account} options={suggestions.accounts}
-                      onChange={account => patch({ account })} className="span-2" />
-                    <FundTrackField value={form.fundTrack ?? ""} trip={form} onChange={fundTrack => patch({ fundTrack })} />
                     <Field label="Nomor ST / SPT">
                       <Combobox aria-label="Nomor ST / SPT" value={form.sptNo} maxLength={250}
                         options={suggestions.letters} onValueChange={sptNo => patch({sptNo})}
                         placeholder="Pilih ST tersimpan atau ketik nomor baru" emptyMessage="Belum ada nomor ST yang cocok." />
                     </Field>
-                    <Field label="Nomor SPPD">
-                      <input
-                        value={form.sppdNo}
-                        maxLength={250}
-                        onChange={(e) => patch({ sppdNo: e.target.value })}
-                      />
+                    <FundTrackField value={form.fundTrack ?? ""} trip={form} onChange={fundTrack => patch({ fundTrack })} />
+                    <Field
+                      label="Nama kegiatan / maksud perjalanan"
+                      required
+                      className="span-2"
+                    >
+                      <Combobox multiline rows={3} aria-label="Nama kegiatan / maksud perjalanan" required value={form.title} maxLength={3000}
+                        options={suggestions.purposes} onValueChange={title => patch({title})}
+                        placeholder="Pilih kegiatan tersimpan atau ketik maksud perjalanan" emptyMessage="Belum ada kegiatan yang cocok." />
                     </Field>
-                    <Field label="Tanggal SPPD">
-                      <ArchiveDateInput
-                        value={data.sppdDate}
-                        onChange={(value) => patchData({ sppdDate: value })}
-                      />
-                    </Field>
-                    {textField(
-                      "sourceNo",
-                      "Nomor urut pada rekap",
-                      "Opsional.",
-                    )}
+                  </div>
+                </section>
+                <section className="form-section">
+                  <h3>Jadwal</h3>
+                  <div className="form-grid">
                     <Field label="Tanggal berangkat" required>
                       <ArchiveDateInput
                         required
@@ -524,6 +568,11 @@ export default function Lampiran6Form({
                           : "Dasar hitungan uang harian; representasi hanya untuk kepala bidang."
                       }
                     />
+                  </div>
+                </section>
+                <section className="form-section">
+                  <h3>Rute</h3>
+                  <div className="form-grid">
                     <TravelScopeFields value={data} onChange={patchData} />
                     <Field label="Asal">
                       <Combobox aria-label="Asal" value={data.origin} maxLength={1000} options={suggestions.origins}
@@ -531,15 +580,6 @@ export default function Lampiran6Form({
                     </Field>
                     <DestinationFields className="span-2" values={tripDestinations(form)} options={suggestions.destinations}
                       onChange={destinations => patch({destinations, destination: formatDestinations(destinations)})} />
-                    <Field
-                      label="Nama kegiatan / maksud perjalanan"
-                      required
-                      className="span-2"
-                    >
-                      <Combobox multiline rows={3} aria-label="Nama kegiatan / maksud perjalanan" required value={form.title} maxLength={3000}
-                        options={suggestions.purposes} onValueChange={title => patch({title})}
-                        placeholder="Pilih kegiatan tersimpan atau ketik maksud perjalanan" emptyMessage="Belum ada kegiatan yang cocok." />
-                    </Field>
                   </div>
                   <details className="advanced-fields">
                     <summary>Program, kegiatan, dan subkegiatan</summary>
@@ -553,11 +593,27 @@ export default function Lampiran6Form({
               </TabsContent>
               <TabsContent value="costs">
                 <section className="form-section">
-                  <h3>Biaya perjalanan</h3>
-                  <p className="section-note">
-                    Isi biaya dalam rupiah, tanpa desimal. Kosong jika belum
-                    diketahui, 0 jika tidak ada biaya.
-                  </p>
+                  <h3>SPPD dan anggaran</h3>
+                  <div className="form-grid">
+                    <Field label="Nomor SPPD">
+                      <input
+                        value={form.sppdNo}
+                        maxLength={250}
+                        onChange={(e) => patch({ sppdNo: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Tanggal SPPD">
+                      <ArchiveDateInput
+                        value={data.sppdDate}
+                        onChange={(value) => patchData({ sppdDate: value })}
+                      />
+                    </Field>
+                    <AccountCodeField value={form.account} options={suggestions.accounts}
+                      onChange={account => patch({ account })} className="span-2" />
+                  </div>
+                </section>
+                <section className="form-section">
+                  <h3>Komponen biaya</h3>
                   <Field label="Perhitungan uang harian">
                     <CustomSelect aria-label="Perhitungan uang harian" value={data.dailyRateMode}
                       onValueChange={value => patchData({ dailyRateMode: value as Lampiran6["dailyRateMode"] })}>
@@ -620,7 +676,7 @@ export default function Lampiran6Form({
                       ] as const
                     ).map(([key, label]) => (
                       <div className="lampiran-cost-row" key={key}>
-                        <strong>{label}{key === "lodgingCost" && data.lodgingMode === "thirty-percent" && <button type="button" className="cost-daily-setup" onClick={() => goStep("hotel")}>{lodgingAllowanceDescription(data)}</button>}</strong>
+                        <strong>{label}{key === "lodgingCost" && data.lodgingMode === "thirty-percent" && <button type="button" className="cost-daily-setup" onClick={() => goStep("evidence")}>{lodgingAllowanceDescription(data)}</button>}</strong>
                         <span className="muted cost-no-rate" aria-hidden="true">
                           —
                         </span>
@@ -643,7 +699,7 @@ export default function Lampiran6Form({
                   </div>
                   <div className="cost-total">
                     <span>Total biaya</span>
-                    <strong>{money(totalCost(form))}</strong>
+                    <strong>{money(total)}</strong>
                   </div>
                   <div className="form-grid">
                     <NumberField
@@ -661,7 +717,7 @@ export default function Lampiran6Form({
                     className="format-switch"
                     type="button"
                     onClick={() =>
-                      patchData({ recordedTotal: totalCost(form) })
+                      patchData({ recordedTotal: total })
                     }
                   >
                     Isi total rincian dengan jumlah komponen
@@ -674,31 +730,35 @@ export default function Lampiran6Form({
                 </section>
                 <ReviewNotes notes={reviews} />
               </TabsContent>
-              <TabsContent value="hotel">
+              <TabsContent value="evidence">
                 <section className="form-section">
-                  <LodgingAllowanceFields data={data} onChange={patchData} />
-                  {data.lodgingMode !== "thirty-percent" && <>
                   <div className="section-heading">
                     <div>
-                      <h3>Data penginapan</h3>
-                      <p className="section-note">
-                        Detail bukti penginapan; nominalnya tidak ditambahkan
-                        lagi ke komponen biaya.
-                      </p>
+                      <h3>Penginapan</h3>
+                      {data.lodgingMode !== "thirty-percent" && (
+                        <p className="section-note">
+                          Detail bukti hotel; nominalnya tidak ditambahkan
+                          lagi ke komponen biaya.
+                        </p>
+                      )}
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        patchData({
-                          lodgings: [...data.lodgings, lodgingSchema.parse({})],
-                        })
-                      }
-                    >
-                      <Plus /> Penginapan
-                    </Button>
+                    {data.lodgingMode !== "thirty-percent" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          patchData({
+                            lodgings: [...data.lodgings, lodgingSchema.parse({})],
+                          })
+                        }
+                      >
+                        <Plus /> Penginapan
+                      </Button>
+                    )}
                   </div>
+                  <LodgingAllowanceFields data={data} onChange={patchData} />
+                  {data.lodgingMode !== "thirty-percent" && <>
                   {data.lodgings.length === 0 && (
                     <p className="note-box">Belum ada data penginapan.</p>
                   )}
@@ -725,8 +785,6 @@ export default function Lampiran6Form({
                   ))}
                   </>}
                 </section>
-              </TabsContent>
-              <TabsContent value="transport">
                 <section className="form-section">
                   <div className="section-heading">
                     <div>
@@ -777,10 +835,33 @@ export default function Lampiran6Form({
                 </section>
                 <FlightCostFields data={data} onChange={patchData} />
               </TabsContent>
-              <TabsContent value="archive">
+              <TabsContent value="review">
+                <RecapLedger
+                  data={data}
+                  total={total}
+                  facts={[
+                    ["Pegawai", person.name],
+                    ["Nomor ST", form.sptNo],
+                    ["Pelaksanaan", form.startDate && form.endDate ? `${dateText(form.startDate)} – ${dateText(form.endDate)}` : ""],
+                    ["Tujuan", form.destination],
+                  ]}
+                />
                 <section className="form-section">
-                  <h3>Keterangan dan penyimpanan</h3>
+                  <h3>Keterangan arsip</h3>
                   <div className="form-grid">
+                    {needsCorrectionReason && (
+                      <Field label="Alasan perubahan" required className="span-2">
+                        <textarea
+                          required
+                          rows={2}
+                          value={form.correctionReason}
+                          maxLength={1000}
+                          onChange={(e) =>
+                            patch({ correctionReason: e.target.value })
+                          }
+                        />
+                      </Field>
+                    )}
                     <Field label="Keterangan" className="span-2">
                       <textarea
                         rows={3}
@@ -805,21 +886,12 @@ export default function Lampiran6Form({
                       onChange={(v) => patch({ paid: v })}
                       hint="Isi hanya jika status pembayaran diketahui; terpisah dari total kuitansi."
                     />
+                    {textField(
+                      "sourceNo",
+                      "Nomor urut pada rekap",
+                      "Opsional.",
+                    )}
                   </div>
-
-                  {needsCorrectionReason && (
-                    <Field label="Alasan perubahan" required>
-                      <textarea
-                        required
-                        rows={2}
-                        value={form.correctionReason}
-                        maxLength={1000}
-                        onChange={(e) =>
-                          patch({ correctionReason: e.target.value })
-                        }
-                      />
-                    </Field>
-                  )}
                   <div className="inline-note">
                     <Info size={16} />
                     <span>
@@ -838,84 +910,48 @@ export default function Lampiran6Form({
                   </details>
                 )}
               </TabsContent>
-              <TabsContent value="review">
-                <RecapLedger
-                  data={data}
-                  total={totalCost(form)}
-                  facts={[
-                    ["Pegawai", person.name],
-                    ["Nomor ST", form.sptNo],
-                    ["Pelaksanaan", form.startDate && form.endDate ? `${dateText(form.startDate)} – ${dateText(form.endDate)}` : ""],
-                    ["Tujuan", form.destination],
-                  ]}
-                />
-                <ReviewNotes notes={reviews} />
-              </TabsContent>
             </div>
-          </Tabs>
-          <div className="form-footer">
-            <ErrorMessage message={error} />
-            <div className="footer-actions">
-              <div className="form-step-meta">
-                <strong>
-                  Bagian {stepIndex + 1} dari {steps.length}
-                </strong>
-                <span>
-                  <b className="form-step-total">Total {money(totalCost(form))}</b>
-                  {dirty
-                    ? " · Perubahan belum disimpan"
-                    : " · Kolom bertanda * wajib diisi"}
-                </span>
-              </div>
-              <div className="form-action-buttons">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => close()}
-                >
-                  Batal
-                </Button>
-                {previous && (
+            <div className="form-footer">
+              <ErrorMessage message={error} />
+              <div className="footer-actions">
+                <div className="form-step-meta">
+                  <strong className="rail-footer-total">{money(total)}</strong>
+                  <span>
+                    {dirty
+                      ? "Perubahan belum disimpan"
+                      : "Kolom bertanda * wajib diisi"}
+                  </span>
+                </div>
+                <div className="form-action-buttons">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     disabled={busy}
-                    aria-label="Sebelumnya"
-                    onClick={() => goStep(previous)}
+                    onClick={() => close()}
                   >
-                    <ArrowLeft /> <span className="form-action-label">Sebelumnya</span>
+                    Batal
                   </Button>
-                )}
-                {next && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={busy}
-                    aria-label="Lanjut"
-                    onClick={() => goStep(next)}
-                  >
-                    <span className="form-action-label">Lanjut</span> <ArrowRight />
-                  </Button>
-                )}
-                <Button
-                  type="submit"
-                  className="save-archive-button"
-                  disabled={busy}
-                >
-                  {busy && <LoaderCircle className="animate-spin" />}
-                  {onDraftSave ? "Terapkan rincian" : busy
-                    ? "Menyimpan…"
-                    : savingDraft
-                      ? "Simpan draft"
-                      : trip ? "Simpan perubahan" : "Simpan rekap"}
-                </Button>
+                  {previous && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      aria-label="Sebelumnya"
+                      onClick={() => goStep(previous)}
+                    >
+                      <ArrowLeft /> <span className="form-action-label">Sebelumnya</span>
+                    </Button>
+                  )}
+                  {advanceFirst ? [saveButton, nextButton] : [nextButton, saveButton]}
+                </div>
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </Tabs>
       </DialogContent>
     </Dialog>
+    {discard.dialog}
+  </>
   );
 }
 

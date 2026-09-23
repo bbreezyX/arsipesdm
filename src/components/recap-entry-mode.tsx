@@ -8,10 +8,10 @@ export default function RecapEntryMode({ value, onChange, disabled = false }: {
   return <fieldset className="recap-entry-mode" disabled={disabled}>
     <legend>Pengisian pegawai</legend>
     <div>
-      {([ ["single", "Satu pegawai"], ["multiple", "Beberapa pegawai"] ] as const).map(([mode, label]) =>
+      {([ ["single", "Satu pegawai", "Satu rekap untuk satu orang"], ["multiple", "Beberapa pegawai", "Satu ST, rekap untuk tiap peserta"] ] as const).map(([mode, label, description]) =>
         <label key={mode} data-selected={value === mode}>
           <input type="radio" name="recap-entry-mode" value={mode} checked={value === mode} onChange={() => onChange(mode)} />
-          <span>{label}</span>
+          <span>{label}<small>{description}</small></span>
         </label>,
       )}
     </div>

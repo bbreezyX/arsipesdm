@@ -2280,51 +2280,44 @@
 .recap-cost-section {
   border-bottom: 0;
 }
-/* Penerbangan: dua arah sebagai tab buku dengan penanda emas, penerbangan berurutan
-   sebagai daftar rute bernomor, dan satu blok pemesanan per arah. */
+/* Penerbangan: dua arah sebagai pilihan bersegmen (arah aktif terangkat
+   menjadi kartu putih), penerbangan berurutan sebagai daftar rute bernomor,
+   dan satu blok pemesanan per arah. */
 .flight-directions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 4px;
   margin-top: 4px;
+  padding: 4px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 14px;
+  background: var(--ledger-tint);
 }
 .flight-direction {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   min-width: 0;
-  padding: 12px 14px 12px 18px;
-  border: 1px solid var(--ledger-line);
-  border-radius: 12px;
-  background: var(--ledger-tint);
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
   color: var(--ledger-muted);
   font: inherit;
   text-align: left;
   cursor: pointer;
-}
-.flight-direction::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .flight-direction:hover {
-  border-color: #c9d3de;
+  background: rgba(255, 255, 255, 0.6);
   color: var(--ledger-ink);
 }
 .flight-direction[aria-selected="true"] {
+  border-color: var(--ledger-line);
   background: var(--ledger-surface);
   color: var(--ledger-ink);
-  box-shadow: 0 1px 2px rgba(18, 39, 68, 0.06);
-}
-.flight-direction[aria-selected="true"]::before {
-  background: var(--ledger-gold);
+  box-shadow: 0 1px 2px rgba(18, 39, 68, 0.08);
 }
 .flight-direction:focus-visible {
   outline: 1px solid var(--ledger-gold);
@@ -2461,7 +2454,7 @@
     gap: 8px;
   }
   .flight-direction {
-    padding: 10px 12px 10px 14px;
+    padding: 9px 12px;
   }
   .flight-legs {
     padding: 2px 14px 14px;
