@@ -4,7 +4,7 @@ import { useJakartaDay } from "./use-jakarta-day";
 import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
-import { useState, useMemo, useEffect, useRef, useId } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useId, startTransition, addTransitionType, ViewTransition } from "react";
 import AuthPage from "./auth-page";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
@@ -84,6 +84,7 @@ import {
 import type { Employee } from "@/lib/employees";
 import { employeeDirectoryChannel, notifyEmployeeDirectoryChanged } from "@/lib/employee-directory-events";
 import ArchiveSplit from "./archive-split";
+import ArchiveDetail from "./archive-detail";
 import Beranda from "./beranda";
 const Pegawai = dynamic(() => import("./pegawai"));
 import type { Honorarium } from "@/lib/honorarium";
@@ -93,9 +94,11 @@ import { downloadTemplate } from "@/lib/export";
 const TaskLetters = dynamic(() => import("./task-letters"));
 const Laporan = dynamic(() => import("./laporan"));
 const TripForm = dynamic(() => import("./trip-form"));
-const ArchiveDetail = dynamic(() => import("./archive-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
 const ArchiveGuide = dynamic(() => import("./archive-guide"), { ssr: false });
+
+/* Kelas animasi per jenis transisi; lihat ::view-transition-*(.nav-forward/.nav-back) di arsip-perjalanan.css. */
+const pageSlide = { "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" };
 
 const sectionNames: Record<Section, string> = {
   home: "Beranda",
@@ -156,11 +159,34 @@ export default function Workspace({
   const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
   const pathname = usePathname();
-  const record = archiveRecordFromPath(pathname);
-  const requestedSection = sectionFromPath(pathname) ?? (record ? "archives" : initialSection);
+  /* Jalur yang sedang ditampilkan. Pindah dari dalam ruang kerja memperbaruinya sendiri (di dalam transisi
+     bila perlu bergeser); selebihnya, seperti Back/Forward browser, mengikuti pathname Next. */
+  const [shownPath, setShownPath] = useState(pathname);
+  const [seenPath, setSeenPath] = useState(pathname);
+  const pendingPath = useRef<string | null>(null);
+  const scrollOnShow = useRef(false);
+  if (seenPath !== pathname) {
+    setSeenPath(pathname);
+    if (pathname !== pendingPath.current) setShownPath(pathname);
+  }
+  useEffect(() => {
+    if (pendingPath.current === shownPath) pendingPath.current = null;
+  }, [shownPath]);
+  // Halaman baru mulai dari atas; digulir sebelum cuplikan baru diambil supaya pergeseran tidak melompat.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dijalankan setiap kali halaman yang tampil berganti
+  useLayoutEffect(() => {
+    if (!scrollOnShow.current) return;
+    scrollOnShow.current = false;
+    window.scrollTo({ top: 0 });
+  }, [shownPath]);
+  const record = archiveRecordFromPath(shownPath);
+  const requestedSection = sectionFromPath(shownPath) ?? (record ? "archives" : initialSection);
   const section = canAccessSection(accessUser, requestedSection) ? requestedSection : "home";
   useEffect(() => {
-    if (requestedSection !== section) window.history.replaceState(null, "", sectionPaths[section]);
+    if (requestedSection === section) return;
+    pendingPath.current = sectionPaths[section];
+    window.history.replaceState(null, "", sectionPaths[section]);
+    setShownPath(sectionPaths[section]);
   }, [requestedSection, section]);
   const [filters, setFilters] = useState<Filters>({
     ...defaultFilters,
@@ -272,10 +298,8 @@ export default function Workspace({
       return;
     }
     if (section === "honorarium" && s !== "honorarium") { window.location.assign(sectionPaths[s]); return; }
-    if (s !== section || record) {
-      window.history.pushState(null, "", sectionPaths[s]);
-      window.scrollTo({ top: 0 });
-    }
+    if (s === "archives" && record) navigate(sectionPaths.archives, "nav-back");
+    else if (s !== section || record) navigate(sectionPaths[s]);
     if (nextFilters) setFilters({ ...defaultFilters, ...nextFilters });
     setNavOpen(false);
     setSelected(new Set());
@@ -297,12 +321,29 @@ export default function Workspace({
     });
   }
   /* Rincian arsip adalah halaman sendiri: /arsip-perjalanan/PD-2026-0062. */
+  /* Daftar ↔ rincian bergeser dua arah lewat View Transitions: jenis transisi menentukan arah
+     <ViewTransition> di sekitar kedua halaman. Tanpa jenis (tab rekap, tombol Back browser) tidak bergeser. */
+  function navigate(path: string, type?: "nav-forward" | "nav-back") {
+    pendingPath.current = path;
+    scrollOnShow.current = true;
+    window.history.pushState(null, "", path);
+    if (!type) {
+      setShownPath(path);
+      return;
+    }
+    startTransition(() => {
+      addTransitionType(type);
+      setShownPath(path);
+    });
+  }
+  function replacePath(path: string) {
+    pendingPath.current = path;
+    window.history.replaceState(null, "", path);
+    setShownPath(path);
+  }
   function openRecord(trip: Trip) {
     const path = archiveRecordPath(trip.code);
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, "", path);
-      window.scrollTo({ top: 0 });
-    }
+    if (window.location.pathname !== path) navigate(path, record ? undefined : "nav-forward");
     setGuideOpen(false);
     setNavOpen(false);
   }
@@ -311,6 +352,10 @@ export default function Workspace({
     action: "detail" | "edit" | "delete" = "detail",
   ) {
     if (action !== "detail" && !editable) return;
+    /* Rincian dibuka seketika dari data yang sudah ada supaya pergeseran halaman menempel pada klik;
+       data terbaru dari server menyusul dan menggantikannya. */
+    const known = action === "detail" ? trips.find((t) => t.id === id && !t.deletedAt) : undefined;
+    if (known) openRecord(known);
     const request = ++openRequest.current;
     try {
       const latest = await api<Trip>(`/api/archives/${id}`, {
@@ -328,7 +373,7 @@ export default function Workspace({
       else if (action === "delete") {
         setTrashError("");
         setTrashTrip(latest);
-      } else openRecord(latest);
+      } else if (!known) openRecord(latest);
     } catch (error) {
       if (request === openRequest.current) setToast((error as Error).message);
     }
@@ -364,7 +409,7 @@ export default function Workspace({
       });
       update(updated);
       setTrashTrip(null);
-      if (!restore && record === t.code) window.history.replaceState(null, "", sectionPaths.archives);
+      if (!restore && record === t.code) replacePath(sectionPaths.archives);
       setSelected(new Set());
         setToast(
         restore
@@ -564,6 +609,7 @@ export default function Workspace({
           </div>
           )}
           {section === "archives" && record && (recordTrip && recordGroup ? (
+            <ViewTransition enter={pageSlide} exit={pageSlide} default="none">
             <ArchiveDetail
               key={recordTrip.id}
               trip={recordTrip}
@@ -580,6 +626,7 @@ export default function Workspace({
               }}
               onExport={exportable ? () => exportRows(recordGroup.trips) : undefined}
             />
+            </ViewTransition>
           ) : (
             <Empty
               icon={<FolderOpen size={30} />}
@@ -591,6 +638,7 @@ export default function Workspace({
             />
           ))}
           {section === "archives" && !record && (
+            <ViewTransition enter={pageSlide} exit={pageSlide} default="none">
             <div className="perjalanan-page">
               <header className="ledger-head perjalanan-head" data-tour="archive-heading">
                 <div>
@@ -742,6 +790,7 @@ export default function Workspace({
                 </div>
               )}
             </div>
+            </ViewTransition>
           )}
           {section === "home" && (
             <Beranda
