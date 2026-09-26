@@ -69,7 +69,7 @@ export function OnboardingNotice() {
 const hintCopy = {
   "create-archive": ["Mulai dari rekap yang sudah ada", "Catat perjalanan yang sudah selesai. Siapkan Surat Tugas, nama pegawai, dan rincian biaya. Nominal yang belum diketahui boleh tetap kosong."],
   "import-excel": ["Periksa dulu, simpan kemudian", "Pilih berkas Excel, cocokkan kolom, lalu periksa pratinjau. Arsip baru tersimpan setelah Anda mengonfirmasi impor."],
-  documents: ["Lengkapi berkas per perjalanan", "Pilih jenis dokumen untuk menemukan map yang masih kurang. Buka map, lalu unggah berkas atau catat lokasi dokumen fisiknya."],
+  documents: ["Lengkapi berkas per perjalanan", "Pilih map di daftar, lalu unggah foto atau PDF ke kantongnya atau catat lokasi berkas fisiknya. Map berikutnya yang kurang membawa Anda ke map yang belum lengkap."],
 } as const;
 
 export function OnboardingHint({ id }: { id: keyof typeof hintCopy }) {
