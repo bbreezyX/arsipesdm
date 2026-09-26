@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
-  type ColumnDef, type Row, type SortingState,
+  type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
 import {
   ArrowDown, ArrowUp, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
@@ -446,7 +446,7 @@ function PegawaiRoster({ rows, deleted, busy, error, openId, openPerson, hasAny,
           <Search size={17} aria-hidden="true" />
           <input id="pegawai-search" ref={searchRef} aria-label="Cari pegawai" aria-keyshortcuts="/" type="search" autoComplete="off"
             placeholder="Cari nama, NIP, jabatan, atau golongan" value={query} onChange={event => onQuery(event.target.value)} />
-          {query ? <button type="button" onClick={() => onQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}
+          {query ? <button type="button" onClick={() => onQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
         </div>
         {status}
         <CustomSelect aria-label="Urutkan pegawai" className="pegawai-sort" value={sortValue}
@@ -583,6 +583,7 @@ function EmployeeRecord({ person, busy, nav, onBack, onOpen, onEdit, onRemove, o
   const level = (count: number) => (count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : 3);
 
   /* Fokus pindah ke nama pegawai setiap berkas berganti; gulir agar kop berkas terlihat. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fokus dipindah ulang setiap berkas pegawai berganti
   useEffect(() => {
     const heading = headingRef.current;
     if (!heading) return;
@@ -661,7 +662,7 @@ function EmployeeRecord({ person, busy, nav, onBack, onOpen, onEdit, onRemove, o
             {person.journeys.length > 0 && <span>{person.journeys.length} perjalanan, terbaru di atas</span>}
           </div>
           {person.journeys.length > 0 ? <>
-            <div className="pegawai-months" aria-label={`Sebaran perjalanan sepanjang ${year}: ${yearTrips} perjalanan`}>
+            <div className="pegawai-months" role="group" aria-label={`Sebaran perjalanan sepanjang ${year}: ${yearTrips} perjalanan`}>
               <div className="pegawai-months-head"><span>Sebaran {year}</span><span>{yearTrips} perjalanan</span></div>
               <ol className="pegawai-months-grid">
                 {perMonth.map((count, month) => (
