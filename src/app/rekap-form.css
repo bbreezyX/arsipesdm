@@ -244,13 +244,13 @@
 .rekap-form .step-head {
   margin-bottom: 28px;
 }
+/* Judul pertanyaan memakai Instrument Sans; Instrument Serif hanya untuk angka besar dan judul masuk. */
 .rekap-form .step-head h3 {
   margin: 0;
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: 2.25rem;
-  font-weight: 400;
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--ledger-ink);
 }
 .rekap-form .step-head h3:focus {
@@ -460,6 +460,8 @@
 .step-wide .journey-people-list {
   max-height: min(440px, calc(100dvh - 420px));
   min-height: 200px;
+  /* globals.css memberi margin -3px; di sini itu menutupi garis tab aktif dan menyisakan titik emas di sudut. */
+  margin: 10px 0 0;
   overflow-y: auto;
   border: 1px solid var(--ledger-line);
   border-radius: 12px;
@@ -676,14 +678,16 @@
   }
   .rekap-form .step-modes {
     flex: 1;
+    flex-wrap: wrap;
     min-width: 0;
-    gap: 10px;
+    gap: 6px 10px;
+  }
+  /* Tanpa pilihan mode (arsip gabungan), judul tetap tampil agar kepala tidak kosong. */
+  .rekap-form .step-top:not(:has(.recap-entry-mode)) .step-title {
+    display: grid;
   }
   .rekap-form.lampiran-dialog .recap-entry-mode label {
     padding: 0 10px;
-  }
-  .rekap-form .step-switch {
-    display: none;
   }
   .rekap-form.lampiran-dialog [data-slot="dialog-close"] {
     top: 12px;
@@ -719,7 +723,7 @@
     padding: 22px var(--form-inset) 32px;
   }
   .rekap-form .step-head h3 {
-    font-size: 1.75rem;
+    font-size: 1.375rem;
   }
   .rekap-form .step-head {
     margin-bottom: 22px;
@@ -759,6 +763,9 @@
   }
   .rekap-form.lampiran-dialog .form-step-meta > .step-status {
     display: inline-flex;
+  }
+  .rekap-form.lampiran-dialog .form-step-meta > .step-meta-label {
+    display: inline;
   }
   .batch-cost-grid .grid-scroll {
     display: none;
@@ -861,4 +868,58 @@
   color: var(--ledger-success);
   font-size: var(--type-meta);
   font-weight: 600;
+}
+
+/* Honorarium: hitungan bruto − pajak = netto sebagai kartu tenang di langkah Perhitungan. */
+.rekap-form .honor-calc {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 14px;
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.rekap-form .honor-calc > div,
+.rekap-form .honor-calc > div:first-child,
+.rekap-form .honor-calc > div:last-child {
+  padding: 14px 18px;
+  border-right: 1px solid var(--ledger-line);
+}
+.rekap-form .honor-calc > div:last-child {
+  border-right: 0;
+}
+.rekap-form .honor-calc span {
+  color: var(--ledger-muted);
+}
+.rekap-form .honor-calc strong {
+  color: var(--ledger-ink);
+}
+.rekap-form .honor-calc > div:last-child strong {
+  color: var(--ledger-ink);
+  font-size: 1.375rem;
+}
+.rekap-form .step-meta-label {
+  color: var(--ledger-muted);
+  font-size: var(--type-meta);
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .rekap-form .honor-calc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rekap-form .honor-calc > div,
+  .rekap-form .honor-calc > div:first-child,
+  .rekap-form .honor-calc > div:last-child {
+    padding: 10px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ledger-line);
+  }
+  .rekap-form .honor-calc > div:last-child {
+    border-bottom: 0;
+  }
+}
+.step-dialog .honor-fieldset > .form-section {
+  padding-top: 0;
+  border-top: 0;
 }

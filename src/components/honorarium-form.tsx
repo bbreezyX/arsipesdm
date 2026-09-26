@@ -1,19 +1,23 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { FileText, LoaderCircle, Save, Users, Wallet } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { honorariumCategories, honorariumSchema, honorariumTotals, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
 import { money } from "@/lib/model";
-import { api, ErrorMessage, Field } from "./fields";
-import { FormRail, RailSlip, RailStepHead, RailStepLabel, useSectionSpy, type RailStatus } from "./form-rail";
+import { advanceOnEnter, api, ErrorMessage, Field } from "./fields";
+import type { RailStatus } from "./form-rail";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { CustomSelect, SelectOption } from "./ui/select";
 
-const honorSections = [["basis", "Dasar SK"], ["recipient", "Penerima"], ["amount", "Perhitungan"]] as const;
+// Sama dengan formulir rekap: langkah sebagai teks di atas, satu langkah per layar.
+const honorSections = [
+  ["basis", "Dasar SK", "SK apa yang menjadi dasarnya?", "Salin dari SK: jenis honorarium, nomor, unit kerja, dan kegiatan."],
+  ["recipient", "Penerima", "Siapa penerimanya?", "Satu rekap untuk satu penerima. Pilih dari daftar pegawai atau isi sesuai SK."],
+  ["amount", "Perhitungan", "Berapa honornya?", "Bruto, pajak, dan netto dihitung langsung dari isian, mengikuti format Lampiran 3."],
+] as const;
 type HonorSection = (typeof honorSections)[number][0];
-const honorSectionKeys = honorSections.map(([key]) => key);
 function honorSectionFor(path: PropertyKey[]): HonorSection {
   const field = String(path[0]);
   if (["recipient", "position", "skPosition", "recipientDepartment", "echelon", "budget"].includes(field)) return "recipient";
@@ -30,7 +34,15 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
-  const { bodyRef, active, jump } = useSectionSpy(honorSectionKeys);
+  const [step, setStep] = useState<HonorSection>("basis");
+  const bodyRef = useRef<HTMLDivElement>(null);
+  function go(next: HonorSection) {
+    setStep(next);
+    requestAnimationFrame(() => {
+      bodyRef.current?.scrollTo({ top: 0 });
+      bodyRef.current?.querySelector<HTMLElement>(".step-head h3")?.focus({ preventScroll: true });
+    });
+  }
   const editing = "id" in initial;
   const totals = honorariumTotals(form);
   /* Kicker mengikuti asal formulir: SK yang diedit, SK yang ditambah penerimanya, atau rekap baru. */
@@ -45,7 +57,7 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
   }
   function numberField(key: "monthlyAmount" | "months" | "taxRate" | "taxAmount" | "budget" | "year", label: string, max: number, min = 0) {
     return <Field label={label} required><input type="number" inputMode={key === "taxRate" ? "decimal" : "numeric"} min={min} max={max} step={key === "taxRate" ? "0.01" : "1"}
-      value={form[key] ?? ""} required onChange={e => patch({ [key]: e.target.value === "" ? null : Number(e.target.value) })} /></Field>;
+      value={form[key] ?? ""} required onWheel={e => e.currentTarget.blur()} onChange={e => patch({ [key]: e.target.value === "" ? null : Number(e.target.value) })} /></Field>;
   }
   async function save(event: FormEvent) {
     event.preventDefault(); if (busy) return;
@@ -53,7 +65,7 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       const section = honorSectionFor(issue.path);
-      setError(issue.message); setErrorSection(section); jump(section);
+      setError(issue.message); setErrorSection(section); setStep(section);
       return;
     }
     setBusy(true); setError(""); setErrorSection(undefined);
@@ -74,33 +86,53 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
   };
   if (errorSection) sectionStatus[errorSection] = ["error", "Perlu diperbaiki"];
   const taxLabel = `Pajak${form.taxMode === "percent" ? ` ${form.taxRate.toLocaleString("id-ID")}% dari bruto` : ""}`;
+  const stepIndex = honorSections.findIndex(([key]) => key === step);
+  const [, , question, purpose] = honorSections[stepIndex];
+  const next = honorSections[stepIndex + 1];
+  const previous = honorSections[stepIndex - 1];
+  // Rekap baru dituntun maju; rekap yang diedit bisa langsung disimpan dari langkah mana pun.
+  const advanceFirst = Boolean(next) && !editing;
+  const saveButton = <Button key="save" type="submit" variant={advanceFirst ? "outline" : "default"} disabled={busy}>
+    {busy && <LoaderCircle className="animate-spin" />}{busy ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan honorarium"}
+  </Button>;
+  const nextButton = next && <Button key="next" type="button" variant={advanceFirst ? "default" : "outline"} disabled={busy}
+    aria-label={`Lanjut ke ${next[1].toLowerCase()}`} onClick={() => go(next[0])}>
+    <span>Lanjut<span className="form-action-label">: {next[1]}</span></span> <ArrowRight />
+  </Button>;
   return <>
     <Dialog open onOpenChange={open => { if (!open) close(); }}>
-      <DialogContent className="form-dialog honor-dialog rail-dialog" showCloseButton={!busy} onInteractOutside={e => e.preventDefault()}>
-        <div className="rail-layout">
-          {/* Rel kiri: bagian formulir beserta statusnya; slip memuat hitungan honor yang selalu terlihat. */}
-          <FormRail kicker={kicker} title={editing ? "Edit honorarium" : "Tambah honorarium"}>
-            <nav className="rail-steps" aria-label="Bagian formulir">
-              {honorSections.map(([key, label], index) => {
-                const [status, note] = sectionStatus[key];
-                return <button key={key} type="button" className="rail-step" data-status={status}
-                  aria-current={active === key ? "true" : undefined} onClick={() => jump(key)}>
-                  <RailStepLabel index={index} status={status} label={label} note={note} />
-                </button>;
-              })}
-            </nav>
-            <RailSlip label="Honor netto" value={money(totals.net)}>
-              <dl>
-                <div><dt>Honor bruto</dt><dd>{money(totals.gross)}</dd></div>
-                <div><dt>{taxLabel}</dt><dd>− {money(totals.tax)}</dd></div>
-              </dl>
-            </RailSlip>
-          </FormRail>
-          <form className="editor-form rail-main" onSubmit={save}>
-            <RailStepHead question="Siapa penerimanya, dan berapa honornya?" describes
-              purpose="Satu rekap untuk satu penerima. Bruto, pajak, dan netto dihitung langsung dari isian, mengikuti format Lampiran 3." />
-            <div className="form-body" ref={bodyRef}><fieldset disabled={busy} className="honor-fieldset">
-              <section className="form-section" data-rail-section="basis"><h3><FileText size={17} />Dasar SK dan kegiatan</h3><div className="form-grid">
+      <DialogContent className="form-dialog lampiran-dialog rekap-form step-dialog honor-dialog" showCloseButton={!busy} onInteractOutside={e => e.preventDefault()}>
+        <header className="step-top">
+          <div className="step-title">
+            <span className="step-kicker">{kicker}</span>
+            <DialogTitle>{editing ? "Edit honorarium" : "Tambah honorarium"}</DialogTitle>
+            <DialogDescription className="sr-only">Satu rekap untuk satu penerima. Bruto, pajak, dan netto dihitung dari isian.</DialogDescription>
+          </div>
+        </header>
+        <nav className="step-nav" aria-label="Langkah isian honorarium">
+          {honorSections.map(([key, label], index) => {
+            const [status, note] = sectionStatus[key];
+            return <button key={key} type="button" data-status={status} aria-current={key === step ? "step" : undefined}
+              disabled={busy} onClick={() => go(key)}>
+              <i aria-hidden="true">{status === "done" && key !== step ? <Check size={11} strokeWidth={3.5} /> : status === "error" ? "!" : index + 1}</i>
+              {label}
+              <span className="sr-only">, {note}</span>
+            </button>;
+          })}
+        </nav>
+        <div className="step-progress" aria-hidden="true">
+          <span>Langkah {stepIndex + 1} dari {honorSections.length} · {honorSections[stepIndex][1]}</span>
+          <div><i style={{ width: `${((stepIndex + 1) / honorSections.length) * 100}%` }} /></div>
+        </div>
+        <form className="editor-form step-main" onSubmit={save} onKeyDown={advanceOnEnter} noValidate>
+          <div className="step-body" ref={bodyRef}>
+            <div className="step-column" key={step}>
+              <header className="step-head">
+                <h3 tabIndex={-1}>{question}</h3>
+                <p>{purpose}</p>
+              </header>
+              <fieldset disabled={busy} className="honor-fieldset">
+                {step === "basis" && <section className="form-section"><div className="form-grid">
                 <Field label="Jenis honorarium" required><CustomSelect value={form.category} onValueChange={value => patch({ category: value as HonorariumInput["category"] })}>
                   {Object.entries(honorariumCategories).map(([key, label]) => <SelectOption key={key} value={key}>{label}</SelectOption>)}
                 </CustomSelect></Field>
@@ -111,8 +143,8 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
                 {form.category === "finance" && textField("program", "Nama program", false, true)}
                 {textField("activity", "Nama kegiatan", false, true)}
                 {form.category === "finance" && textField("subActivity", "Nama subkegiatan", false, true)}
-              </div></section>
-              <section className="form-section" data-rail-section="recipient"><h3><Users size={17} />Penerima honor</h3>
+              </div></section>}
+                {step === "recipient" && <section className="form-section">
                 {employees.length > 0 && <Field label="Ambil dari daftar pegawai" hint="Opsional. Nama, jabatan, dan unit kerja tetap dapat disesuaikan untuk rekap ini."><CustomSelect value="" onValueChange={id => {
                   const person = employees.find(p => p.id === id);
                   if (person) patch({ recipient: person.name, position: person.position, recipientDepartment: person.department || form.recipientDepartment });
@@ -125,8 +157,8 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
                   {textField("echelon", "Eselon")}
                   {form.category === "finance" && numberField("budget", "Pagu dana yang dikelola (Rp)", 1_000_000_000_000)}
                 </div>
-              </section>
-              <section className="form-section" data-rail-section="amount"><h3><Wallet size={17} />Perhitungan honor</h3><div className="form-grid">
+                </section>}
+                {step === "amount" && <section className="form-section"><div className="form-grid">
                 {numberField("monthlyAmount", "Honor per bulan (Rp)", 1_000_000_000_000)}
                 {numberField("months", "Jumlah bulan", 12, 1)}
                 <Field label="Cara mengisi pajak"><CustomSelect value={form.taxMode} onValueChange={value => patch({ taxMode: value as HonorariumInput["taxMode"] })}>
@@ -134,26 +166,34 @@ export default function HonorariumForm({ initial, employees, onClose, onSaved }:
                 </CustomSelect></Field>
                 {form.taxMode === "percent" ? numberField("taxRate", "Tarif pajak (%)", 100) : numberField("taxAmount", "Pajak (Rp)", 1_000_000_000_000)}
               </div><p className="field-hint">Isi pajak sesuai dokumen. Nilai 0 berarti tanpa potongan; persentase dibulatkan ke rupiah terdekat.</p>
-              {textField("notes", "Keterangan", false, true)}</section>
-            </fieldset></div>
-            {/* Pita hitungan untuk layar sempit, saat slip rel tidak tampil. */}
-            <div className="honor-calc" aria-live="polite">
-              <div><span>Honor bruto</span><strong>{money(totals.gross)}</strong></div>
-              <div><span>{taxLabel}</span><strong>− {money(totals.tax)}</strong></div>
-              <div><span>Honor netto</span><strong>{money(totals.net)}</strong></div>
+              {textField("notes", "Keterangan", false, true)}
+                  {/* Hitungan honor: bruto dikurangi pajak, netto sebagai angka utama. */}
+                  <div className="honor-calc" aria-live="polite">
+                    <div><span>Honor bruto</span><strong>{money(totals.gross)}</strong></div>
+                    <div><span>{taxLabel}</span><strong>− {money(totals.tax)}</strong></div>
+                    <div><span>Honor netto</span><strong>{money(totals.net)}</strong></div>
+                  </div>
+                </section>}
+              </fieldset>
             </div>
-            <div className="form-footer">
-              <ErrorMessage message={error} />
-              <div className="footer-actions">
-                <div className="form-step-meta"><span>{dirty ? "Ada isian yang belum disimpan" : "Kolom bertanda * wajib diisi"}</span></div>
-                <div className="form-action-buttons">
-                  <Button type="button" variant="ghost" disabled={busy} onClick={close}>Batal</Button>
-                  <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Save />}{busy ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan honorarium"}</Button>
-                </div>
+          </div>
+          <div className="form-footer step-foot">
+            <ErrorMessage message={error} />
+            <div className="footer-actions">
+              <div className="form-step-meta step-meta" aria-live="polite">
+                <span className="step-meta-label">Honor netto</span>
+                <strong className="step-total">{money(totals.net)}</strong>
+                <span className="step-meta-note">{dirty ? "Ada isian yang belum disimpan" : "Kolom bertanda * wajib diisi"}</span>
+              </div>
+              <div className="form-action-buttons">
+                {previous
+                  ? <Button type="button" variant="ghost" disabled={busy} aria-label="Kembali" onClick={() => go(previous[0])}><ArrowLeft /> <span className="form-action-label">Kembali</span></Button>
+                  : <Button type="button" variant="ghost" disabled={busy} onClick={close}>Batal</Button>}
+                {advanceFirst ? [saveButton, nextButton] : [nextButton, saveButton]}
               </div>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
     <Dialog open={discard} onOpenChange={setDiscard}>

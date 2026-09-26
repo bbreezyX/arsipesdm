@@ -525,11 +525,10 @@
 .rail-dialog .rail-step-head h3,
 .sheet-dialog [data-slot="dialog-title"] {
   margin: 4px 0 6px;
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: 2rem !important;
-  font-weight: 400 !important;
-  line-height: 1.1 !important;
-  letter-spacing: -0.005em;
+  font-size: 1.625rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.02em;
   color: var(--ledger-ink);
 }
 .rail-dialog .rail-step-head h3:focus {
@@ -733,7 +732,7 @@
   }
   .rail-dialog .rail-step-head h3,
   .sheet-dialog [data-slot="dialog-title"] {
-    font-size: 1.5rem !important;
+    font-size: 1.375rem !important;
   }
   .rail-dialog [data-slot="dialog-close"] {
     top: 12px;

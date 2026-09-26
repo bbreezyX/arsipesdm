@@ -54,7 +54,7 @@ Opening a rekap from any register shows one card of the same book. The navy head
 
 The archive's frontispiece uses one white page with a rounded illustrated navy panel on the left and a centered sign-in form on the right. The layout fills the available width, without a second outer background or card frame. The original white-ink sketch combines an open register, shelves of records, and an imagined Indonesian civic pavilion. It lives at `public/art/auth-archive-sketch.png`, with its generation prompt in `docs/design/auth-art-prompt.md`. The illustration uses the existing navy and white palette; the provincial crest remains the official identity.
 
-Instrument Serif is reserved for the two welcome headings; Instrument Sans remains the face for every label, control, and workspace page. The auth layout lives in `src/components/auth-page.tsx` and its styles in `src/app/auth.css`. Below 761px the art becomes a compact header above the form. Email/password sign-in, account provisioning by the administrator, and session notices keep their existing behavior.
+Instrument Serif is reserved for the two welcome headings and for large figures in the workspace (the Beranda, Honorarium, and Rekap & Laporan totals, and the Surat Tugas month numbers). Instrument Sans is the face for every other label, control, and heading, including the question headings in form dialogs. The auth layout lives in `src/components/auth-page.tsx` and its styles in `src/app/auth.css`. Below 761px the art becomes a compact header above the form. Email/password sign-in, account provisioning by the administrator, and session notices keep their existing behavior.
 
 ## Brand provenance
 

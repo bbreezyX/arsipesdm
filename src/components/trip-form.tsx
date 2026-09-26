@@ -7,21 +7,21 @@ import FundTrackField from "./fund-track-field";
 import { formatDestinations, tripDestinations } from "@/lib/destinations";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import { CustomSelect, SelectOption } from "./ui/select";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Plus,
   Trash2,
-  Users,
-  MapPin,
-  Wallet,
   Info,
   LoaderCircle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
 } from "lucide-react";
-import { Dialog, DialogContent } from "./ui/dialog";
-import { FormRail, RailSlip, RailStepHead, RailStepLabel, useSectionSpy, type RailStatus } from "./form-rail";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
+import type { RailStatus } from "./form-rail";
 import { useDiscardConfirm } from "./discard-confirm";
 import { Button } from "./ui/button";
-import { Field, ErrorMessage, api } from "./fields";
+import { Field, ErrorMessage, advanceOnEnter, api } from "./fields";
 import ArchiveDateInput from "./archive-date-input";
 import Lampiran6Form from "./lampiran6-form";
 import BatchRecapForm from "./batch-recap-form";
@@ -37,13 +37,13 @@ import {
   tripSchema,
 } from "@/lib/model";
 
+// Sama dengan formulir rekap: langkah sebagai teks di atas, satu langkah per layar.
 const generalSections = [
-  ["trip", "Informasi perjalanan"],
-  ["people", "Peserta"],
-  ["costs", "Biaya & keterangan"],
+  ["trip", "Perjalanan", "Perjalanan apa yang diarsipkan?", "Satu arsip untuk seluruh peserta. Salin dari Surat Tugas atau dokumen lama."],
+  ["people", "Peserta", "Siapa saja pesertanya?", "Tambahkan setiap pegawai yang ikut. Pilih dari daftar agar NIP terisi otomatis."],
+  ["costs", "Biaya & keterangan", "Berapa biayanya?", "Gunakan nominal pada dokumen lama; kosongkan yang belum diketahui."],
 ] as const;
 type GeneralSection = (typeof generalSections)[number][0];
-const generalSectionKeys = generalSections.map(([key]) => key);
 function generalSectionFor(path: PropertyKey[]): GeneralSection {
   const field = String(path[0]);
   if (field === "participants") return "people";
@@ -94,7 +94,15 @@ function GeneralTripForm({
   const [dirty, setDirty] = useState(false);
   const [person, setPerson] = useState("");
   const [errorSection, setErrorSection] = useState<GeneralSection>();
-  const { bodyRef, active, jump } = useSectionSpy(generalSectionKeys);
+  const [step, setStep] = useState<GeneralSection>("trip");
+  const bodyRef = useRef<HTMLDivElement>(null);
+  function go(next: GeneralSection) {
+    setStep(next);
+    requestAnimationFrame(() => {
+      bodyRef.current?.scrollTo({ top: 0 });
+      bodyRef.current?.querySelector<HTMLElement>(".step-head h3")?.focus({ preventScroll: true });
+    });
+  }
   const needsCorrectionReason = trip !== null && isComplete(trip);
   const savingDraft = !isComplete(form);
   function patch(p: Partial<TripInput>) {
@@ -131,7 +139,7 @@ function GeneralTripForm({
       const section = generalSectionFor(issue.path);
       setError(issue.message);
       setErrorSection(section);
-      jump(section);
+      setStep(section);
       return;
     }
     setBusy(true);
@@ -166,6 +174,28 @@ function GeneralTripForm({
       : total === null ? ["open", "Belum ada biaya"] : ["done", money(total)],
   };
   if (errorSection) sectionStatus[errorSection] = ["error", "Perlu diperbaiki"];
+  const stepIndex = generalSections.findIndex(([key]) => key === step);
+  const [, , question, purpose] = generalSections[stepIndex];
+  const next = generalSections[stepIndex + 1];
+  const previous = generalSections[stepIndex - 1];
+  // Arsip baru dituntun maju; arsip yang diedit bisa langsung disimpan dari langkah mana pun.
+  const advanceFirst = Boolean(next) && !trip;
+  const saveButton = (
+    <Button key="save" type="submit" variant={advanceFirst ? "outline" : "default"} disabled={busy}>
+      {busy && <LoaderCircle className="animate-spin" />}
+      {busy
+        ? "Menyimpan…"
+        : savingDraft
+          ? "Simpan draft"
+          : trip ? "Simpan perubahan" : "Simpan arsip"}
+    </Button>
+  );
+  const nextButton = next && (
+    <Button key="next" type="button" variant={advanceFirst ? "default" : "outline"} disabled={busy}
+      aria-label={`Lanjut ke ${next[1].toLowerCase()}`} onClick={() => go(next[0])}>
+      <span>Lanjut<span className="form-action-label">: {next[1]}</span></span> <ArrowRight />
+    </Button>
+  );
   return (<>
     <Dialog
       open
@@ -174,64 +204,63 @@ function GeneralTripForm({
       }}
     >
       <DialogContent
-        className="form-dialog rail-dialog"
+        className="form-dialog lampiran-dialog rekap-form step-dialog"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <div className="rail-layout">
-          {/* Rel kiri: bagian formulir beserta statusnya dan slip total; satu halaman, jadi rel melompat ke bagian. */}
-          <FormRail
-            kicker={trip ? trip.code : "Arsip gabungan"}
-            title={trip ? (needsCorrectionReason ? "Edit perjalanan" : "Lengkapi draft") : "Tambah perjalanan"}
-            description={needsCorrectionReason ? "Perubahan pada arsip lengkap perlu disertai alasan." : undefined}
-            showDescription
-          >
-            {onSwitch && (
-              <div className="rail-modes">
-                <button
-                  className="rail-switch"
-                  type="button"
-                  onClick={() => {
-                    if (dirty) discard.ask(onSwitch);
-                    else onSwitch();
-                  }}
-                >
-                  <span>Gunakan rekap per pegawai</span><small>Satu rekap untuk setiap pegawai</small>
-                </button>
-              </div>
-            )}
-            <nav className="rail-steps" aria-label="Bagian formulir">
-              {generalSections.map(([key, label], index) => {
-                const [status, note] = sectionStatus[key];
-                return (
-                  <button key={key} type="button" className="rail-step" data-status={status}
-                    aria-current={active === key ? "true" : undefined} onClick={() => jump(key)}>
-                    <RailStepLabel index={index} status={status} label={label} note={note} />
-                  </button>
-                );
-              })}
-            </nav>
-            <RailSlip label="Total realisasi" value={money(total)} empty={total === null} complete={!savingDraft}>
-              <p>
-                <b>{savingDraft ? "Draft" : "Lengkap"}</b>
-                {savingDraft ? "Catat minimal satu biaya agar arsip lengkap." : "Arsip disimpan lengkap."}
-              </p>
-            </RailSlip>
-          </FormRail>
-          <form onSubmit={save} className="editor-form rail-main">
-            <RailStepHead
-              question="Siapa berangkat, ke mana, dan berapa biayanya?"
-              purpose="Satu arsip untuk seluruh peserta. Gunakan nominal pada dokumen lama; kosongkan yang belum diketahui."
-              describes={!needsCorrectionReason}
-            />
-            <div className="form-body" ref={bodyRef}>
-              {!trip && <OnboardingHint id="create-archive" />}
-              <section className="form-section" data-rail-section="trip">
-              <h3>
-                <MapPin size={17} /> Informasi perjalanan
-              </h3>
+        <header className="step-top">
+          <div className="step-title">
+            <span className="step-kicker">{trip ? trip.code : "Arsip gabungan"}</span>
+            <DialogTitle>{trip ? (needsCorrectionReason ? "Edit perjalanan" : "Lengkapi draft") : "Tambah perjalanan"}</DialogTitle>
+            <DialogDescription className={needsCorrectionReason ? "step-note" : "sr-only"}>
+              {needsCorrectionReason ? "Perubahan pada arsip lengkap perlu disertai alasan." : "Satu arsip untuk seluruh peserta perjalanan."}
+            </DialogDescription>
+          </div>
+          {onSwitch && (
+            <div className="step-modes">
+              <button
+                className="step-switch"
+                type="button"
+                title="Satu rekap untuk setiap pegawai"
+                onClick={() => {
+                  if (dirty) discard.ask(onSwitch);
+                  else onSwitch();
+                }}
+              >
+                Rekap per pegawai
+              </button>
+            </div>
+          )}
+        </header>
+        <nav className="step-nav" aria-label="Langkah isian arsip">
+          {generalSections.map(([key, label], index) => {
+            const [status, note] = sectionStatus[key];
+            return (
+              <button key={key} type="button" data-status={status} aria-current={key === step ? "step" : undefined}
+                disabled={busy} onClick={() => go(key)}>
+                <i aria-hidden="true">{status === "done" && key !== step ? <Check size={11} strokeWidth={3.5} /> : status === "error" ? "!" : index + 1}</i>
+                {label}
+                <span className="sr-only">, {note}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="step-progress" aria-hidden="true">
+          <span>Langkah {stepIndex + 1} dari {generalSections.length} · {generalSections[stepIndex][1]}</span>
+          <div><i style={{ width: `${((stepIndex + 1) / generalSections.length) * 100}%` }} /></div>
+        </div>
+        <form onSubmit={save} onKeyDown={advanceOnEnter} className="editor-form step-main" noValidate>
+          <div className="step-body" ref={bodyRef}>
+            <div className="step-column" key={step}>
+              <header className="step-head">
+                <h3 tabIndex={-1}>{question}</h3>
+                <p>{purpose}</p>
+              </header>
+              {step === "trip" && <>
+                {!trip && <OnboardingHint id="create-archive" />}
+                <section className="form-section">
               <div className="form-grid">
                 <Field label="Uraian perjalanan" required className="span-2">
-                  <Combobox multiline aria-label="Uraian perjalanan" autoFocus required maxLength={3000}
+                  <Combobox multiline aria-label="Uraian perjalanan" required maxLength={3000}
                     placeholder="Pilih kegiatan tersimpan atau ketik uraian perjalanan" value={form.title}
                     options={suggestions.purposes} onValueChange={title => patch({title})} />
                 </Field>
@@ -286,12 +315,10 @@ function GeneralTripForm({
                   />
                 </Field>
               </div>
-            </section>
-            <section className="form-section" data-rail-section="people">
-              <h3>
-                <Users size={17} /> Peserta perjalanan{" "}
-                <span className="count-badge">{form.participants.length}</span>
-              </h3>
+                </section>
+              </>}
+              {step === "people" && (
+                <section className="form-section">
               <div className="person-add">
                 <Combobox
                   aria-label="Nama peserta"
@@ -379,12 +406,12 @@ function GeneralTripForm({
                   </div>
                 ))}
               </div>
-            </section>
-            <section className="form-section" data-rail-section="costs">
+                </section>
+              )}
+              {step === "costs" && <>
+                <section className="form-section">
               <div className="section-heading">
-                <h3>
-                  <Wallet size={17} /> Biaya realisasi
-                </h3>
+                <h3>Komponen biaya</h3>
                 <Button
                   type="button"
                   size="sm"
@@ -558,47 +585,43 @@ function GeneralTripForm({
                   />
                 </Field>
               )}
-            </section>
-            <div className="inline-note">
-              <Info size={16} />
-              <span>
-                PDF, foto, dan catatan berkas fisik boleh ditambahkan jika diperlukan.
-              </span>
+                </section>
+                <div className="inline-note">
+                  <Info size={16} />
+                  <span>
+                    PDF, foto, dan catatan berkas fisik boleh ditambahkan jika diperlukan.
+                  </span>
+                </div>
+              </>}
             </div>
           </div>
-          <div className="form-footer">
+          <div className="form-footer step-foot">
             <ErrorMessage message={error} />
             <div className="footer-actions">
-              <div className="form-step-meta">
-                <strong className="rail-footer-total">{money(total)}</strong>
-                <span>
+              <div className="form-step-meta step-meta" aria-live="polite">
+                <span className="step-status" data-complete={!savingDraft || undefined}>{savingDraft ? "Draft" : "Lengkap"}</span>
+                <strong className="step-total">{money(total)}</strong>
+                <span className="step-meta-note">
                   {dirty
                     ? "Ada isian yang belum disimpan"
-                    : "Kolom bertanda * wajib diisi"}
+                    : `${form.participants.length} peserta`}
                 </span>
               </div>
               <div className="form-action-buttons">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={close}
-                  disabled={busy}
-                >
-                  Batal
-                </Button>
-                <Button type="submit" disabled={busy}>
-                  {busy ? <LoaderCircle className="animate-spin" /> : <Plus />}
-                  {busy
-                    ? "Menyimpan…"
-                    : savingDraft
-                      ? "Simpan draft"
-                      : trip ? "Simpan perubahan" : "Simpan rekap"}
-                </Button>
+                {previous ? (
+                  <Button type="button" variant="ghost" disabled={busy} aria-label="Kembali" onClick={() => go(previous[0])}>
+                    <ArrowLeft /> <span className="form-action-label">Kembali</span>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" onClick={close} disabled={busy}>
+                    Batal
+                  </Button>
+                )}
+                {advanceFirst ? [saveButton, nextButton] : [nextButton, saveButton]}
               </div>
             </div>
           </div>
-          </form>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
     {discard.dialog}

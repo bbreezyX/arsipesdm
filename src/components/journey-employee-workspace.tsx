@@ -156,7 +156,6 @@ export function PeoplePicker({ shared, rows, people, onSelect, issue }: {
     && [person.name, person.nip, person.position, person.rank, person.department].join(" ").toLocaleLowerCase("id-ID").includes(search));
   const shownKeys = new Set(shown.map(person => person.key));
   const hiddenSelected = selected.filter(row => !shownKeys.has(row.key)).length;
-  const selectedShown = shown.filter(person => selectedKeys.has(person.key)).length;
 
   return <div className="journey-people-picker" data-journey-section="people">
     <div className="journey-people-filters">
@@ -167,10 +166,8 @@ export function PeoplePicker({ shared, rows, people, onSelect, issue }: {
         <button type="button" aria-pressed={onlySelected} onClick={() => setOnlySelected(true)}>Terpilih <span>{selected.length}</span></button>
       </div>
     </div>
-    <div className="journey-selection-toolbar">
-      <label><input type="checkbox" disabled={!shown.length} checked={shown.length > 0 && selectedShown === shown.length} ref={node => { if (node) node.indeterminate = selectedShown > 0 && selectedShown < shown.length; }} onChange={event => onSelect(shownKeys, event.currentTarget.checked)} />Pilih semua hasil</label>
-      <span className="batch-selection-count" role="status">{selected.length} dipilih</span>
-    </div>
+    {/* Peserta Surat Tugas dipilih satu per satu; jumlahnya tampil di tab Terpilih. */}
+    <span className="sr-only" role="status">{selected.length} pegawai dipilih</span>
     {issue?.section === "people" && <p className="journey-inline-error">{issue.message}</p>}
     <div className="journey-people-list" role="group" aria-label="Daftar pegawai">
       {shown.map(person => { const signal = rowSignals.get(person.key); return <label className="journey-person-option" key={person.key} data-recap-tone={signal?.differences.length || signal?.pending || signal?.varied ? "different" : signal?.details ? "details" : signal?.amounts ? "filled" : "empty"}>
