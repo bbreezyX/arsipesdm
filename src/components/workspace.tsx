@@ -533,14 +533,7 @@ export default function Workspace({
         </header>
         <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : section === "home" ? "workspace-beranda" : ""}`}>
           <OnboardingNotice />
-          {section === "taskLetters" ? (
-            <header className="ledger-head">
-              <div>
-                <h1>Surat Tugas</h1>
-                <p>Register surat tugas yang tersusun per nomor surat, dengan pegawai yang ditugaskan dan realisasi biaya setiap perjalanannya.</p>
-              </div>
-            </header>
-          ) : section === "archives" ? (
+          {section === "archives" ? (
             <header className="ledger-head" data-tour="archive-heading">
               <div>
                 <h1>Arsip perjalanan</h1>
@@ -555,7 +548,7 @@ export default function Workspace({
                 </Button>
               </div>}
             </header>
-          ) : section === "home" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
+          ) : section === "home" || section === "taskLetters" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
           <div className="page-heading">
             <div>
               <h1>{sectionNames[section]}</h1>

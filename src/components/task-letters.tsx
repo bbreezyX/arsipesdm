@@ -69,7 +69,8 @@ const months = [
 ] as const;
 
 const columnLabels: Record<string, string> = {
-  reference: "Nomor surat dan kegiatan",
+  reference: "Nomor surat",
+  activity: "Kegiatan dan tujuan",
   dates: "Pelaksanaan",
   people: "Pegawai",
   total: "Realisasi",
@@ -85,6 +86,12 @@ function dateRange(start: string, end: string) {
 function dayCount(start: string, end: string) {
   const days = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) + 1;
   return `${Math.max(1, days)} hari`;
+}
+
+const longDate = { day: "numeric", month: "long", year: "numeric" } as const;
+/** Waktu pelaksanaan seperti ditulis di badan surat: "21 Juli 2026 s.d. 23 Juli 2026". */
+function letterPeriod(start: string, end: string) {
+  return start === end ? dateText(start, longDate) : `${dateText(start, longDate)} s.d. ${dateText(end, longDate)}`;
 }
 
 function tripMonth(trip: Trip) {
@@ -120,24 +127,33 @@ const columns: ColumnDef<TaskLetter>[] = [
   {
     id: "reference",
     accessorKey: "number",
-    header: "Nomor surat dan kegiatan",
-    size: 380,
+    header: "Nomor surat",
+    size: 210,
     enableHiding: false,
     cell: ({ row }) => (
-      <div className="ledger-identity">
-        <button type="button"
-          className="ledger-ref"
-          onClick={() => row.toggleExpanded()}
-          aria-expanded={row.getIsExpanded()}
-          aria-controls={`surat-detail-${encodeURIComponent(row.id)}`}
-        >
-          {row.original.number}
-        </button>
-        <p className="ledger-title">{row.original.titles[0]}</p>
-        <div className="ledger-place">
-          <MapPin size={13} aria-hidden="true" />
-          <span>{row.original.destinations.join(", ")}</span>
-        </div>
+      <button type="button"
+        className="ledger-ref surat-ref"
+        onClick={() => row.toggleExpanded()}
+        aria-expanded={row.getIsExpanded()}
+        aria-controls={`surat-detail-${encodeURIComponent(row.id)}`}
+      >
+        {row.original.number}
+      </button>
+    ),
+  },
+  {
+    id: "activity",
+    accessorFn: (letter) => letter.titles[0],
+    header: "Kegiatan dan tujuan",
+    size: 290,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <div className="surat-activity">
+        <p title={row.original.titles.join("\n")}>{row.original.titles[0]}</p>
+        <span>
+          {row.original.destinations.join(", ")}
+          {row.original.titles.length > 1 ? ` · ${row.original.titles.length} kegiatan` : ""}
+        </span>
       </div>
     ),
   },
@@ -145,7 +161,7 @@ const columns: ColumnDef<TaskLetter>[] = [
     id: "dates",
     accessorKey: "startDate",
     header: "Pelaksanaan",
-    size: 180,
+    size: 140,
     cell: ({ row }) => (
       <div className="ledger-dates">
         <time dateTime={row.original.startDate}>{dateRange(row.original.startDate, row.original.endDate)}</time>
@@ -157,21 +173,21 @@ const columns: ColumnDef<TaskLetter>[] = [
     id: "people",
     accessorKey: "peopleCount",
     header: "Pegawai",
-    size: 190,
+    size: 160,
     cell: ({ row }) => <LetterPeople letter={row.original} />,
   },
   {
     id: "total",
     accessorFn: (letter) => letter.total ?? undefined,
     header: "Realisasi",
-    size: 160,
+    size: 150,
     sortUndefined: "last",
     cell: ({ row }) => <LetterAmount letter={row.original} />,
   },
   {
     id: "actions",
     header: () => <span className="sr-only">Rincian</span>,
-    size: 56,
+    size: 48,
     enableHiding: false,
     enableSorting: false,
     cell: ({ row }) => (
@@ -179,7 +195,7 @@ const columns: ColumnDef<TaskLetter>[] = [
         variant="ghost"
         size="icon-sm"
         className="ledger-expand"
-        aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} rincian ${row.original.number}`}
+        aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} surat ${row.original.number}`}
         aria-expanded={row.getIsExpanded()}
         aria-controls={`surat-detail-${encodeURIComponent(row.id)}`}
         onClick={() => row.toggleExpanded()}
@@ -269,78 +285,61 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
 
   return (
     <div className="surat-page">
-      <nav className="ledger-years" aria-label="Tahun surat tugas">
-        {years.map((value) => (
-          <button type="button"
-            key={value}
-            className="ledger-year"
-            aria-pressed={year === value}
-            onClick={() => chooseYear(value)}
-          >
-            <strong>{value}</strong>
-            <span>{yearCounts.get(value)} surat tugas</span>
-          </button>
-        ))}
-        <button type="button"
-          className="ledger-year ledger-year-all"
-          aria-pressed={year === "all"}
-          onClick={() => chooseYear("all")}
-        >
-          <strong>Semua</strong>
-          <span>{letters.length} surat tugas</span>
-        </button>
-      </nav>
+      <header className="ledger-head surat-head">
+        <div>
+          <h1>Surat Tugas</h1>
+          <p className="surat-head-facts">
+            <b>{summary.letters}</b> surat · <b>{summary.trips}</b> rekap · <b>{summary.people}</b> pegawai · <b>{summary.places}</b> tujuan
+            {summary.outside ? `, ${summary.outside} luar provinsi` : ""}
+          </p>
+        </div>
+        <div className="surat-head-total">
+          <span>Realisasi {scopeLabel}</span>
+          <strong>{summary.total === null ? "Belum dicatat" : money(summary.total)}</strong>
+          <small className={summary.unknownCount ? "is-warning" : undefined}>
+            {summary.unknownCount
+              ? `${summary.unknownCount} dari ${summary.trips} rekap belum bernominal`
+              : summary.trips ? "Seluruh rekap sudah bernominal" : "Belum ada rekap"}
+          </small>
+        </div>
+      </header>
       <section className="ledger-sheet surat-sheet" aria-label="Register surat tugas">
-        <div className="surat-index" role="group" aria-label="Bulan pelaksanaan">
-          <button type="button"
-            className="surat-index-all"
-            aria-pressed={month === null}
-            onClick={() => setMonth(null)}
-          >
-            <strong>Semua bulan</strong>
-            <span>{inYear.length} surat</span>
-          </button>
-          <div className="surat-index-months">
+        <div className="surat-bar">
+          <div className="surat-years" role="group" aria-label="Tahun surat tugas">
+            {years.map((value) => (
+              <button type="button"
+                key={value}
+                aria-pressed={year === value}
+                title={`${yearCounts.get(value)} surat tugas`}
+                onClick={() => chooseYear(value)}
+              >
+                {value}
+              </button>
+            ))}
+            <button type="button" aria-pressed={year === "all"} title={`${letters.length} surat tugas`} onClick={() => chooseYear("all")}>
+              Semua
+            </button>
+          </div>
+          <div className="surat-months" role="group" aria-label="Bulan pelaksanaan">
             {months.map(([roman, name], index) => {
               const count = monthCounts[index];
               return (
                 <button type="button"
                   key={roman}
-                  className="surat-month"
                   aria-pressed={month === index}
                   aria-label={`${name}, ${count} surat tugas`}
+                  title={name}
                   disabled={count === 0}
                   onClick={() => setMonth(month === index ? null : index)}
                 >
                   <strong>{roman}</strong>
-                  <span>{name.slice(0, 3)}</span>
-                  <b>{count || "–"}</b>
+                  <span>{count || "–"}</span>
                 </button>
               );
             })}
           </div>
+          <DestinationPicker places={places} value={place} onChange={setPlace} />
         </div>
-        <div className="surat-facts" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
-          <dl>
-            <div><dt>Surat tugas</dt><dd>{summary.letters}</dd></div>
-            <div><dt>Rekap perjalanan</dt><dd>{summary.trips}</dd></div>
-            <div><dt>Pegawai ditugaskan</dt><dd>{summary.people}</dd></div>
-            <div className="surat-facts-places">
-              <dt>Tujuan</dt>
-              <dd>{summary.places}{summary.outside ? <small>{summary.outside} luar provinsi</small> : null}</dd>
-            </div>
-          </dl>
-          <div className="surat-facts-cost">
-            <span>Realisasi biaya {scopeLabel}</span>
-            <strong>{summary.total === null ? "Belum dicatat" : money(summary.total)}</strong>
-            <small className={summary.unknownCount ? "is-warning" : undefined}>
-              {summary.unknownCount
-                ? `${summary.unknownCount} dari ${summary.trips} rekap belum bernominal`
-                : summary.trips ? "Seluruh rekap sudah bernominal" : "Belum ada rekap"}
-            </small>
-          </div>
-        </div>
-        <DestinationRail places={places} value={place} onChange={setPlace} />
         <LetterRegister
           letters={visible}
           filtered={filtered}
@@ -402,95 +401,39 @@ export default function TaskLetters({ trips, onOpen }: { trips: Trip[]; onOpen: 
   );
 }
 
-/* Rel tujuan: tempat yang paling sering dituju di depan; sisanya lewat menu "lainnya". */
-const railLimit = 6;
-/** "Kab. Tanjung Jabung Barat" fits a rail cell; the full name stays in labels and the scope line. */
-function railName(name: string) {
-  return name.replace(/^Kabupaten\s+/i, "Kab. ").replace(/^Provinsi\s+/i, "Prov. ");
-}
-function DestinationRail({ places, value, onChange }: {
+/* Tujuan: satu pilihan di toolbar; tempat yang paling sering dituju di urutan teratas menu. */
+function DestinationPicker({ places, value, onChange }: {
   places: DestinationFact[]; value: string | null; onChange: (next: string | null) => void;
 }) {
   if (!places.length) return null;
-  const shown = places.slice(0, railLimit);
   const chosen = value === null ? null : places.find((fact) => fact.key === value) ?? null;
-  if (chosen && !shown.includes(chosen)) shown.push(chosen);
-  const rest = places.filter((fact) => !shown.includes(fact));
   const outside = places.filter((fact) => !fact.inJambi).length;
-  const current = chosen
-    ? `${chosen.name} · ${chosen.letters} surat`
-    : `Semua tujuan · ${places.length}`;
+  const current = chosen ? chosen.name : `Semua · ${places.length}`;
   return (
-    <>
-      <div className="surat-places" role="group" aria-label="Tujuan perjalanan">
-        <button type="button" className="surat-places-all" aria-pressed={value === null} onClick={() => onChange(null)}>
-          <strong>Semua tujuan</strong>
-          <span>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</span>
-        </button>
-        <div className="surat-place-list">
-          {shown.map((fact) => (
-            <button type="button"
-              key={fact.key}
-              className="surat-place"
-              aria-pressed={value === fact.key}
-              aria-label={`${fact.name}, ${fact.letters} surat tugas${fact.total === null ? "" : `, ${money(fact.total)}`}`}
-              title={fact.name}
-              onClick={() => onChange(value === fact.key ? null : fact.key)}
-            >
-              <span>{railName(fact.name)}</span>
-              <strong>{fact.letters}</strong>
-              <small>surat{fact.total === null ? null : <i className="surat-place-cost"> · Rp {shortMoney(fact.total)}</i>}</small>
-            </button>
-          ))}
-          {rest.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="surat-place surat-place-more" aria-label={`${rest.length} tujuan lainnya`}>
-                  <span>Lainnya</span>
-                  <strong>{rest.length}</strong>
-                  <small>tujuan lain</small>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="surat-place-menu">
-                <DropdownMenuLabel>Tujuan lainnya</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {rest.map((fact) => (
-                  <DropdownMenuItem key={fact.key} onSelect={() => onChange(fact.key)}>
-                    <span>{fact.name}</span>
-                    <small>{fact.letters} surat{fact.total === null ? "" : ` · Rp ${shortMoney(fact.total)}`}</small>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
-      {/* Ponsel: satu baris pilihan, seluruh tujuan lewat menu; rel lengkap terlalu padat di bawah rel bulan. */}
-      <div className="surat-places-compact">
-        <span>Tujuan</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className="surat-places-pick" data-chosen={chosen ? "true" : undefined} aria-label={`Tujuan: ${current}`}>
-              <b>{current}</b>
-              <ChevronDown size={15} aria-hidden="true" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="surat-place-menu">
-            <DropdownMenuItem onSelect={() => onChange(null)} data-active={value === null ? "true" : undefined}>
-              <span>Semua tujuan</span>
-              <small>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</small>
+    <div className="surat-places-compact">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="surat-places-pick" data-chosen={chosen ? "true" : undefined} aria-label={`Tujuan: ${current}`}>
+            <span>Tujuan</span>
+            <b>{current}</b>
+            <ChevronDown size={15} aria-hidden="true" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="surat-place-menu">
+          <DropdownMenuItem onSelect={() => onChange(null)} data-active={value === null ? "true" : undefined}>
+            <span>Semua tujuan</span>
+            <small>{places.length} tujuan{outside ? ` · ${outside} luar provinsi` : ""}</small>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {places.map((fact) => (
+            <DropdownMenuItem key={fact.key} onSelect={() => onChange(fact.key)} data-active={value === fact.key ? "true" : undefined}>
+              <span>{fact.name}</span>
+              <small>{fact.letters} surat{fact.total === null ? "" : ` · Rp ${shortMoney(fact.total)}`}</small>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {places.map((fact) => (
-              <DropdownMenuItem key={fact.key} onSelect={() => onChange(fact.key)} data-active={value === fact.key ? "true" : undefined}>
-                <span>{fact.name}</span>
-                <small>{fact.letters} surat{fact.total === null ? "" : ` · Rp ${shortMoney(fact.total)}`}</small>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -539,11 +482,13 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
   }
   return (
     <div className="ledger-register surat-register" data-density={density} ref={registerRef}>
-      <div className="ledger-register-head">
-        <div className="ledger-register-title">
-          <h2>Daftar surat tugas</h2>
-          <span>{letters.length} surat, {scope}</span>
-        </div>
+      <div className="ledger-register-head surat-register-head">
+        <h2 className="sr-only">Daftar surat tugas</h2>
+        {search}
+        {filtered && (
+          <Button variant="ghost" size="sm" className="ledger-reset" onClick={onReset}>Bersihkan filter</Button>
+        )}
+        <span className="surat-register-count" title={`${letters.length} surat, ${scope}`}>{letters.length} surat, {scope}</span>
         <div className="ledger-register-tools">
           <CustomSelect
             aria-label="Urutkan surat tugas"
@@ -597,12 +542,6 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
           </DropdownMenu>
         </div>
       </div>
-      <div className="ledger-filters">
-        {search}
-        {filtered && (
-          <Button variant="ghost" size="sm" className="ledger-reset" onClick={onReset}>Bersihkan filter</Button>
-        )}
-      </div>
       {letters.length ? (
         <>
           <div className="ledger-table-wrap">
@@ -639,7 +578,14 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
               <TableBody>
                 {rows.map((row) => (
                   <Fragment key={row.id}>
-                    <TableRow data-expanded={row.getIsExpanded()}>
+                    {/* Klik di mana saja pada baris membuka surat; papan ketik memakai tombol nomor dan panah di baris yang sama. */}
+                    <TableRow
+                      className="surat-row"
+                      data-expanded={row.getIsExpanded()}
+                      onClick={(event) => {
+                        if (!(event.target as HTMLElement).closest("button, a")) row.toggleExpanded();
+                      }}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id} data-column={cell.column.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -650,7 +596,7 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
                       <TableRow className="ledger-detail-row">
                         <TableCell colSpan={row.getVisibleCells().length}>
                           <div id={`surat-detail-${encodeURIComponent(row.id)}`}>
-                            <LetterDetail letter={row.original} onOpen={onOpen} />
+                            <LetterSheet letter={row.original} onOpen={onOpen} />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -691,13 +637,13 @@ function LetterRegister({ letters, filtered, hasAny, scope, onReset, onOpen, sea
                     aria-controls={`surat-mobile-${encodeURIComponent(row.id)}`}
                     onClick={() => row.toggleExpanded()}
                   >
-                    {row.getIsExpanded() ? "Tutup rincian" : "Lihat pegawai"}
+                    {row.getIsExpanded() ? "Tutup surat" : "Lihat surat"}
                     <ChevronDown className={row.getIsExpanded() ? "rotate-180" : undefined} />
                   </Button>
                 </div>
                 {row.getIsExpanded() && (
                   <div className="ledger-card-detail" id={`surat-mobile-${encodeURIComponent(row.id)}`}>
-                    <LetterDetail letter={row.original} onOpen={onOpen} />
+                    <LetterSheet letter={row.original} onOpen={onOpen} />
                   </div>
                 )}
               </article>
@@ -745,7 +691,6 @@ function LetterPeople({ letter }: { letter: TaskLetter }) {
       {names[0] && (
         <span>{names[0]}{rest > 0 ? ` dan ${rest} lainnya` : ""}</span>
       )}
-      <small>{letter.trips.length} rekap</small>
     </div>
   );
 }
@@ -761,30 +706,104 @@ function LetterAmount({ letter }: { letter: TaskLetter }) {
   );
 }
 
-function LetterDetail({ letter, onOpen }: { letter: TaskLetter; onOpen: (id: string) => void }) {
+/*
+  Rincian dibaca seperti surat tugas aslinya: kop, nomor, "Menugaskan kepada", "Untuk".
+  Satu baris per pegawai; biaya dan tombol arsip membentang di seluruh pegawai satu rekap,
+  sehingga rekap gabungan tetap terhitung satu kali. Kop hanya memuat data yang disimpan
+  aplikasi, jadi tanpa alamat kantor dan tanpa blok tanda tangan.
+*/
+function LetterSheet({ letter, onOpen }: { letter: TaskLetter; onOpen: (id: string) => void }) {
+  const known = letter.trips.length - letter.unknownCount;
+  const showTitles = letter.titles.length > 1;
+  const showPlaces = letter.destinations.length > 1;
+  let order = 0;
   return (
-    <section className="ledger-detail" aria-label={`Rincian ${letter.number}`}>
-      <div className="ledger-detail-purpose">
-        <span>Uraian kegiatan</span>
-        {letter.titles.map((title, index) => <p key={index}>{title}</p>)}
-      </div>
-      <div className="ledger-members surat-roster">
-        <div className="ledger-members-head">
-          <strong>Pegawai yang ditugaskan</strong>
-          <span>{letter.peopleCount} pegawai dalam {letter.trips.length} rekap</span>
+    <article className="surat-letter" aria-label={`Surat tugas ${letter.number}`}>
+      <header className="surat-kop">
+        <img src="/logo-jambi.svg" alt="" width={100} height={104} />
+        <div>
+          <p>Pemerintah Provinsi Jambi</p>
+          <p>Dinas Energi dan Sumber Daya Mineral</p>
+          <small>Salinan arsip perjalanan dinas</small>
         </div>
-        <Roster trips={letter.trips} onOpen={onOpen} showTitles={letter.titles.length > 1} />
-        <div className="ledger-members-total">
-          <span>{letter.unknownCount ? "Total sementara" : "Total realisasi surat tugas"}</span>
+      </header>
+      <div className="surat-letter-title">
+        <h3>Surat Tugas</h3>
+        <p>Nomor : {letter.number}</p>
+      </div>
+      <p>Menugaskan kepada :</p>
+      <div className="surat-assignees-wrap">
+        <table className="surat-assignees">
+          <thead>
+            <tr>
+              <th scope="col">No</th>
+              <th scope="col">Nama / NIP</th>
+              <th scope="col">Jabatan</th>
+              <th scope="col">Realisasi</th>
+              <th scope="col"><span className="sr-only">Arsip</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {letter.trips.map((trip) => trip.participants.map((person, index) => {
+              order++;
+              const span = trip.participants.length;
+              return (
+                <tr key={`${trip.id}-${person.id}`} data-first={index === 0 || undefined}>
+                  <td>{order}.</td>
+                  <td>
+                    <strong>{person.name}</strong>
+                    <small>{person.nip.trim() ? `NIP ${person.nip}` : "NIP belum diisi"}</small>
+                  </td>
+                  <td>{person.position.trim() || "–"}</td>
+                  {index === 0 && (
+                    <td rowSpan={span} className="surat-assignee-cost">
+                      <strong>{money(totalCost(trip))}</strong>
+                      <small>{trip.sppdNo ? `SPPD ${trip.sppdNo}` : "SPPD belum dicatat"}</small>
+                      {span > 1 && <small>Rekap gabungan {span} pegawai</small>}
+                      {showTitles && <small>{trip.title}</small>}
+                      {showPlaces && <small>{trip.destination}, {dateRange(trip.startDate, trip.endDate)}</small>}
+                    </td>
+                  )}
+                  {index === 0 && (
+                    <td rowSpan={span} className="surat-assignee-open">
+                      <button type="button" onClick={() => onOpen(trip.id)} aria-label={`Buka arsip ${trip.code}`}>
+                        Buka arsip
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            }))}
+          </tbody>
+        </table>
+      </div>
+      <dl className="surat-clauses">
+        <div>
+          <dt>Untuk</dt>
+          <dd>{showTitles ? <ol>{letter.titles.map((title) => <li key={title}>{title}</li>)}</ol> : letter.titles[0]}</dd>
+        </div>
+        <div><dt>Tujuan</dt><dd>{letter.destinations.join(", ")}</dd></div>
+        <div>
+          <dt>Waktu</dt>
+          <dd>{letterPeriod(letter.startDate, letter.endDate)} ({dayCount(letter.startDate, letter.endDate)})</dd>
+        </div>
+      </dl>
+      <footer className="surat-letter-close">
+        <span className="surat-stamp" data-state={letter.unknownCount ? "pending" : "complete"} aria-hidden="true">
+          {letter.unknownCount ? "Sementara" : "Lengkap"}
+          <small>{known}/{letter.trips.length} rekap</small>
+        </span>
+        <div>
+          <span>Realisasi biaya surat tugas,</span>
           <strong>{money(letter.total)}</strong>
+          <small className={letter.unknownCount ? "is-warning" : undefined}>
+            {letter.unknownCount
+              ? `${letter.unknownCount} dari ${letter.trips.length} rekap belum bernominal`
+              : `${letter.trips.length} rekap, seluruhnya bernominal`}
+          </small>
         </div>
-        {letter.unknownCount > 0 && (
-          <p className="surat-roster-note">
-            {letter.unknownCount} rekap belum bernominal. Total akan mengikuti biaya yang dilengkapi pada arsip perjalanan.
-          </p>
-        )}
-      </div>
-    </section>
+      </footer>
+    </article>
   );
 }
 

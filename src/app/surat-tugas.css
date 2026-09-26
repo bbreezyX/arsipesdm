@@ -1,244 +1,177 @@
 /*
-  Surat Tugas: buku agenda surat di atas lapisan register (arsip.css).
+  Surat Tugas: register ringkas di atas lapisan register (arsip.css).
   Memakai warna, tipe, dan kelas ledger-* yang sama dengan Arsip perjalanan.
-  Yang khas di halaman ini: rel indeks bulan I–XII mengikuti angka Romawi
-  pada penomoran surat dinas, dan roster pegawai yang terbuka di dalam baris.
+  Yang khas di halaman ini: toolbar satu baris dengan bulan I–XII mengikuti
+  angka Romawi pada penomoran surat dinas, dan rincian yang terbuka sebagai
+  salinan surat tugas (kop, nomor, "Menugaskan kepada", stempel kelengkapan).
 */
 .surat-page {
   min-width: 0;
 }
-.surat-sheet {
-  border-top-left-radius: 0;
-}
 
-/* ----- Rel indeks bulan ----- */
-.surat-index {
-  display: flex;
-  align-items: stretch;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line);
+/* ----- Judul: fakta cakupan di bawah judul, realisasi di kanan ----- */
+.surat-head {
+  align-items: flex-end;
+  margin-bottom: 16px;
 }
-.surat-index-all {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 148px;
-  padding: 12px 22px 12px 24px;
-  text-align: left;
+.ledger-head .surat-head-facts {
+  margin-top: 4px;
+  max-width: none;
+  font-size: var(--type-label);
   color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line);
-  transition: background 0.15s, color 0.15s;
-}
-.surat-index-all strong {
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: inherit;
-  white-space: nowrap;
-}
-.surat-index-all span {
-  font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
-.surat-index-months {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  min-width: 0;
+.surat-head-facts b {
+  font-weight: 600;
+  color: var(--ledger-ink);
 }
-.surat-month {
-  position: relative;
+.surat-head-total {
   display: grid;
-  justify-items: center;
-  align-content: center;
+  justify-items: end;
   gap: 1px;
-  min-width: 0;
-  padding: 11px 4px 10px;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line-soft);
-  transition: background 0.15s, color 0.15s;
+  text-align: right;
+  flex-shrink: 0;
 }
-.surat-month:last-child {
-  border-right: 0;
-}
-.surat-month strong {
-  font-size: 1.1875rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-  color: var(--ledger-ink);
-}
-.surat-month span {
+.surat-head-total > span {
   font-size: var(--type-micro);
-  line-height: 1.4;
-}
-.surat-month b {
-  margin-top: 3px;
-  font-size: var(--type-meta);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ledger-text);
-}
-.surat-month:disabled {
-  cursor: default;
-  color: #aab6c3;
-}
-.surat-month:disabled strong,
-.surat-month:disabled b {
-  color: #aab6c3;
   font-weight: 500;
-}
-.surat-month:not(:disabled):hover,
-.surat-index-all:hover {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
-}
-.surat-month[aria-pressed="true"],
-.surat-index-all[aria-pressed="true"] {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
-}
-.surat-month[aria-pressed="true"]::after,
-.surat-index-all[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--ledger-gold);
-}
-.surat-index-all[aria-pressed="true"]::after {
-  left: 24px;
-  right: 22px;
-}
-.surat-month:focus-visible,
-.surat-index-all:focus-visible {
-  outline: 1px solid var(--ledger-action);
-  outline-offset: -1px;
-  z-index: 1;
-}
-
-/* ----- Rel tujuan: ke mana saja surat dalam cakupan ini ----- */
-.surat-places {
-  display: flex;
-  align-items: stretch;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line);
-}
-.surat-places-all {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 148px;
-  padding: 12px 22px 12px 24px;
-  text-align: left;
   color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line);
-  transition: background 0.15s, color 0.15s;
 }
-.surat-places-all strong {
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: inherit;
-  white-space: nowrap;
-}
-.surat-places-all span {
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-/* Selalu satu baris: sel berbagi lebar dan nama panjang dipotong, seperti rel bulan. */
-.surat-place-list {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  flex: 1;
-  min-width: 0;
-  container: surat-places / inline-size;
-}
-.surat-place {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: center;
-  align-items: baseline;
-  column-gap: 8px;
-  row-gap: 3px;
-  min-width: 0;
-  padding: 11px 16px 10px;
-  text-align: left;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line-soft);
-  transition: background 0.15s, color 0.15s;
-}
-.surat-place:last-child {
-  border-right: 0;
-}
-.surat-place > span {
-  grid-column: 1 / -1;
-  font-size: var(--type-meta);
-  font-weight: 500;
-  line-height: 1.3;
-  color: inherit;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.surat-place strong {
-  font-size: 1.25rem;
+.surat-head-total > strong {
+  font-size: 1.375rem;
   font-weight: 650;
   font-stretch: var(--ledger-condensed);
   letter-spacing: -0.01em;
-  line-height: 1.1;
+  line-height: 1.2;
   color: var(--ledger-ink);
   font-variant-numeric: tabular-nums;
 }
-.surat-place-cost {
-  font-style: normal;
-}
-.surat-place small {
-  min-width: 0;
+.surat-head-total > small {
   font-size: var(--type-micro);
+  color: var(--ledger-success);
+}
+.surat-head-total > small.is-warning {
+  color: var(--ledger-amber);
+}
+
+/* ----- Lembar dan toolbar cakupan ----- */
+.surat-sheet {
+  border-radius: var(--ledger-radius);
+}
+.surat-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 16px;
+  background: var(--ledger-tint);
+  border-bottom: 1px solid var(--ledger-line);
+}
+.surat-years {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ledger-line-soft);
+  border-radius: 10px;
+}
+.surat-years > button {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: var(--type-label);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: var(--ledger-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.surat-years > button:hover {
+  color: var(--ledger-ink);
+}
+.surat-years > button[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  box-shadow: 0 1px 2px rgba(20, 39, 63, 0.14);
+}
+.surat-months {
+  display: flex;
+  gap: 2px;
+}
+.surat-months > button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: 36px;
+  height: 38px;
+  border-radius: 7px;
+  line-height: 1.1;
+  transition: background 0.15s, color 0.15s;
+}
+.surat-months strong {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: var(--ledger-ink);
+}
+.surat-months span {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-muted);
+}
+.surat-months > button:not(:disabled):hover {
+  background: var(--ledger-surface);
+}
+.surat-months > button[aria-pressed="true"] {
+  background: var(--ledger-navy);
+}
+.surat-months > button[aria-pressed="true"] strong,
+.surat-months > button[aria-pressed="true"] span {
+  color: #fff;
+}
+.surat-months > button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.surat-years > button:focus-visible,
+.surat-months > button:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 1px;
+}
+
+/* Tujuan: satu pilihan di ujung toolbar. */
+.surat-places-compact {
+  margin-left: auto;
+  min-width: 0;
+}
+.surat-places-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d3dbe4;
+  border-radius: 9px;
+  background: var(--ledger-surface);
+  font-size: var(--type-label);
+  color: var(--ledger-ink);
+}
+.surat-places-pick > span {
+  color: var(--ledger-muted);
+}
+.surat-places-pick b {
+  min-width: 0;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.surat-place:hover,
-.surat-places-all:hover {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
+.surat-places-pick[data-chosen] {
+  border-color: var(--ledger-gold);
+  background: var(--ledger-gold-soft);
 }
-.surat-place[aria-pressed="true"],
-.surat-places-all[aria-pressed="true"] {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
-}
-.surat-place[aria-pressed="true"]::after,
-.surat-places-all[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--ledger-gold);
-}
-.surat-places-all[aria-pressed="true"]::after {
-  left: 24px;
-  right: 22px;
-}
-.surat-place:focus-visible,
-.surat-places-all:focus-visible {
-  outline: 1px solid var(--ledger-action);
-  outline-offset: -1px;
-  z-index: 1;
+.surat-places-pick svg {
+  flex-shrink: 0;
+  color: var(--ledger-muted);
 }
 .surat-place-menu [role="menuitem"] {
   display: flex;
@@ -250,82 +183,39 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.surat-places-compact {
-  display: none;
-}
-.surat-facts dd small {
-  margin-left: 6px;
-  font-size: var(--type-micro);
-  font-weight: 500;
-  font-stretch: normal;
-  letter-spacing: 0;
-  color: var(--ledger-muted);
+.surat-place-menu [role="menuitem"][data-active] span {
+  font-weight: 600;
 }
 
-/* ----- Pita fakta tahun ----- */
-.surat-facts {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 32px;
-  padding: 18px 24px 16px;
-  border-bottom: 1px solid var(--ledger-line);
+/* ----- Kepala register: cari, jumlah, dan alat dalam satu baris ----- */
+.surat-register-head {
+  padding: 12px 16px;
+  gap: 10px 12px;
 }
-.surat-facts dl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 32px;
-  margin: 0;
+.surat-register-head .ledger-search {
+  flex-basis: 260px;
+  min-width: 200px;
+  height: 36px;
+  max-width: 460px;
 }
-.surat-facts dl > div {
-  display: grid;
-  gap: 2px;
+.surat-register-head .ledger-reset[data-slot="button"] {
+  height: 34px;
 }
-.surat-facts dt {
-  font-size: var(--type-micro);
-  font-weight: 500;
-  color: var(--ledger-muted);
-}
-.surat-facts dd {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: -0.005em;
-  line-height: 1.2;
-  color: var(--ledger-ink);
-  font-variant-numeric: tabular-nums;
-}
-.surat-facts-cost {
-  display: grid;
-  gap: 2px;
-  justify-items: end;
+/* Basis 0: jumlah mengisi sisa ruang dan terpotong lebih dulu, sehingga alat tetap sebaris. */
+.surat-register-count {
+  flex: 1 1 0;
+  min-width: 72px;
   text-align: right;
-  flex-shrink: 0;
-}
-.surat-facts-cost > span {
-  font-size: var(--type-micro);
-  font-weight: 500;
-  color: var(--ledger-muted);
-}
-.surat-facts-cost > strong {
-  font-size: 1.375rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  color: var(--ledger-ink);
-  font-variant-numeric: tabular-nums;
-}
-.surat-facts-cost > small {
   font-size: var(--type-meta);
   color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.surat-facts-cost > small.is-warning {
-  color: var(--ledger-amber);
+.surat-register-head .ledger-register-tools {
+  margin-left: 0;
 }
-
-/* ----- Kepala register dan tabel ----- */
 .ledger-register-tools .custom-select.surat-sort {
   width: auto;
   min-width: 168px;
@@ -338,28 +228,343 @@
   font-weight: 500;
   color: var(--ledger-text);
 }
-.surat-register .ledger-filters {
-  padding-top: 2px;
+
+/* ----- Tabel: satu surat, dua baris teks ----- */
+.surat-table td {
+  padding: 9px 14px;
+  vertical-align: middle;
+  line-height: 1.45;
+}
+.surat-table .surat-row {
+  cursor: pointer;
+}
+.surat-table tbody > tr[data-expanded="true"] > td:first-child {
+  box-shadow: none;
+}
+.surat-table [data-column="reference"] {
+  width: 1%;
+  min-width: 0;
+  white-space: nowrap;
+}
+.surat-ref {
+  font-size: var(--type-data);
+  overflow-wrap: normal;
+}
+/* Kolom kegiatan mengambil sisa lebar; max-width 0 membuat teks terpotong, bukan melebarkan tabel. */
+.surat-table [data-column="activity"] {
+  width: 100%;
+  max-width: 0;
+}
+.surat-activity p,
+.surat-activity span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.surat-activity p {
+  color: var(--ledger-ink);
+}
+.surat-activity span {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
 }
 .surat-table [data-column="dates"] {
-  width: 180px;
-  min-width: 180px;
+  width: 140px;
+  min-width: 140px;
+}
+.surat-table .ledger-dates {
+  gap: 0;
 }
 .surat-table [data-column="people"] {
-  width: 190px;
-  min-width: 190px;
+  width: 160px;
+  min-width: 160px;
 }
 .surat-table .ledger-people {
-  max-width: 200px;
+  gap: 0;
+  max-width: 180px;
 }
 .surat-table .ledger-people > span {
-  color: var(--ledger-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.surat-table [data-column="total"] {
+  width: 150px;
+  min-width: 150px;
+}
+.surat-table .ledger-amount small {
+  margin-top: 0;
+}
+.surat-table [data-column="actions"] {
+  width: 48px;
+  min-width: 48px;
+}
+/* Ringkas: satu baris teks per surat. */
+.surat-register[data-density="compact"] .surat-table td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.surat-register[data-density="compact"] .surat-activity span,
+.surat-register[data-density="compact"] .surat-table .ledger-dates > span,
+.surat-register[data-density="compact"] .surat-table .ledger-people > span {
+  display: none;
+}
+.surat-table .ledger-detail-row > td {
+  padding: 4px 24px 26px;
+  background: #eef2f6;
 }
 
-/* ----- Roster pegawai di dalam baris ----- */
-.surat-roster .ledger-members-head {
-  background: var(--ledger-tint);
+/* ----- Salinan surat tugas ----- */
+.surat-letter {
+  max-width: 780px;
+  margin: 10px auto 0;
+  padding: 28px 48px 30px;
+  background: #fff;
+  border: 1px solid #dfe4ea;
+  box-shadow: 0 1px 0 rgba(20, 39, 63, 0.05), 0 10px 26px -14px rgba(20, 39, 63, 0.3);
+  color: #1b2632;
+  font-family: "Times New Roman", Tinos, "Liberation Serif", Times, serif;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  cursor: auto;
+  animation: ledger-reveal 0.22s ease-out both;
 }
+.surat-letter > p {
+  margin: 0 0 6px;
+}
+.surat-kop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 0 60px 10px 0;
+  margin-bottom: 20px;
+  text-align: center;
+  border-bottom: 3px solid currentColor;
+}
+.surat-kop::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  border-bottom: 1px solid currentColor;
+}
+.surat-kop img {
+  width: 56px;
+  height: auto;
+}
+.surat-kop p {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.surat-kop p:first-child {
+  font-size: 0.9375rem;
+}
+.surat-kop p:nth-child(2) {
+  font-size: 1.125rem;
+}
+.surat-kop small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: #4a5561;
+}
+.surat-letter-title {
+  margin-bottom: 16px;
+  text-align: center;
+}
+.surat-letter-title h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.surat-letter-title p {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.surat-assignees-wrap {
+  overflow-x: auto;
+}
+.surat-assignees {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.surat-assignees th,
+.surat-assignees td {
+  padding: 5px 8px;
+  border: 1px solid #9aa6b2;
+  text-align: left;
+  vertical-align: top;
+}
+.surat-assignees th {
+  background: #f3f5f8;
+  font-weight: 700;
+}
+.surat-assignees th:first-child,
+.surat-assignees td:first-child {
+  width: 1%;
+  white-space: nowrap;
+}
+.surat-assignees th:nth-child(4) {
+  text-align: right;
+}
+/* Surat terbuka di dalam baris register: sel .ledger-table (sticky, tinggi 44px,
+   tanpa garis di baris terakhir) tidak boleh ikut ke tabel surat. */
+.ledger-table .surat-letter .surat-assignees th {
+  position: static;
+  height: auto;
+  padding: 5px 8px;
+  background: #f3f5f8;
+  box-shadow: none;
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: inherit;
+}
+.ledger-table .surat-letter .surat-assignees tbody > tr > td {
+  border-bottom: 1px solid #9aa6b2;
+  background: transparent;
+  color: inherit;
+}
+.ledger-table .surat-letter .surat-assignees td:first-child,
+.ledger-table .surat-letter td.surat-assignee-open {
+  white-space: nowrap;
+}
+.surat-assignees td strong {
+  display: block;
+  font-weight: 400;
+}
+.surat-assignees td small {
+  display: block;
+  font-size: 0.78125rem;
+  color: #56616c;
+  font-variant-numeric: tabular-nums;
+}
+.surat-assignees td:nth-child(2) small {
+  white-space: nowrap;
+}
+.surat-assignee-cost {
+  width: 1%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.surat-assignees .surat-assignee-cost strong {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.surat-assignee-cost small {
+  min-width: 150px;
+}
+.surat-assignee-open {
+  width: 1%;
+  white-space: nowrap;
+}
+.surat-assignee-open button {
+  padding: 1px 4px;
+  border-radius: 5px;
+  font-family: "Instrument Sans Variable", system-ui, sans-serif;
+  font-size: var(--type-meta);
+  font-weight: 600;
+  color: var(--ledger-action);
+}
+.surat-assignee-open button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ledger-gold);
+  text-decoration-thickness: 2px;
+}
+.surat-clauses {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+}
+.surat-clauses > div {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+}
+.surat-clauses dt {
+  display: flex;
+  justify-content: space-between;
+  padding-right: 12px;
+}
+.surat-clauses dt::after {
+  content: ":";
+}
+.surat-clauses dd {
+  margin: 0;
+}
+.surat-clauses ol {
+  margin: 0;
+  padding-left: 18px;
+  list-style: decimal;
+}
+.surat-letter-close {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 32px;
+  margin-top: 18px;
+}
+.surat-letter-close > div {
+  width: 270px;
+}
+.surat-letter-close > div > span {
+  display: block;
+}
+.surat-letter-close strong {
+  display: block;
+  margin: 2px 0 1px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.surat-letter-close small {
+  display: block;
+  font-size: 0.78125rem;
+  color: #56616c;
+}
+.surat-letter-close small.is-warning {
+  color: var(--ledger-amber);
+}
+/* Stempel: menandai apakah seluruh rekap surat ini sudah bernominal. */
+.surat-stamp {
+  display: inline-grid;
+  justify-items: center;
+  padding: 5px 11px 4px;
+  border: 2.5px solid currentColor;
+  border-radius: 5px;
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+  transform: rotate(-7deg);
+  opacity: 0.8;
+  font-family: "Instrument Sans Variable", system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--ledger-success);
+}
+.surat-stamp small {
+  font-size: 0.59375rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.surat-stamp[data-state="pending"] {
+  color: var(--ledger-amber);
+}
+
+/* ----- Roster rekap tanpa nomor surat ----- */
 .surat-names {
   display: grid;
   gap: 6px;
@@ -401,13 +606,6 @@
 .surat-open[data-slot="button"] {
   height: 32px;
   align-self: start;
-}
-.surat-roster-note {
-  padding: 10px 18px 12px;
-  background: var(--ledger-tint);
-  font-size: var(--type-meta);
-  line-height: 1.6;
-  color: var(--ledger-amber);
 }
 
 /* ----- Catatan kaki dan rekap tanpa nomor ----- */
@@ -457,278 +655,153 @@
 
 /* ----- Responsif ----- */
 @media (max-width: 1250px) {
-  .surat-index-all,
-  .surat-places-all {
-    min-width: 132px;
-    padding-inline: 18px;
-  }
-  .surat-place {
-    padding-inline: 12px;
-    column-gap: 6px;
-  }
-  .surat-place strong {
-    font-size: 1.125rem;
-  }
-  .surat-month strong {
-    font-size: 1.0625rem;
-  }
-}
-/* Rel sempit (sidebar terbuka di laptop 13"): nominal tidak muat di sel; jumlah surat cukup,
-   nominal tetap ada di tooltip dan menu. Diukur dari lebar rel, bukan viewport, agar zoom tidak mengecoh. */
-@container surat-places (max-width: 1180px) {
-  .surat-place-cost {
-    display: none;
-  }
-}
-@media (max-width: 900px) {
-  .surat-places {
-    flex-direction: column;
-  }
-  .surat-places-all {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    min-width: 0;
-    padding: 12px 20px;
-    border-right: 0;
-    border-bottom: 1px solid var(--ledger-line);
-  }
-  .surat-places-all[aria-pressed="true"]::after {
-    left: 20px;
-    right: 20px;
-  }
-  .surat-index {
-    flex-direction: column;
-  }
-  .surat-index-all {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    min-width: 0;
-    padding: 12px 20px;
-    border-right: 0;
-    border-bottom: 1px solid var(--ledger-line);
-  }
-  .surat-index-all[aria-pressed="true"]::after {
-    left: 20px;
-    right: 20px;
-  }
-  .surat-index-months {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-  .surat-month:nth-child(6) {
-    border-right: 0;
-  }
-  .surat-month:nth-child(-n + 6) {
-    border-bottom: 1px solid var(--ledger-line-soft);
-  }
-  .surat-facts {
-    flex-wrap: wrap;
-  }
-  .surat-facts-cost {
-    justify-items: start;
-    text-align: left;
-  }
-  .ledger-register-tools .custom-select.surat-sort {
-    flex: 1;
+  .surat-letter {
+    padding-inline: 32px;
   }
 }
 @media (max-width: 760px) {
-  /* Judul halaman cukup; deskripsi dibaca di layar lebar. */
-  .workspace-letters .ledger-head {
-    margin-bottom: 14px;
+  /* arsip.css menyembunyikan deskripsi judul dan alat register di ponsel; di halaman ini
+     keduanya berisi fakta cakupan dan urutan, jadi tetap tampil. */
+  .surat-head {
+    align-items: stretch;
+    gap: 10px;
   }
-  .workspace-letters .ledger-head p {
-    display: none;
+  .ledger-head .surat-head-facts {
+    display: block;
   }
-  /* Kartu sudah memuat uraian; rincian yang terbuka langsung ke roster.
-     Berlaku untuk kartu Arsip perjalanan dan Surat Tugas. */
-  .ledger-card-detail .ledger-detail-purpose {
-    display: none;
-  }
-
-  /* Rel tujuan disembunyikan; satu baris pilihan menggantikannya. */
-  .surat-places {
-    display: none;
-  }
-  .surat-places-compact {
+  .surat-register-head .ledger-register-tools {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 16px 8px 20px;
-    border-bottom: 1px solid var(--ledger-line);
-    background: var(--ledger-tint);
+    width: auto;
   }
-  .surat-places-compact > span {
-    font-size: var(--type-micro);
-    font-weight: 500;
-    color: var(--ledger-muted);
+  .surat-register-head .ledger-search {
+    flex-basis: 100%;
+    max-width: none;
   }
-  .surat-places-pick {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    max-width: 75%;
-    padding: 6px 10px;
-    border: 1px solid var(--ledger-line);
-    border-radius: 8px;
-    background: var(--ledger-surface);
-    color: var(--ledger-ink);
-    font-size: var(--type-meta);
+  .surat-head-total {
+    justify-items: start;
+    text-align: left;
   }
-  .surat-places-pick b {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .surat-sheet {
+    border-radius: 0;
   }
-  .surat-places-pick[data-chosen] {
-    border-color: var(--ledger-gold);
-  }
-  .surat-places-pick[data-chosen] b {
-    font-weight: 600;
-  }
-  .surat-places-pick svg {
-    flex-shrink: 0;
-    color: var(--ledger-muted);
-  }
-  .surat-place-menu [role="menuitem"][data-active] span {
-    font-weight: 600;
-  }
-  .surat-facts dl > .surat-facts-places {
-    display: none;
+  .surat-register .ledger-card[data-expanded="true"] {
+    box-shadow: none;
   }
 
-  /* Rel bulan: satu baris geser, hanya bulan yang memuat surat. */
-  .surat-index {
-    flex-direction: row;
+  /* Toolbar: tahun dan tujuan sebaris, bulan bergeser dan hanya yang memuat surat. */
+  .surat-bar {
+    padding: 8px 16px;
+  }
+  .surat-months {
+    order: 3;
+    width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
   }
-  .surat-index::-webkit-scrollbar {
+  .surat-months::-webkit-scrollbar {
     display: none;
   }
-  .surat-index-all {
-    display: grid;
-    align-content: center;
-    gap: 2px;
-    min-width: 0;
-    padding: 10px 16px;
-    border-right: 1px solid var(--ledger-line);
-    border-bottom: 0;
+  .surat-months > button {
     flex-shrink: 0;
+    width: 44px;
   }
-  .surat-index-all strong {
-    font-size: var(--type-label);
-  }
-  .surat-index-all[aria-pressed="true"]::after {
-    left: 12px;
-    right: 12px;
-  }
-  .surat-index-months {
-    display: flex;
-    flex: 1 0 auto;
-  }
-  .surat-month {
-    min-width: 68px;
-    padding: 9px 8px 8px;
-    border-bottom: 0;
-    border-right: 1px solid var(--ledger-line-soft);
-  }
-  .surat-month:nth-child(-n + 6) {
-    border-bottom: 0;
-  }
-  .surat-month:disabled {
+  .surat-months > button:disabled {
     display: none;
   }
-  .surat-month strong {
-    font-size: 1rem;
-  }
-  .surat-month b {
-    margin-top: 1px;
+  .surat-places-pick {
+    max-width: 190px;
   }
 
-  /* Pita fakta: biaya di atas, tiga angka dalam satu baris di bawahnya. */
-  .surat-facts {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    gap: 8px;
-    padding: 14px 16px 12px;
+  .surat-register-head {
+    padding: 12px 16px;
   }
-  .surat-facts dl {
-    gap: 4px 14px;
-  }
-  .surat-facts dl > div {
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    align-items: baseline;
-    gap: 4px;
-  }
-  .surat-facts dt {
-    font-size: var(--type-meta);
-    text-transform: lowercase;
-  }
-  .surat-facts dd {
-    font-size: var(--type-data);
-    font-stretch: 100%;
-  }
-  .surat-facts-cost {
-    justify-items: start;
-    text-align: left;
-    gap: 0;
-  }
-  .surat-facts-cost > strong {
-    font-size: 1.25rem;
-  }
-  .surat-facts-cost > small:not(.is-warning) {
-    display: none;
-  }
-
-  /* Register: pencarian dulu, lalu cakupan dan urutan dalam satu baris. */
-  .surat-register {
-    display: flex;
-    flex-direction: column;
-  }
-  .surat-register .ledger-filters {
-    order: -1;
-    padding: 14px 16px 10px;
-  }
-  .surat-register .ledger-filters .ledger-reset[data-slot="button"] {
-    flex-basis: auto;
-    height: 32px;
-    margin-left: auto;
-  }
-  .surat-register .ledger-register-head {
-    flex-wrap: nowrap;
-    align-items: center;
-    padding: 0 16px 12px;
-    gap: 10px;
-  }
-  .surat-register .ledger-register-title {
-    width: auto;
-    flex: 1;
+  .surat-register-count {
     min-width: 0;
-  }
-  .surat-register .ledger-register-title h2 {
-    display: none;
-  }
-  .surat-register .ledger-register-title span {
+    text-align: left;
     white-space: normal;
   }
-  .surat-register .ledger-register-tools {
-    width: auto;
-    margin-left: 0;
-  }
   .ledger-register-tools .custom-select.surat-sort {
-    flex: none;
     min-width: 0;
     height: 32px;
     min-height: 32px;
     padding: 0 28px 0 10px;
     font-size: var(--type-meta);
+  }
+
+  /* Surat di ponsel: kop mengecil dan tabel pegawai menjadi daftar bertumpuk. */
+  .surat-letter {
+    margin-top: 0;
+    padding: 18px 16px 20px;
+    font-size: 0.875rem;
+  }
+  .surat-kop {
+    grid-template-columns: 40px 1fr;
+    gap: 10px;
+    padding-right: 0;
+  }
+  .surat-kop img {
+    width: 40px;
+  }
+  .surat-kop p:first-child {
+    font-size: 0.75rem;
+  }
+  .surat-kop p:nth-child(2) {
+    font-size: 0.8125rem;
+  }
+  .surat-assignees thead {
+    display: none;
+  }
+  .surat-assignees,
+  .surat-assignees tbody,
+  .surat-assignees td {
+    display: block;
+  }
+  .surat-assignees {
+    border-bottom: 1px solid #c8d0d9;
+  }
+  .surat-assignees tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid #c8d0d9;
+  }
+  .surat-assignees tr:not([data-first]) {
+    border-top-style: dashed;
+  }
+  .surat-assignees td {
+    grid-column: 2;
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+  .surat-assignees td:first-child {
+    grid-column: 1;
+    grid-row: span 4;
+  }
+  .surat-assignee-cost {
+    margin-top: 4px;
+    text-align: left;
+  }
+  .surat-assignee-cost small {
+    min-width: 0;
+  }
+  .surat-assignee-open {
+    margin-top: 4px;
+  }
+  .surat-assignee-open button {
+    padding-left: 0;
+  }
+  .surat-clauses > div {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .surat-letter-close {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .surat-letter-close > div {
+    width: auto;
   }
 
   /* Roster: nama dan NIP, tujuan, lalu biaya dan tombol sebaris. */
@@ -775,18 +848,18 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .surat-month,
-  .surat-index-all,
+  .surat-years > button,
+  .surat-months > button,
   .surat-unassigned-head [data-slot="button"] svg {
     transition: none;
   }
+  .surat-letter,
   .surat-unassigned-list {
     animation: none;
   }
 }
 @media print {
-  .surat-index,
-  .surat-places {
+  .surat-bar {
     display: none;
   }
 }
