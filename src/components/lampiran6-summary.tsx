@@ -60,7 +60,7 @@ export default function Lampiran6Summary({ trip }: { trip: Trip }) {
           ]}
         />
         <p className="field-hint">
-          Jumlah komponen berada di tab Peserta & biaya. Total kuitansi tidak
+          Jumlah per komponen tercantum pada Rincian biaya realisasi. Total kuitansi tidak
           menyatakan status pembayaran.
         </p>
       </section>

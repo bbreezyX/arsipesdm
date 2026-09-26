@@ -758,3 +758,614 @@
     transition: none;
   }
 }
+
+/*
+  Rincian arsip sebagai halaman (/arsip-perjalanan/PD-2026-0062).
+  Lidah di atas lembar adalah rekap-rekap dalam satu Surat Tugas; menu kiri
+  menandai bagian yang sedang dibaca dengan latar, tanpa garis tepi kiri.
+*/
+.rincian-page {
+  min-width: 0;
+}
+.rincian-page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 2px 4px 2px 0;
+  border-radius: 6px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.rincian-page-back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ledger-head.rincian-page-head {
+  margin-bottom: 14px;
+}
+.rincian-page-head h1 {
+  font-stretch: var(--ledger-condensed);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ledger-head .rincian-page-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  max-width: none;
+  font-size: var(--type-label);
+  line-height: 1.5;
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rincian-page-facts > span + span::before {
+  content: "·";
+  margin: 0 6px;
+  color: #a3b0bd;
+}
+.rincian-page-facts b {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-tabs .ledger-year {
+  min-width: 160px;
+  max-width: 260px;
+}
+.rincian-page-tabs .ledger-year strong {
+  overflow: hidden;
+  font-size: var(--type-body);
+  font-weight: 600;
+  font-stretch: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ----- Lembar: menu bagian dan isi ----- */
+.rincian-page-sheet {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+}
+.rincian-page-nav {
+  border-right: 1px solid var(--ledger-line);
+  background: #fbfcfd;
+}
+.rincian-page-nav-sticky {
+  position: sticky;
+  top: calc(var(--shell-header-height) + 12px);
+}
+.rincian-page-nav-links {
+  display: grid;
+  gap: 2px;
+  padding: 14px 10px;
+}
+.rincian-page-nav-links > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-text);
+  text-align: left;
+}
+.rincian-page-nav-links > button:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.rincian-page-nav-links > button[aria-current="true"] {
+  background: var(--ledger-action-soft);
+  color: var(--ledger-ink);
+  font-weight: 600;
+}
+.rincian-page-nav-links b {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rincian-page-nav-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 10px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rincian-page-nav-foot [data-slot="button"] {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+.rincian-page-body {
+  min-width: 0;
+  padding: 0 28px 20px;
+}
+.rincian-page-person {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 0 16px;
+}
+.rincian-page-person h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 1.375rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--ledger-ink);
+}
+.rincian-page-person h2 .ledger-state {
+  font-size: var(--type-label);
+  letter-spacing: 0;
+}
+.rincian-page-person p {
+  margin-top: 4px;
+  font-size: var(--type-label);
+  color: var(--ledger-muted);
+}
+.rincian-page-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-left: auto;
+}
+.rincian-page-actions [data-slot="button"] {
+  height: 36px;
+  border-radius: 9px;
+  font-weight: 600;
+}
+.rincian-page-actions [data-variant="outline"] {
+  border-color: #c9d3de;
+  box-shadow: none;
+  color: var(--ledger-ink);
+}
+.rincian-page-actions [data-variant="default"] {
+  background: var(--ledger-navy);
+}
+.rincian-page-actions [data-variant="default"]:hover {
+  background: var(--ledger-navy-soft);
+}
+.rincian-page-actions .rincian-page-delete {
+  color: var(--ledger-danger);
+}
+.rincian-page-actions .rincian-page-delete:hover {
+  background: #fbeeed;
+  color: var(--ledger-danger);
+}
+.rincian-page-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 36px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--ledger-line-soft);
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.rincian-page-band > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.rincian-page-band dt {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-band dd {
+  margin: 0;
+  font-size: var(--type-data);
+  font-weight: 500;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.rincian-page-band .rincian-page-total {
+  margin-left: auto;
+  text-align: right;
+}
+.rincian-page-band .rincian-page-total dd {
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.rincian-page-code {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.rincian-page-band .rincian-page-code {
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+}
+.rincian-page-empty {
+  font-weight: 400;
+  color: #8a98a7;
+}
+
+/* ----- Bagian ----- */
+.rincian-page-section {
+  padding: 20px 0 22px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  scroll-margin-top: calc(var(--shell-header-height) + 16px);
+}
+.rincian-page-section h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: var(--type-data);
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.rincian-page-section h3:not(:first-child) {
+  margin-top: 22px;
+}
+.rincian-page-section h3 span {
+  font-size: var(--type-micro);
+  font-weight: 400;
+  color: var(--ledger-muted);
+}
+.rincian-page-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rincian-page-section-head h3 {
+  margin: 0;
+}
+.rincian-page-section-head [data-slot="button"] {
+  border-color: #d3dbe4;
+  box-shadow: none;
+}
+.rincian-page-purpose {
+  max-width: 82ch;
+  font-size: var(--type-data);
+  line-height: 1.7;
+  color: var(--ledger-text);
+}
+.rincian-page-hint {
+  margin: 4px 0 12px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 28px;
+  margin: 0;
+}
+.rincian-page-meta > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.rincian-page-meta dt {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-meta dd {
+  margin: 0;
+  font-size: var(--type-label);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ledger-ink);
+}
+.rincian-page-next {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #efdca8;
+  border-radius: 10px;
+  background: var(--ledger-amber-soft);
+  color: var(--ledger-amber);
+}
+.rincian-page-next > span {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+}
+.rincian-page-next strong {
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+.rincian-page-next small {
+  font-size: var(--type-micro);
+  color: var(--ledger-text);
+}
+.rincian-page-people {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rincian-page-people li {
+  display: grid;
+  gap: 1px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-people strong {
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-costs {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.rincian-page-costs th {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--ledger-line);
+  background: var(--ledger-tint);
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  text-align: left;
+}
+.rincian-page-costs td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-label);
+  color: var(--ledger-text);
+  vertical-align: top;
+}
+.rincian-page-costs td strong {
+  display: block;
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-costs td small {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-costs .r {
+  text-align: right;
+  white-space: nowrap;
+}
+.rincian-page-costs td.r {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-costs tfoot td {
+  border-bottom: 0;
+  background: var(--ledger-tint);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+.rincian-page-costs tfoot td.r {
+  font-size: var(--type-body);
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.rincian-page-docs {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rincian-page-docs li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+}
+.rincian-page-doc-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+}
+.rincian-page-doc-icon.physical {
+  background: var(--ledger-gold-soft);
+  color: var(--ledger-amber);
+}
+.rincian-page-doc-info {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-doc-info strong {
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-doc-info > span {
+  overflow: hidden;
+  color: var(--ledger-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.rincian-page-doc-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.rincian-page-doc-tag {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-amber);
+}
+.rincian-page-docs-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed #cfd8e2;
+  border-radius: 10px;
+  font-size: var(--type-micro);
+  line-height: 1.5;
+  color: var(--ledger-muted);
+}
+.rincian-page-docs-empty svg {
+  flex: none;
+  margin-top: 1px;
+  color: #8a98a7;
+}
+.rincian-page-timeline {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rincian-page-timeline li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+}
+.rincian-page-timeline li > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+}
+.rincian-page-timeline strong {
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rincian-page-timeline p {
+  font-size: var(--type-micro);
+  color: var(--ledger-text);
+}
+.rincian-page-timeline small {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.rincian-page-version {
+  padding-top: 14px;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+
+@media (max-width: 1150px) {
+  .rincian-page-sheet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Menu bagian menjadi satu baris yang menempel di bawah bilah atas; tautannya
+     digeser menyamping, penunjuk rekap tetap di kanan. */
+  .rincian-page-nav {
+    position: sticky;
+    top: var(--shell-header-height);
+    z-index: 5;
+    border-right: 0;
+    border-bottom: 1px solid var(--ledger-line);
+  }
+  .rincian-page-nav-sticky {
+    position: static;
+    display: flex;
+    align-items: center;
+  }
+  .rincian-page-nav-links {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    padding: 8px 10px;
+    scrollbar-width: none;
+  }
+  .rincian-page-nav-links::-webkit-scrollbar {
+    display: none;
+  }
+  .rincian-page-nav-links > button {
+    flex-shrink: 0;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .rincian-page-nav-foot {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0 12px 0 10px;
+    border-top: 0;
+    border-left: 1px solid var(--ledger-line-soft);
+  }
+  .rincian-page-section {
+    scroll-margin-top: calc(var(--shell-header-height) + 64px);
+  }
+}
+@media (max-width: 760px) {
+  .rincian-page-head h1 {
+    font-size: 1.375rem;
+  }
+  /* Fakta judul membungkus sebagai kelompok berjarak, tanpa titik di awal baris. */
+  .ledger-head .rincian-page-facts,
+  .ledger-head .perjalanan-head-facts {
+    gap: 2px 14px;
+  }
+  .rincian-page-facts > span + span::before,
+  .perjalanan-head-facts > span + span::before {
+    content: none;
+  }
+  .rincian-page-body {
+    padding-inline: 16px;
+  }
+  .rincian-page-person {
+    flex-direction: column;
+  }
+  .rincian-page-actions {
+    margin-left: 0;
+  }
+  .rincian-page-band .rincian-page-total {
+    margin-left: 0;
+    text-align: left;
+  }
+  .rincian-page-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rincian-page-tabs .ledger-year {
+    min-width: 140px;
+  }
+  .rincian-page-nav-foot > span {
+    display: none;
+  }
+  .rincian-page-section-head {
+    flex-wrap: wrap;
+  }
+  .rincian-page-section-head h3 {
+    white-space: nowrap;
+  }
+}

@@ -8,7 +8,7 @@ import { useState, useMemo, useEffect, useRef, useId } from "react";
 import AuthPage from "./auth-page";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { sectionPaths, sectionFromPath, type Section } from "@/lib/workspace-navigation";
+import { sectionPaths, sectionFromPath, archiveRecordFromPath, archiveRecordPath, type Section } from "@/lib/workspace-navigation";
 import type { SessionInfo } from "@/lib/session-policy";
 import { takeSessionNotice } from "@/lib/session-client";
 import SessionGuard from "./session-guard";
@@ -93,7 +93,7 @@ import { downloadTemplate } from "@/lib/export";
 const TaskLetters = dynamic(() => import("./task-letters"));
 const Laporan = dynamic(() => import("./laporan"));
 const TripForm = dynamic(() => import("./trip-form"));
-const TripDetail = dynamic(() => import("./trip-detail"));
+const ArchiveDetail = dynamic(() => import("./archive-detail"));
 const ImportDialog = dynamic(() => import("./import-dialog"));
 const ArchiveGuide = dynamic(() => import("./archive-guide"), { ssr: false });
 
@@ -156,7 +156,8 @@ export default function Workspace({
   const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
   const pathname = usePathname();
-  const requestedSection = sectionFromPath(pathname) ?? initialSection;
+  const record = archiveRecordFromPath(pathname);
+  const requestedSection = sectionFromPath(pathname) ?? (record ? "archives" : initialSection);
   const section = canAccessSection(accessUser, requestedSection) ? requestedSection : "home";
   useEffect(() => {
     if (requestedSection !== section) window.history.replaceState(null, "", sectionPaths[section]);
@@ -170,7 +171,6 @@ export default function Workspace({
       : "all",
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<Trip | "new" | null>(null);
   const [importing, setImporting] = useState(false);
   const [login, setLogin] = useState(!user && !demo);
@@ -223,8 +223,9 @@ export default function Workspace({
   ];
   const filtered = useMemo(() => filterTrips(trips, filters, today), [trips, filters, today]);
   const todayRecaps = useMemo(() => active.filter(trip => matchesEntry(trip.createdAt, "today", today)).length, [active, today]);
-  const detail = trips.find((t) => t.id === detailId);
   const archiveGroups = useMemo(() => groupArchives(active), [active]);
+  const recordTrip = record ? trips.find((t) => t.code === record) : undefined;
+  const recordGroup = recordTrip && archiveGroups.find((group) => group.trips.some((t) => t.id === recordTrip.id));
   const filteredGroups = useMemo(() => filterArchiveGroups(archiveGroups, filters, today), [archiveGroups, filters, today]);
   const yearCounts = useMemo(() => new Map(years.map(year => [year, archiveGroupsForYear(archiveGroups, year).length])), [archiveGroups, years]);
   const archiveExportRows = useMemo(() => archivesForExport(filteredGroups), [filteredGroups]);
@@ -271,7 +272,7 @@ export default function Workspace({
       return;
     }
     if (section === "honorarium" && s !== "honorarium") { window.location.assign(sectionPaths[s]); return; }
-    if (s !== section) {
+    if (s !== section || record) {
       window.history.pushState(null, "", sectionPaths[s]);
       window.scrollTo({ top: 0 });
     }
@@ -295,6 +296,16 @@ export default function Workspace({
       return i < 0 ? [t, ...ts] : ts.map((x) => (x.id === t.id ? t : x));
     });
   }
+  /* Rincian arsip adalah halaman sendiri: /arsip-perjalanan/PD-2026-0062. */
+  function openRecord(trip: Trip) {
+    const path = archiveRecordPath(trip.code);
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, "", path);
+      window.scrollTo({ top: 0 });
+    }
+    setGuideOpen(false);
+    setNavOpen(false);
+  }
   async function openArchive(
     id: string,
     action: "detail" | "edit" | "delete" = "detail",
@@ -308,8 +319,7 @@ export default function Workspace({
       if (request !== openRequest.current) return;
       update(latest);
       if (latest.deletedAt) {
-        setDetailId(null);
-      setToast(
+        setToast(
           "Arsip sudah berada di Sampah. Pulihkan untuk menggunakannya kembali.",
         );
         return;
@@ -318,7 +328,7 @@ export default function Workspace({
       else if (action === "delete") {
         setTrashError("");
         setTrashTrip(latest);
-      } else setDetailId(latest.id);
+      } else openRecord(latest);
     } catch (error) {
       if (request === openRequest.current) setToast((error as Error).message);
     }
@@ -354,7 +364,7 @@ export default function Workspace({
       });
       update(updated);
       setTrashTrip(null);
-      if (!restore) setDetailId(null);
+      if (!restore && record === t.code) window.history.replaceState(null, "", sectionPaths.archives);
       setSelected(new Set());
         setToast(
         restore
@@ -505,7 +515,11 @@ export default function Workspace({
             </span>
             <span className="crumb-home">Ruang kerja</span>
             <ChevronRight size={14} />
-            <strong>{sectionNames[section]}</strong>
+            {section === "archives" && record ? <>
+              <span className="crumb-home">{sectionNames.archives}</span>
+              <ChevronRight size={14} />
+              <strong>{record}</strong>
+            </> : <strong>{sectionNames[section]}</strong>}
           </div>
           <NavbarClock />
           <div className="topbar-right">
@@ -549,7 +563,34 @@ export default function Workspace({
             </div>
           </div>
           )}
-          {section === "archives" && (
+          {section === "archives" && record && (recordTrip && recordGroup ? (
+            <ArchiveDetail
+              key={recordTrip.id}
+              trip={recordTrip}
+              group={recordGroup}
+              editable={editable}
+              exporting={busy}
+              onOpen={openRecord}
+              onBack={() => go("archives")}
+              onEdit={() => openArchive(recordTrip.id, "edit")}
+              onDelete={() => openArchive(recordTrip.id, "delete")}
+              onUpdate={(t) => {
+                update(t);
+                setToast("Dokumen berhasil disimpan.");
+              }}
+              onExport={exportable ? () => exportRows(recordGroup.trips) : undefined}
+            />
+          ) : (
+            <Empty
+              icon={<FolderOpen size={30} />}
+              heading={recordTrip?.deletedAt ? "Arsip ini ada di Sampah" : "Arsip tidak ditemukan"}
+              description={recordTrip?.deletedAt
+                ? "Pulihkan dari Sampah untuk membukanya kembali."
+                : `Tidak ada rekap dengan kode ${record}. Periksa alamatnya, atau cari dari daftar arsip perjalanan.`}
+              action={<Button variant="outline" onClick={() => go("archives")}>Kembali ke arsip perjalanan</Button>}
+            />
+          ))}
+          {section === "archives" && !record && (
             <div className="perjalanan-page">
               <header className="ledger-head perjalanan-head" data-tour="archive-heading">
                 <div>
@@ -833,7 +874,6 @@ export default function Workspace({
             patchFilters({ ...defaultFilters, year: "all" });
             go("archives");
             setEditor(null);
-            setDetailId(null);
             const drafts = added.filter(t => !isComplete(t)).length;
             setToast(`${added.length} rekap berhasil disimpan.${drafts ? ` ${drafts} di antaranya berupa draft.` : ""}`);
           }}
@@ -844,24 +884,9 @@ export default function Workspace({
                 ...defaultFilters,
                 year: t.startDate.slice(0, 4),
               });
-            go("archives");
             setEditor(null);
-            setDetailId(t.id);
+            openRecord(t);
             setToast(isComplete(t) ? "Arsip berhasil disimpan." : "Draft berhasil disimpan.");
-          }}
-        />
-      )}
-      {detail && !detail.deletedAt && !editor && !trashTrip && (
-        <TripDetail
-          key={detail.id}
-          trip={detail}
-          editable={editable}
-          onClose={() => setDetailId(null)}
-          onEdit={() => openArchive(detail.id, "edit")}
-          onDelete={() => openArchive(detail.id, "delete")}
-          onUpdate={(t) => {
-            update(t);
-            setToast("Dokumen berhasil disimpan.");
           }}
         />
       )}
