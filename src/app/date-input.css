@@ -1,0 +1,211 @@
+/* =====================================================================
+   Isian tanggal: kolom ketik hh/bb/tttt dengan tombol kalender di kanan,
+   dan kalender react-day-picker bergaya aplikasi (tanpa stylesheet bawaan).
+   ===================================================================== */
+
+.archive-date-input {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.archive-date-input > input {
+  width: 100%;
+  padding-right: 44px !important;
+  font-variant-numeric: tabular-nums;
+}
+.archive-date-input .date-trigger {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ledger-muted);
+  transform: translateY(-50%);
+  transition: background 0.15s, color 0.15s;
+}
+.archive-date-input .date-trigger:hover,
+.archive-date-input .date-trigger[data-state="open"] {
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+}
+.archive-date-input .date-trigger:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 1px;
+}
+
+/* ----- Kalender ----- */
+/* Di atas dialog formulir (50), di bawah daftar pilihan select (70). */
+.date-popover {
+  z-index: 60;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 14px;
+  background: var(--ledger-surface);
+  box-shadow: 0 18px 44px -18px rgba(12, 26, 47, 0.4);
+  color: var(--ledger-ink);
+  font-size: var(--type-data);
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: date-pop 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* Kotak kalender sendiri tidak diberi cincin fokus; tanggal di dalamnya yang ditandai. */
+.date-popover:focus,
+.date-popover:focus-visible {
+  outline: none;
+}
+@keyframes date-pop {
+  from { opacity: 0; transform: scale(0.97); }
+}
+.date-popover .rdp-months {
+  position: relative;
+}
+.date-popover .rdp-nav {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 2px;
+  height: 36px;
+  align-items: center;
+}
+.date-popover .rdp-button_previous,
+.date-popover .rdp-button_next {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ledger-muted);
+  cursor: pointer;
+}
+.date-popover .rdp-button_previous:hover,
+.date-popover .rdp-button_next:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.date-popover .rdp-button_previous:disabled,
+.date-popover .rdp-button_next:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.date-popover .rdp-chevron {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+.date-popover .rdp-month_caption {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding-right: 72px;
+}
+/* Pilihan bulan dan tahun: select aplikasi (CustomSelect) dengan gaya judul yang ringkas. */
+.date-popover .rdp-dropdowns {
+  display: inline-flex;
+  gap: 2px;
+}
+.date-popover .custom-select.date-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: var(--ledger-ink);
+  font-size: var(--type-body);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.date-popover .custom-select.date-dropdown:hover,
+.date-popover .custom-select.date-dropdown[data-state="open"] {
+  background: var(--ledger-tint);
+  outline: none;
+}
+.date-popover .custom-select.date-dropdown:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 1px;
+}
+.date-popover .custom-select.date-dropdown .select-chevron {
+  position: static;
+  color: var(--ledger-muted);
+}
+.date-popover .custom-select.date-dropdown .select-chevron svg {
+  width: 13px;
+  height: 13px;
+}
+.date-popover .rdp-month_grid {
+  margin-top: 6px;
+  border-collapse: collapse;
+}
+.date-popover .rdp-weekday {
+  width: 40px;
+  height: 30px;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-muted);
+  text-align: center;
+}
+.date-popover .rdp-day {
+  width: 40px;
+  height: 38px;
+  padding: 1px 0;
+  text-align: center;
+}
+.date-popover .rdp-day_button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ledger-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.date-popover .rdp-day_button:hover {
+  background: var(--ledger-tint);
+}
+.date-popover .rdp-day_button:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 1px;
+}
+.date-popover .rdp-outside .rdp-day_button {
+  color: #aab5c1;
+}
+/* Rentang perjalanan berangkat–kembali disorot lembut. */
+.date-popover .date-in-range .rdp-day_button {
+  background: var(--ledger-action-soft);
+  color: var(--ledger-action);
+}
+.date-popover .rdp-today .rdp-day_button {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--ledger-line);
+}
+.date-popover .rdp-selected .rdp-day_button,
+.date-popover .rdp-selected .rdp-day_button:hover {
+  background: var(--ledger-navy);
+  color: #fff;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .date-popover {
+    animation: none;
+  }
+}

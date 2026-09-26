@@ -64,6 +64,18 @@ test("mixed completion stays Draft, unknown costs stay unknown and zero stays co
   assert.equal(filterArchiveGroups(groups, { ...defaultFilters, status: "incomplete" }).length, 2);
 });
 
+test("missing SPPD keeps whole STs with at least one unnumbered ledger, within the other filters", () => {
+  const groups = groupArchives([
+    trip("a", 100, { sppdNo: "SPPD/1" }), trip("b", 50, { sppdNo: " " }),
+    trip("c", 75, { sptNo: "ST/02/2026", sppdNo: "SPPD/3" }),
+    trip("d", 25, { sptNo: "ST/03/2026", startDate: "2026-03-01", endDate: "2026-03-02" }),
+  ]);
+  const found = filterArchiveGroups(groups, { ...defaultFilters, status: "no-sppd" });
+  assert.deepEqual(found.map(group => group.number).sort(), ["ST/01/2026", "ST/03/2026"]);
+  assert.deepEqual(archivesForExport(found.filter(group => group.number === "ST/01/2026")).map(trip => trip.id), ["a", "b"]);
+  assert.equal(filterArchiveGroups(groups, { ...defaultFilters, status: "no-sppd", month: "02" }).length, 1);
+});
+
 test("entry period excludes older members of an ST from totals, status and exports", () => {
   const groups = groupArchives([
     trip("old", null, { createdAt: "2026-09-09T16:59:59.999Z", updatedAt: "2026-09-10T03:00:00Z" }),

@@ -1,4 +1,4 @@
-import { defaultFilters, filterTrips, isComplete, jakartaDay, matchesEntry, totalCost, type Filters, type Participant, type Trip } from "./model";
+import { defaultFilters, filterTrips, isComplete, jakartaDay, matchesEntry, missingSppd, totalCost, type Filters, type Participant, type Trip } from "./model";
 import { groupTaskLetters, summarizeTripCosts } from "./task-letters";
 import { tripDestinations } from "./destinations";
 
@@ -41,7 +41,8 @@ export function filterArchiveGroups(groups: ArchiveGroup[], filters: Filters, to
   return groups.filter(group =>
     group.trips.some(trip => matching.has(trip.id)) &&
     (filters.status === "all" ||
-      (filters.status === "complete" ? group.complete : !group.complete)),
+      (filters.status === "no-sppd" ? group.trips.some(missingSppd)
+        : filters.status === "complete" ? group.complete : !group.complete)),
   ).sort((a, b) => {
     const order = filters.sort === "cost"
       ? (b.total ?? -1) - (a.total ?? -1)
@@ -99,7 +100,7 @@ export type RecordGapField = "costs" | "sppd" | "documents" | "account";
 export function recordGaps(trips: Trip[]): { field: RecordGapField; trips: Trip[] }[] {
   const checks: [RecordGapField, (trip: Trip) => boolean][] = [
     ["costs", trip => totalCost(trip) === null],
-    ["sppd", trip => !trip.sppdNo.trim()],
+    ["sppd", missingSppd],
     ["documents", trip => !trip.documents.length],
     ["account", trip => !trip.account.trim()],
   ];

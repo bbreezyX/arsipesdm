@@ -515,8 +515,10 @@ nav {
 .sidebar-toggle {
   display: none;
 }
+/* Satu lebar untuk semua halaman supaya judul tidak bergeser saat berpindah menu.
+   Halaman yang butuh isi lebih sempit membatasi elemennya sendiri, bukan container ini. */
 .workspace-main {
-  max-width: 1680px;
+  max-width: 1880px;
   margin: 0 auto;
   padding: 32px 33px 19px;
 }
@@ -2338,6 +2340,54 @@ table td {
 }
 .operator-list > div > span:first-of-type { min-width: 0; overflow-wrap: anywhere; }
 .operator-list .user-role-select { width: 140px; min-width: 120px; margin-left: auto; flex-shrink: 0; }
+.budget-settings-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-top: 1px solid #edf1f5;
+  padding: 14px 0;
+}
+.budget-settings-row > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.budget-settings-row strong {
+  font-size: var(--type-data);
+  font-weight: 600;
+}
+.budget-settings-row span span,
+.budget-settings-row small {
+  font-size: var(--type-meta);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.budget-settings-row-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.budget-settings-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  margin: 4px 0 14px;
+  background: #f6f9fb;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.budget-settings-actions {
+  display: flex;
+  gap: 8px;
+}
+.budget-settings-empty {
+  border-top: 1px solid #edf1f5;
+  padding: 14px 0 0;
+  font-size: var(--type-meta);
+  color: var(--muted);
+}
 .trash-list {
   padding: 8px 23px;
 }
@@ -3395,9 +3445,6 @@ table td {
 .lampiran-form-body .form-section:last-child {
   padding-bottom: 8px;
 }
-.lampiran-form-body .advanced-fields {
-  margin-top: 22px;
-}
 .lampiran-cost-grid {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
@@ -3776,19 +3823,6 @@ table td {
 .lampiran-dialog .cost-total {
   margin: 20px 0;
   padding: 16px;
-}
-.lampiran-dialog .advanced-fields {
-  margin-top: 20px;
-  border-top: 1px solid var(--line);
-}
-.lampiran-dialog .advanced-fields > summary {
-  padding: 14px 0;
-  font-size: var(--type-data);
-  color: var(--primary);
-  cursor: pointer;
-}
-.lampiran-dialog .advanced-fields[open] > summary {
-  margin-bottom: 4px;
 }
 .lampiran-dialog .document-options {
   display: grid;
@@ -4336,7 +4370,7 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .additional-cost-item[data-recap-tone="details"] { background: #fffbf3; padding: 12px; border-radius: 6px; }
 .additional-cost-item[data-recap-tone="filled"] { background: #f5faf6; padding: 12px; border-radius: 6px; }
 .additional-entry-status { grid-column: 1 / -1; }
-.journey-entry-section .recap-field-entered input, .journey-entry-section .recap-field-entered textarea, .journey-budget-fields .recap-field-entered input { background: #f6fafd; border-color: #cbdfea; }
+.journey-entry-section .recap-field-entered input, .journey-entry-section .recap-field-entered textarea { background: #f6fafd; border-color: #cbdfea; }
 .journey-section-nav button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .journey-person-option[data-recap-tone="details"]:has(input:checked) { background: #f0f6fa; border-color: #cbdfea; }
 .journey-person-option[data-recap-tone="different"]:has(input:checked) { background: #fffbf2; border-color: #e8d5b4; }
@@ -4380,10 +4414,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .journey-duration-help button { width: fit-content; color: #315d7c; text-decoration: underline; text-underline-offset: 3px; font-size: var(--type-button); padding-block: 3px; }
 .journey-duration-help .journey-duration-match { display: flex; align-items: center; gap: 4px; color: var(--status-success); }
 .journey-duration-notice { padding: 9px 10px; border-radius: 5px; background: #fcf8ef; color: var(--status-warning); font-size: var(--type-meta); line-height: 1.8; }
-.journey-budget-fields { padding-block: 16px; border-bottom: 1px solid var(--line); }
-.journey-budget-fields summary { cursor: pointer; font-size: var(--type-data); color: #456077; }
-.journey-budget-fields summary small { float: right; font-size: var(--type-meta); color: var(--muted); }
-.journey-budget-fields > p { margin-block: 12px; }
 .journey-personal-note { color: var(--muted); font-size: var(--type-meta); line-height: 1.8; margin-top: 14px; }
 .journey-daily-allowance { padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--line); }
 .journey-daily-allowance .custom-select { height: auto; min-height: 42px; white-space: normal; text-align: left; }

@@ -37,6 +37,7 @@ import { useDiscardConfirm } from "./discard-confirm";
 import { Button } from "./ui/button";
 import { Field, ErrorMessage, advanceOnEnter, api } from "./fields";
 import ArchiveDateInput from "./archive-date-input";
+import BudgetFields from "./budget-fields";
 import {
   tripSchema,
   totalCost,
@@ -569,6 +570,7 @@ export default function Lampiran6Form({
                   <div className="form-grid">
                     <Field label="Tanggal berangkat" required>
                       <ArchiveDateInput
+                        range={{ from: form.startDate, to: form.endDate }}
                         required
                         value={form.startDate}
                         onChange={(value) =>
@@ -584,6 +586,7 @@ export default function Lampiran6Form({
                     </Field>
                     <Field label="Tanggal kembali" required>
                       <ArchiveDateInput
+                        range={{ from: form.startDate, to: form.endDate }}
                         required
                         value={form.endDate}
                         onChange={(value) => patch({ endDate: value })}
@@ -614,14 +617,10 @@ export default function Lampiran6Form({
                     <DestinationFields className="span-2" values={tripDestinations(form)} options={suggestions.destinations}
                       onChange={destinations => patch({destinations, destination: formatDestinations(destinations)})} />
                   </div>
-                  <details className="advanced-fields">
-                    <summary>Program, kegiatan, dan subkegiatan</summary>
-                    <div className="form-grid">
-                      {textField("program", "Nama program")}
-                      {textField("activityName", "Nama kegiatan anggaran")}
-                      {textField("subActivity", "Nama subkegiatan")}
-                    </div>
-                  </details>
+                </section>
+                <section className="form-section">
+                  <h3>Program & anggaran <small>Opsional</small></h3>
+                  <BudgetFields value={data} options={suggestions.budgets} onChange={patchData} />
                 </section>
               </>}
               {step === "costs" && <>

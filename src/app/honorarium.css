@@ -1,408 +1,504 @@
 /*
-  Honorarium: buku honor di atas lapisan register (arsip.css).
-  Warna, tipe, dan kelas ledger-* sama dengan Arsip perjalanan dan Surat Tugas.
-  Yang khas di halaman ini: rel jenis honorarium mengikuti lima tabel Lampiran 3,
-  satu angka netto pada pita ringkasan, dan baris jumlah biru laut di kaki tabel
-  seperti daftar pembayaran honor yang dicetak.
+  Honorarium: buku honor dengan pola yang sama seperti Rekap & laporan.
+  Satu angka netto dengan slip bruto − pajak, daftar dikelompokkan per SK,
+  lalu baris pemeriksaan sebelum Lampiran 3 dicetak. Tab tahun dan lembar
+  putih dari lapisan register (arsip.css); emas hanya untuk baris terbuka.
 */
 .honor-page {
   min-width: 0;
 }
 .honor-sheet {
   border-top-left-radius: 0;
+  padding: 32px 44px 28px;
 }
 
-/* ----- Rel jenis honorarium ----- */
-.honor-index {
+/* ----- Alat: jenis, SK, pencarian, dan satu menu untuk sisanya ----- */
+.honor-tools {
   display: flex;
-  align-items: stretch;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 32px;
 }
-.honor-index-all {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 148px;
-  padding: 14px 22px 14px 24px;
-  text-align: left;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line);
-  transition: background 0.15s, color 0.15s;
-}
-.honor-index-all strong {
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: inherit;
-  white-space: nowrap;
-}
-.honor-index-all span {
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.honor-kinds {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  min-width: 0;
-}
-.honor-kind {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: center;
-  align-items: baseline;
-  column-gap: 8px;
-  row-gap: 4px;
-  min-width: 0;
-  padding: 13px 16px 12px;
-  text-align: left;
-  color: var(--ledger-muted);
-  border-right: 1px solid var(--ledger-line-soft);
-  transition: background 0.15s, color 0.15s;
-}
-.honor-kind:last-child {
-  border-right: 0;
-}
-.honor-kind > span {
-  grid-column: 1 / -1;
-  font-size: var(--type-meta);
-  font-weight: 500;
-  line-height: 1.35;
-  color: inherit;
-}
-.honor-kind strong {
-  font-size: 1.375rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  color: var(--ledger-ink);
-  font-variant-numeric: tabular-nums;
-}
-.honor-kind small {
-  min-width: 0;
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.honor-kind:disabled {
-  cursor: default;
-  color: #aab6c3;
-}
-.honor-kind:disabled strong {
-  color: #aab6c3;
-  font-weight: 500;
-}
-.honor-kind:not(:disabled):hover,
-.honor-index-all:hover {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
-}
-.honor-kind[aria-pressed="true"],
-.honor-index-all[aria-pressed="true"] {
-  background: var(--ledger-surface);
-  color: var(--ledger-ink);
-}
-.honor-kind[aria-pressed="true"]::after,
-.honor-index-all[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--ledger-gold);
-}
-.honor-index-all[aria-pressed="true"]::after {
-  left: 24px;
-  right: 22px;
-}
-.honor-kind:focus-visible,
-.honor-index-all:focus-visible {
-  outline: 1px solid var(--ledger-action);
-  outline-offset: -1px;
-  z-index: 1;
-}
-
-/* ----- Pita ringkasan: satu angka netto, satu bilah bruto ----- */
-.honor-summary .ledger-figure {
-  margin-bottom: 12px;
-}
-.honor-bar {
-  display: flex;
-  height: 10px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--ledger-action-soft);
-}
-.honor-bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 6px 0 0 6px;
-  background: var(--ledger-navy);
-  transform-origin: left center;
-  animation: ledger-fill 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-.honor-bar.is-empty {
-  background: var(--ledger-line-soft);
-}
-.honor-legend i {
-  background: var(--ledger-navy);
-}
-.honor-legend i.tax {
-  background: var(--ledger-action-soft);
-  box-shadow: inset 0 0 0 1px #b9cbdd;
-}
-
-/* ----- Kepala register dan penyaring ----- */
-.ledger-register-tools .custom-select.honor-sort {
+.honor-tools .custom-select.honor-pill {
   width: auto;
-  min-width: 160px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 32px 0 12px;
-  border-radius: 9px;
-  border-color: #d3dbe4;
-  font-size: var(--type-label);
-  font-weight: 500;
-  color: var(--ledger-text);
-}
-.honor-reload.ledger-tool[data-slot="button"] {
-  width: 34px;
-  padding: 0;
-}
-.honor-register .ledger-filters {
-  padding-top: 2px;
-}
-.ledger-filters .custom-select.honor-sk-select {
-  max-width: 340px;
+  min-width: 164px;
+  max-width: 320px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 32px 0 14px;
+  border-radius: 999px;
+  border-color: var(--ledger-line);
+  background: var(--ledger-surface);
+  font-size: var(--type-data);
+  font-weight: 550;
+  color: var(--ledger-ink);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* Pilihan jenis hanya untuk layar HP; di desktop rel jenis yang memegang peran ini. */
-.ledger-filters .custom-select.honor-kind-select {
-  display: none;
+.honor-tools .custom-select.honor-pill[data-active="true"] {
+  border-color: var(--ledger-navy);
+  background: var(--ledger-action-soft);
+  font-weight: 600;
 }
-.honor-error {
-  margin: 0 24px 14px;
-}
-
-/* ----- Tabel honor ----- */
-.honor-table {
-  min-width: 1120px;
-}
-.honor-table th:first-child,
-.honor-table td:first-child {
-  padding-left: 24px;
-}
-.honor-table [data-column="recipient"] {
-  min-width: 250px;
-}
-.honor-table [data-column="sk"] {
-  min-width: 230px;
-}
-.honor-table [data-column="calc"],
-.honor-table [data-column="gross"],
-.honor-table [data-column="tax"],
-.honor-table [data-column="net"] {
-  text-align: right;
-  white-space: nowrap;
-}
-.honor-table [data-column="calc"] {
-  width: 190px;
-  min-width: 190px;
-}
-.honor-table [data-column="gross"] {
-  width: 150px;
-  min-width: 150px;
-}
-.honor-table [data-column="tax"] {
-  width: 140px;
-  min-width: 140px;
-}
-.honor-table [data-column="net"] {
-  width: 160px;
-  min-width: 160px;
-}
-.honor-table [data-column="actions"] {
-  width: 92px;
-  min-width: 92px;
-  text-align: right;
-  padding-inline: 8px 16px;
-}
-.honor-row-tools {
+.honor-chip {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--ledger-navy);
+  border-radius: 999px;
+  background: var(--ledger-action-soft);
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  transition: background 0.15s;
 }
-.honor-menu[data-slot="button"] {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+.honor-chip:hover {
+  background: #d9e5f1;
+}
+.honor-chip svg {
+  width: 14px;
+  height: 14px;
   color: var(--ledger-muted);
 }
-.honor-menu[data-slot="button"]:hover {
+.honor-tools .honor-reset[data-slot="button"] {
+  height: 36px;
+  color: var(--ledger-action);
+}
+.honor-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 320px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 999px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.honor-search:focus-within {
+  border-color: var(--ledger-action);
+  box-shadow: 0 0 0 3px var(--ledger-action-soft);
+}
+/* Mengalahkan gaya bawaan input global; bingkai milik .honor-search. */
+.honor-tools .honor-search input:not([type="checkbox"]),
+.honor-tools .honor-search input:not([type="checkbox"]):focus {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: none;
+  box-shadow: none;
+  font-size: var(--type-data);
   color: var(--ledger-ink);
 }
-.honor-who {
+.honor-search > span {
+  display: flex;
+  flex-shrink: 0;
+}
+.honor-search kbd {
   display: grid;
-  gap: 3px;
-  min-width: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ledger-muted);
+}
+.honor-search > button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--ledger-muted);
+}
+.honor-search > button:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.honor-sheet .honor-tools .honor-more {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--ledger-line);
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  box-shadow: none;
+}
+.honor-menu-panel {
+  min-width: 220px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+}
+
+/* ----- Angka utama dan slip perhitungan ----- */
+.honor-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: end;
+  gap: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.honor-hero-label {
+  margin: 0 0 14px;
+  font-size: var(--type-body);
+  color: var(--ledger-muted);
+}
+.honor-figure {
+  display: block;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(2.75rem, 5vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.honor-figure small {
+  margin-right: 0.35em;
+  font-family: "Instrument Sans Variable", system-ui, sans-serif;
+  font-size: 0.3em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ledger-muted);
+  vertical-align: 0.9em;
+}
+.honor-figure.is-empty {
+  font-size: 1.75rem;
+  color: var(--ledger-muted);
+}
+.honor-facts-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-top: 16px;
+  font-size: var(--type-data);
+  color: var(--ledger-muted);
+}
+.honor-facts-line strong {
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.honor-slip {
+  margin: 0;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--ledger-tint);
+  font-size: var(--type-data);
+}
+.honor-slip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+.honor-slip dt {
+  color: var(--ledger-text);
+}
+.honor-slip dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.honor-slip .is-minus dd {
+  font-weight: 500;
+  color: var(--ledger-muted);
+}
+.honor-slip .is-total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ledger-line);
+}
+.honor-slip .is-total dt {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.honor-slip .is-total dd {
+  font-size: 1rem;
+}
+.honor-error {
+  margin: 20px 0 0;
+}
+
+/* ----- Daftar per SK ----- */
+.honor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-data);
+}
+.honor-table thead th {
+  padding: 18px 12px 10px;
+  border-bottom: 1px solid var(--ledger-line);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ledger-muted);
+  white-space: nowrap;
+}
+.honor-table .is-number {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.honor-group th,
+.honor-group td {
+  padding: 22px 12px 8px;
+  border-bottom: 1px solid var(--ledger-line);
+  text-align: left;
+  vertical-align: bottom;
+}
+.honor-group td.is-number {
+  text-align: right;
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.honor-group-sk {
+  margin-right: 12px;
+  font-weight: 650;
+  color: var(--ledger-ink);
+  overflow-wrap: anywhere;
+}
+.honor-group-sk.is-name {
+  font-weight: 550;
+}
+.honor-group-meta {
+  font-size: var(--type-meta);
+  font-weight: 450;
+  color: var(--ledger-muted);
+}
+.honor-row {
+  cursor: pointer;
+}
+.honor-row > * {
+  height: 60px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  text-align: left;
+  vertical-align: middle;
+  color: var(--ledger-text);
+  transition: background 0.15s;
+}
+.honor-register[data-density="compact"] .honor-row > * {
+  height: 44px;
+  padding-block: 4px;
+}
+.honor-register[data-density="compact"] .honor-role {
+  display: none;
+}
+.honor-row:hover > * {
+  background: var(--ledger-tint);
+}
+.honor-row[data-expanded] > * {
+  background: #fbf6e8;
+  border-bottom-color: transparent;
+}
+.honor-row th {
+  font-weight: 400;
 }
 .honor-name {
-  font-size: var(--type-body);
+  display: block;
+  padding: 2px 0;
+  border-radius: 4px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--ledger-ink);
   text-align: left;
-  border-radius: 4px;
   overflow-wrap: anywhere;
 }
-.honor-name:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--ledger-gold);
-  text-decoration-thickness: 2px;
+.honor-name:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
 }
-.honor-who > span {
-  font-size: var(--type-meta);
-  line-height: 1.5;
-  color: var(--ledger-muted);
-  overflow-wrap: anywhere;
-}
-.honor-sk {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.honor-ref.ledger-ref {
-  font-size: 0.9375rem;
-  overflow-wrap: anywhere;
-}
-.honor-ref.ledger-ref.is-name {
-  font-stretch: 100%;
-  font-weight: 500;
-  font-size: var(--type-data);
-  color: var(--ledger-text);
-}
-.honor-sk small {
-  font-size: var(--type-meta);
-  color: var(--ledger-muted);
-}
-.honor-calc-cell {
-  color: var(--ledger-text);
-  font-variant-numeric: tabular-nums;
-}
-.honor-calc-cell b {
-  padding: 0 2px;
-  font-weight: 400;
-  color: var(--ledger-muted);
-}
-.honor-amount {
-  color: var(--ledger-ink);
-  font-variant-numeric: tabular-nums;
-}
-.honor-amount.is-tax {
-  color: var(--ledger-text);
-}
-.honor-amount.is-tax small {
+.honor-role {
   display: block;
-  margin-top: 3px;
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
+  line-height: 1.45;
   color: var(--ledger-muted);
 }
-.honor-amount.is-net {
-  font-weight: 650;
-}
-
-/* Baris jumlah: kaki buku honor, melekat di dasar tabel. */
-.honor-foot td {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  padding: 13px 14px;
-  background: var(--ledger-navy);
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: 0.005em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  border-top: 1px solid var(--ledger-navy-deep);
-}
-.honor-foot td[data-column="net"] {
-  color: var(--ledger-gold);
-}
-.honor-table .honor-foot td[data-column="actions"] {
-  position: sticky;
-  right: 0;
-  bottom: 0;
-  background: var(--ledger-navy);
-}
-.honor-foot-label {
-  font-size: var(--type-data);
-  font-weight: 500;
-  font-stretch: 100%;
-  letter-spacing: 0;
-  color: #c9d4e2;
-}
-.honor-foot-label strong {
-  font-weight: 600;
-  color: #fff;
-}
-
-/* ----- Rincian di dalam baris ----- */
-.honor-table .ledger-detail-row > td {
-  padding: 22px 24px 24px;
-}
-.honor-detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(280px, 0.9fr);
-  gap: 16px;
-}
-.honor-facts {
-  display: grid;
-  align-content: start;
-  margin: 0;
-  padding: 4px 18px 8px;
-  background: var(--ledger-surface);
-  border: 1px solid var(--ledger-line);
-  border-radius: 10px;
-}
-.honor-facts-title {
-  padding: 10px 0 9px;
-  font-size: var(--type-data);
-  font-weight: 600;
+.honor-period {
+  font-weight: 550;
   color: var(--ledger-ink);
+}
+.honor-muted {
+  color: var(--ledger-muted);
+}
+.honor-row td.honor-muted {
+  color: var(--ledger-muted);
+}
+.honor-row small {
+  display: block;
+  font-size: var(--type-micro);
+}
+.honor-row td.honor-net {
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.honor-row td.honor-toggle {
+  width: 40px;
+  padding-inline: 4px 8px;
+  color: var(--ledger-muted);
+}
+.honor-toggle svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.honor-row[data-expanded] .honor-toggle svg {
+  transform: rotate(180deg);
+}
+.honor-detail-row > td {
+  padding: 20px 12px 24px;
+  background: var(--ledger-surface);
   border-bottom: 1px solid var(--ledger-line);
 }
-.honor-facts > div:not(.honor-facts-title) {
+.honor-table tfoot th,
+.honor-table tfoot td {
+  height: 60px;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 650;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.honor-table tfoot .is-number {
+  text-align: right;
+}
+.honor-list {
+  display: none;
+}
+.honor-register .ledger-pagination {
+  margin-top: 8px;
+  padding-inline: 0;
+}
+.honor-register .empty-state,
+.honor-sheet > .empty-state {
+  padding: 48px 24px;
+}
+
+/* ----- Pemeriksaan sebelum Lampiran 3 ----- */
+.honor-checks {
   display: grid;
-  grid-template-columns: 136px minmax(0, 1fr);
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--ledger-line-soft);
-  font-size: var(--type-data);
-  line-height: 1.55;
-}
-.honor-facts > div:last-child {
-  border-bottom: 0;
-}
-.honor-facts dt {
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--ledger-line);
+  font-size: var(--type-meta);
   color: var(--ledger-muted);
 }
-.honor-facts dd {
+.honor-checks p {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   margin: 0;
+  line-height: 1.5;
+}
+.honor-checks p > span {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.honor-checks p[data-state]::before {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translateY(-1px);
+  background: var(--ledger-success);
+}
+.honor-checks p[data-state="gap"] {
+  color: var(--ledger-text);
+}
+.honor-checks p[data-state="gap"]::before {
+  background: var(--ledger-gold);
+}
+.honor-checks strong {
+  font-weight: 650;
   color: var(--ledger-ink);
-  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.honor-checks-note {
+  padding-left: 17px;
+}
+.honor-check-link {
+  flex-shrink: 0;
+  padding: 2px 0;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--ledger-action);
+  white-space: nowrap;
+  text-decoration: underline transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s;
+}
+.honor-check-link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ----- Rincian di dalam baris: tanpa kartu, label di atas nilai, slip sama dengan ringkasan ----- */
+.honor-detail {
+  padding: 8px 0 4px;
+}
+.honor-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 40px;
+}
+.honor-detail-facts h4 {
+  margin: 0 0 12px;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ledger-muted);
+}
+.honor-detail-facts dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px 32px;
+  margin: 0;
+}
+.honor-detail-facts dl + h4 {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ledger-line-soft);
+}
+.honor-detail-facts dl > div.is-wide {
+  grid-column: 1 / -1;
+}
+.honor-detail-facts dt {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.honor-detail-facts dd {
+  margin: 2px 0 0;
+  max-width: 72ch;
+  font-size: var(--type-data);
+  line-height: 1.5;
+  color: var(--ledger-ink);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -410,62 +506,19 @@
   color: #93a2b3;
   font-weight: 400;
 }
-.honor-ledger {
-  align-self: start;
-  background: var(--ledger-surface);
-  border: 1px solid var(--ledger-line);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.honor-ledger-head {
-  padding: 10px 16px;
-  background: var(--ledger-tint);
-  border-bottom: 1px solid var(--ledger-line);
-  font-size: var(--type-data);
-  font-weight: 600;
-  color: var(--ledger-ink);
-}
-.honor-ledger > div:not(.honor-ledger-head) {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--ledger-line-soft);
-  font-size: var(--type-data);
-}
-.honor-ledger > div > span {
-  color: var(--ledger-text);
-}
-.honor-ledger > div > b {
-  font-weight: 600;
-  color: var(--ledger-ink);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.honor-ledger > .honor-ledger-total {
-  padding: 12px 16px;
-  background: var(--ledger-navy);
-  border-bottom: 0;
-}
-.honor-ledger > .honor-ledger-total > span {
-  color: #c9d4e2;
-}
-.honor-ledger > .honor-ledger-total > strong {
-  font-size: 1.25rem;
-  font-weight: 650;
-  font-stretch: var(--ledger-condensed);
-  letter-spacing: -0.01em;
-  color: var(--ledger-gold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.honor-detail-slip {
+  position: sticky;
+  top: 16px;
 }
 .honor-detail-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 12px 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ledger-line-soft);
   font-size: var(--type-meta);
   color: var(--ledger-muted);
 }
@@ -473,14 +526,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-left: auto;
 }
 .honor-detail-actions [data-slot="button"] {
   height: 34px;
   border-radius: 9px;
-  font-weight: 500;
+  font-weight: 550;
 }
 .honor-detail-actions [data-variant="outline"] {
-  border-color: #d3dbe4;
+  border-color: var(--ledger-line);
   box-shadow: none;
   color: var(--ledger-ink);
 }
@@ -499,14 +553,7 @@
   color: var(--ledger-danger);
 }
 
-/* ----- Catatan kaki dan dialog kecil ----- */
-.honor-footnote {
-  margin: 14px 4px 0;
-  max-width: 92ch;
-  font-size: var(--type-meta);
-  line-height: 1.6;
-  color: var(--ledger-muted);
-}
+/* ----- Dialog hapus dan formulir: lembar isian dengan pita perhitungan biru laut ----- */
 .honor-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -583,148 +630,126 @@
 }
 
 /* ----- Layar sempit ----- */
-.honor-mobile-foot {
-  display: none;
-}
-@media (max-width: 1250px) {
-  .honor-index-all {
-    min-width: 132px;
-    padding-inline: 18px;
+@media (max-width: 1100px) {
+  .honor-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
-  .honor-kind {
-    padding-inline: 12px;
-  }
-  .honor-kind strong {
-    font-size: 1.25rem;
-  }
-  .honor-detail-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .honor-ledger {
-    grid-column: 1 / -1;
+  .honor-detail-slip {
+    position: static;
+    max-width: 420px;
   }
 }
 @media (max-width: 900px) {
-  .honor-index {
-    flex-direction: column;
+  .honor-sheet {
+    padding: 28px 28px 24px;
   }
-  .honor-index-all {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    min-width: 0;
-    padding: 12px 20px;
-    border-right: 0;
-    border-bottom: 1px solid var(--ledger-line);
+  .honor-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
-  .honor-index-all[aria-pressed="true"]::after {
-    left: 20px;
-    right: 20px;
-  }
-  .honor-kinds {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .honor-kind:nth-child(3) {
-    border-right: 0;
-  }
-  .honor-kind:nth-child(-n + 3) {
-    border-bottom: 1px solid var(--ledger-line-soft);
-  }
-  .ledger-register-tools .custom-select.honor-sort {
-    flex: 1;
+  .honor-search {
+    order: -1;
+    width: 100%;
+    margin-left: 0;
   }
 }
 @media (max-width: 760px) {
-  /* Layar HP: buku honor satu kolom seperti halaman Arsip. Rel jenis dilipat ke panel Filter,
-     pencarian berdampingan dengan tombol Filter, dan aksi baris menunggu di dalam rincian. */
-  .honor-index {
-    display: none;
+  .honor-page .ledger-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
   }
-  .ledger-filters .custom-select.honor-kind-select {
-    display: inline-flex;
+  .honor-head-actions {
+    flex-direction: column-reverse;
   }
-  .ledger-filters .custom-select.honor-sk-select {
+  .honor-head-actions [data-slot="button"] {
+    height: 44px;
+  }
+  .honor-sheet {
+    padding: 20px 16px 18px;
+  }
+  .honor-tools {
+    margin-bottom: 24px;
+  }
+  .honor-tools .custom-select.honor-pill {
+    flex: 1 1 140px;
+    min-width: 0;
     max-width: none;
   }
-  .honor-register .ledger-search {
-    order: 0;
+  .honor-hero {
+    padding-bottom: 24px;
   }
-  .honor-register .ledger-filter-toggle {
-    order: 1;
+  .honor-figure {
+    font-size: 2.75rem;
   }
-  .honor-register .ledger-filter-group {
-    order: 2;
+  /* Di ponsel tabel menjadi daftar: periode dan netto, lalu penerima dan perhitungan. */
+  .honor-table {
+    display: none;
   }
-  .honor-register .ledger-filters-end {
-    order: 3;
+  .honor-list {
+    display: block;
   }
-  .honor-footnote {
-    margin-inline: 0;
-  }
-  .honor-error {
-    margin-inline: 16px;
-  }
-  .honor-card .honor-who {
-    flex: 1;
-    min-width: 0;
-  }
-  .honor-card .honor-sk {
-    margin-top: 10px;
-  }
-  .honor-card-net {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-  .honor-card-net span {
-    font-size: var(--type-meta);
-    color: var(--ledger-muted);
-  }
-  .honor-card-net strong {
-    font-size: 1.125rem;
-    font-weight: 650;
-    font-stretch: var(--ledger-condensed);
-    color: var(--ledger-ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .honor-mobile-foot {
+  .honor-list-group {
     display: grid;
-    gap: 8px;
-    padding: 14px 16px;
-    background: var(--ledger-navy);
-    color: #fff;
+    gap: 2px;
+    margin: 0;
+    padding: 18px 0 8px;
+    border-bottom: 1px solid var(--ledger-line);
+    font-size: var(--type-data);
   }
-  .honor-mobile-foot > span {
-    font-size: var(--type-meta);
-    color: #c9d4e2;
-  }
-  .honor-mobile-foot dl {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+  .honor-list-group .honor-group-sk {
     margin: 0;
   }
-  .honor-mobile-foot dt {
-    font-size: var(--type-micro);
-    color: #9fb0c4;
+  .honor-list-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    width: 100%;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--ledger-line-soft);
+    text-align: left;
+    transition: background 0.15s;
   }
-  .honor-mobile-foot dd {
-    margin: 2px 0 0;
-    font-size: 1rem;
+  .honor-list-item[data-expanded] .honor-list-row {
+    background: #fbf6e8;
+    border-bottom-color: transparent;
+  }
+  .honor-list-row .honor-net {
     font-weight: 650;
-    font-stretch: var(--ledger-condensed);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
+    color: var(--ledger-ink);
+    white-space: nowrap;
   }
-  .honor-mobile-foot dl > div:last-child dd {
-    color: var(--ledger-gold);
+  .honor-list-row small {
+    grid-column: 1 / -1;
+    font-size: var(--type-micro);
+    color: var(--ledger-muted);
   }
-  .honor-detail-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .honor-list-detail {
+    padding: 16px 4px 20px;
+    background: var(--ledger-surface);
+    border-bottom: 1px solid var(--ledger-line-soft);
   }
-  .honor-facts > div:not(.honor-facts-title) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+  .honor-list-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 16px 4px 4px;
+    font-weight: 650;
+    color: var(--ledger-ink);
+  }
+  .honor-checks p {
+    flex-wrap: wrap;
+  }
+  .honor-check-link {
+    flex-basis: calc(100% - 17px);
+    margin-left: 17px;
+    min-height: 36px;
+    text-align: left;
+  }
+  .honor-detail-slip {
+    max-width: none;
   }
   .honor-detail-foot {
     flex-direction: column;
@@ -756,16 +781,10 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .honor-kind,
-  .honor-index-all {
+  .honor-row > *,
+  .honor-toggle svg,
+  .honor-list-row,
+  .honor-search {
     transition: none;
-  }
-  .honor-bar > span {
-    animation: none;
-  }
-}
-@media print {
-  .honor-index {
-    display: none;
   }
 }

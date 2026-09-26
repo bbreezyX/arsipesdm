@@ -10,10 +10,6 @@
   /* Paling tidak setinggi layar; rincian panjang memanjangkan halaman, bukan bergulir sendiri. */
   min-height: calc(100dvh - var(--shell-header-height) - 98px);
 }
-/* Halaman ini memakai lebar layar penuh: daftar dan rincian sama-sama butuh ruang. */
-.workspace-main.workspace-archives {
-  max-width: 1880px;
-}
 /*
   Pindah daftar ↔ rincian (View Transitions, dipicu dari workspace.tsx dengan jenis nav-forward/nav-back).
   Halaman lama bergeser keluar dan memudar cepat; halaman baru masuk dari arah tujuan sedikit sesudahnya.
@@ -185,7 +181,7 @@
 }
 .perjalanan-status {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, auto);
   gap: 2px;
   padding: 3px;
   border-radius: 9px;

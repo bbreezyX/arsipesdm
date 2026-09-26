@@ -3,6 +3,8 @@ import { NavbarClock } from "./navbar-clock";
 import { useJakartaDay } from "./use-jakarta-day";
 import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
+import type { Budget } from "@/lib/budgets";
+import BudgetSettings from "./budget-settings";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useId, startTransition, addTransitionType, ViewTransition } from "react";
 import AuthPage from "./auth-page";
@@ -80,6 +82,7 @@ import {
   filterTrips,
   totalCost,
   isComplete,
+  missingSppd,
 } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import { employeeDirectoryChannel, notifyEmployeeDirectoryChanged } from "@/lib/employee-directory-events";
@@ -130,6 +133,7 @@ export default function Workspace({
   initialTrips,
   initialEmployees,
   departments: initialDepartments,
+  budgets: initialBudgets = [],
   user,
   demo,
   initialSection = "archives",
@@ -141,6 +145,7 @@ export default function Workspace({
   initialTrips: Trip[];
   initialEmployees: Employee[];
   departments: string[];
+  budgets?: Budget[];
   user: User | null;
   demo: boolean;
   initialSection?: Section;
@@ -158,6 +163,7 @@ export default function Workspace({
   const [trips, setTrips] = useState(initialTrips);
   const today = useJakartaDay(initialNow);
   const [departments, setDepartments] = useState(initialDepartments);
+  const [budgets, setBudgets] = useState(initialBudgets);
   const pathname = usePathname();
   /* Jalur yang sedang ditampilkan. Pindah dari dalam ruang kerja memperbaruinya sendiri (di dalam transisi
      bila perlu bergeser); selebihnya, seperti Back/Forward browser, mengikuti pathname Next. */
@@ -237,7 +243,7 @@ export default function Workspace({
     const id = setTimeout(() => setToast(""), 5000);
     return () => clearTimeout(id);
   }, [toast]);
-  const tripSuggestions = useMemo(() => buildTripSuggestions(trips), [trips]);
+  const tripSuggestions = useMemo(() => buildTripSuggestions(trips, budgets), [trips, budgets]);
   const active = useMemo(() => trips.filter((t) => !t.deletedAt), [trips]);
   const years = useMemo(
     () =>
@@ -600,11 +606,6 @@ export default function Workspace({
           <div className="page-heading">
             <div>
               <h1>{sectionNames[section]}</h1>
-              <p>
-                {section === "trash"
-                          ? "Arsip yang dihapus tetap tersedia untuk dipulihkan."
-                          : "Kelola bidang dan hak akses pengguna arsip kantor."}
-              </p>
             </div>
           </div>
           )}
@@ -719,6 +720,9 @@ export default function Workspace({
                       <button type="button" aria-pressed={filters.status === "complete"} onClick={() => patchFilters({ status: "complete" })}>
                         Lengkap <b>{statusGroups.filter(group => group.complete).length}</b>
                       </button>
+                      <button type="button" aria-pressed={filters.status === "no-sppd"} onClick={() => patchFilters({ status: "no-sppd" })}>
+                        Tanpa SPPD <b>{statusGroups.filter(group => group.trips.some(missingSppd)).length}</b>
+                      </button>
                     </div>
                     <div className="perjalanan-selects">
                       <CustomSelect aria-label="Bulan perjalanan" className="perjalanan-select" data-active={filters.month !== "all"}
@@ -820,6 +824,7 @@ export default function Workspace({
               busy={busy}
               canExport={exportable}
               onExport={rows => exportRows(rows)}
+              onReview={scope => go("archives", scope)}
             />
           )}
           {section === "documents" && (
@@ -842,6 +847,9 @@ export default function Workspace({
             <Settings
               departments={departments}
               setDepartments={setDepartments}
+              budgets={budgets}
+              setBudgets={setBudgets}
+              budgetsEditable={editable}
               user={user}
               demo={demo}
               onLogin={() => setLogin(true)}
@@ -1066,6 +1074,9 @@ export default function Workspace({
 function Settings({
   departments,
   setDepartments,
+  budgets,
+  setBudgets,
+  budgetsEditable,
   user,
   demo,
   onLogin,
@@ -1073,6 +1084,9 @@ function Settings({
 }: {
   departments: string[];
   setDepartments: (d: string[]) => void;
+  budgets: Budget[];
+  setBudgets: (budgets: Budget[]) => void;
+  budgetsEditable: boolean;
   user: User | null;
   demo: boolean;
   onLogin: () => void;
@@ -1222,6 +1236,7 @@ function Settings({
           </p>
         )}
       </section>
+      <BudgetSettings budgets={budgets} setBudgets={setBudgets} editable={budgetsEditable} notify={notify} />
       {user?.role === "admin" && (
         <section className="archive-panel settings-panel">
           <div className="section-heading">

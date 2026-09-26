@@ -2,6 +2,7 @@ import { getEmployees } from "@/lib/employee-db";
 import { context } from "@/lib/auth";
 import { getTrips, getDepartments } from "@/lib/db";
 import { getHonorariums } from "@/lib/honorarium-db";
+import { getBudgets } from "@/lib/budget-db";
 import Workspace, { OfficeLogin, type Section } from "@/components/workspace";
 import { can, canAccessSection } from "@/lib/permissions";
 import { visibleTrips } from "@/lib/archive-access";
@@ -12,11 +13,12 @@ export default async function WorkspacePage({ initialSection = "archives" }: { i
   try {
     const c = await context();
     if (!canAccessSection(c.user, initialSection)) redirect(sectionPaths.home);
-    const [trips, employees, honorariums, departments] = await Promise.all([
+    const [trips, employees, honorariums, departments, budgets] = await Promise.all([
       getTrips(c.workspace),
       can(c.user, "employees:read") ? getEmployees(c.workspace) : [],
       can(c.user, "honorariums:read") ? getHonorariums(c.workspace) : [],
       can(c.user, "archives:write") ? getDepartments() : [],
+      can(c.user, "archives:write") ? getBudgets(c.workspace) : [],
     ]);
     return (
       <OnboardingProvider key={c.user.id} user={c.user} demo={c.workspace === "demo"}>
@@ -26,6 +28,7 @@ export default async function WorkspacePage({ initialSection = "archives" }: { i
           initialEmployees={employees}
           initialHonorariums={honorariums}
           departments={departments}
+          budgets={budgets}
           initialNow={new Date().toISOString()}
           user={c.user}
           demo={c.workspace === "demo"}

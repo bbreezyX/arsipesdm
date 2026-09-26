@@ -161,7 +161,6 @@
   font-weight: 600;
 }
 .workspace-main {
-  max-width: 1480px;
   padding: 30px 36px 28px;
 }
 .workspace-footer {
@@ -582,40 +581,6 @@
 .ledger-search > button:hover {
   background: var(--ledger-tint);
   color: var(--ledger-ink);
-}
-.entry-period {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--ledger-line);
-  background: var(--ledger-tint);
-}
-.entry-period-label { display: grid; gap: 2px; margin-right: auto; }
-.entry-period-label strong { font-size: 14px; font-weight: 600; color: var(--ledger-ink); }
-.entry-period-label > span { font-size: 12px; color: var(--ledger-muted); }
-.entry-period .custom-select { width: 180px; min-height: 38px; height: 38px; font-size: 13px; }
-.entry-today {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 6px 12px;
-  border: 1px solid var(--ledger-line);
-  border-radius: 8px;
-  background: var(--ledger-surface);
-  color: var(--ledger-action);
-  font-size: 13px;
-}
-.entry-today strong { font-variant-numeric: tabular-nums; }
-.entry-today:hover { background: var(--ledger-action-soft); }
-.entry-today:focus-visible { outline: 1px solid var(--ledger-action); outline-offset: 3px; }
-@media (max-width: 700px) {
-  .entry-period { padding: 14px 16px; gap: 10px; }
-  .entry-period-label { width: 100%; }
-  .entry-period .custom-select { flex: 1; min-width: 140px; width: auto; }
-  .entry-today { padding-inline: 10px; }
 }
 .ledger-filter-group {
   display: flex;
@@ -1969,18 +1934,6 @@
 .form-dialog .form-grid {
   gap: 16px 20px;
 }
-.form-dialog .advanced-fields,
-.lampiran-dialog .advanced-fields {
-  margin-top: 20px;
-  border-top: 1px solid var(--ledger-line-soft);
-}
-.form-dialog .advanced-fields > summary,
-.lampiran-dialog .advanced-fields > summary {
-  padding: 14px 0;
-  color: var(--ledger-action);
-  font-weight: 500;
-  font-size: var(--type-data);
-}
 .form-dialog .inline-note,
 .lampiran-dialog .inline-note {
   margin-top: 20px;
@@ -2130,9 +2083,8 @@
 /* Catatan pemeriksaan: kartu kuning tua dengan bilah emas. */
 .lampiran-review {
   margin: 18px 0;
-  padding: 14px 16px 14px 18px;
+  padding: 14px 16px;
   border: 1px solid #ead9ad;
-  border-left: 4px solid var(--ledger-gold);
   border-radius: 10px;
   background: #fffaee;
   color: var(--ledger-amber);
@@ -2610,8 +2562,7 @@
   color: var(--ledger-danger);
 }
 .journey-entry-section .recap-field-entered input,
-.journey-entry-section .recap-field-entered textarea,
-.journey-budget-fields .recap-field-entered input {
+.journey-entry-section .recap-field-entered textarea {
   background: var(--ledger-surface);
   border-color: #b9cbdc;
 }
@@ -2645,10 +2596,6 @@
 .journey-daily-result strong {
   color: var(--ledger-ink);
   font-variant-numeric: tabular-nums;
-}
-.journey-budget-fields summary {
-  color: var(--ledger-action);
-  font-weight: 500;
 }
 .journey-personal-note {
   color: var(--ledger-muted);

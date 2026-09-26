@@ -13,6 +13,7 @@ import { money } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import type { TripSuggestions } from "@/lib/trip-suggestions";
 import ArchiveDateInput from "./archive-date-input";
+import BudgetFields from "./budget-fields";
 import DestinationFields from "./destination-fields";
 import FundTrackField from "./fund-track-field";
 import { Field } from "./fields";
@@ -51,7 +52,7 @@ export function JourneyFields({ shared, rows, suggestions, onJourneyChange, issu
     const target = root.current?.querySelector<HTMLElement>(`[data-journey-section="${issue.section}"]`);
     const field = issue.field;
     const input = field === "startDate" || field === "endDate"
-      ? target?.querySelectorAll<HTMLInputElement>('input[type="date"]')[field === "endDate" ? 1 : 0]
+      ? target?.querySelectorAll<HTMLInputElement>(".archive-date-input input")[field === "endDate" ? 1 : 0]
       : target?.querySelector<HTMLElement>((field && fieldSelectors[field]) || "input, textarea");
     target?.scrollIntoView({ block: "nearest" });
     input?.focus({ preventScroll: true });
@@ -75,8 +76,8 @@ export function JourneyFields({ shared, rows, suggestions, onJourneyChange, issu
     <section className="journey-entry-section" data-journey-section="schedule" data-error={issue?.section === "schedule" || undefined}>
       <h4>Jadwal</h4>
       <div className="form-grid journey-date-grid">
-        <Field className={shared.startDate.trim() ? "recap-field-entered" : ""} label="Tanggal berangkat" required><ArchiveDateInput value={shared.startDate} onChange={startDate => onJourneyChange({ startDate, endDate: startDate && (!shared.endDate || shared.endDate < startDate) ? startDate : shared.endDate })} /></Field>
-        <Field className={shared.endDate.trim() ? "recap-field-entered" : ""} label="Tanggal kembali" required><ArchiveDateInput value={shared.endDate} onChange={endDate => onJourneyChange({ endDate })} /></Field>
+        <Field className={shared.startDate.trim() ? "recap-field-entered" : ""} label="Tanggal berangkat" required><ArchiveDateInput range={{ from: shared.startDate, to: shared.endDate }} value={shared.startDate} onChange={startDate => onJourneyChange({ startDate, endDate: startDate && (!shared.endDate || shared.endDate < startDate) ? startDate : shared.endDate })} /></Field>
+        <Field className={shared.endDate.trim() ? "recap-field-entered" : ""} label="Tanggal kembali" required><ArchiveDateInput range={{ from: shared.startDate, to: shared.endDate }} value={shared.endDate} onChange={endDate => onJourneyChange({ endDate })} /></Field>
       </div>
       <div className="journey-duration-row">
         <NumberField className={shared.claimedDays !== null ? "recap-field-entered" : ""} label="Jumlah hari pada rekap" value={shared.claimedDays} onChange={claimedDays => onJourneyChange({ claimedDays })} />
@@ -116,11 +117,10 @@ export function JourneyFields({ shared, rows, suggestions, onJourneyChange, issu
         <p className="field-hint">Acuan regional <a href="https://peraturan.bpk.go.id/Details/321610/perpres-no-72-tahun-2025" target="_blank" rel="noreferrer">Perpres 72/2025, Lampiran I</a>. Sesuaikan dengan ketentuan instansi melalui mode manual.</p>
       </div>
     </section>
-    <details className="journey-budget-fields">
-      <summary><span>Program & anggaran</span><small>Opsional</small></summary>
-      <p className="field-hint">Lengkapi jika tercantum pada dokumen perjalanan.</p>
-      <div className="journey-input-stack">{([["program", "Nama program"], ["activityName", "Nama kegiatan anggaran"], ["subActivity", "Nama subkegiatan"]] as const).map(([key, label]) => <Field key={key} label={label} className={shared[key].trim() ? "recap-field-entered" : ""}><input maxLength={1000} value={shared[key]} onChange={event => onJourneyChange({ [key]: event.target.value })} /></Field>)}</div>
-    </details>
+    <section className="journey-entry-section">
+      <h4>Program & anggaran <small>Opsional</small></h4>
+      <BudgetFields value={shared} options={suggestions.budgets} onChange={onJourneyChange} />
+    </section>
   </div>;
 }
 

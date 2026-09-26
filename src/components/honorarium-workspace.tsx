@@ -1,19 +1,21 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
-  type ColumnDef, type ExpandedState, type SortingState, type VisibilityState,
+  getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
+  type ExpandedState, type SortingState, type VisibilityState, type ColumnDef,
 } from "@tanstack/react-table";
 import {
-  ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
-  Columns3, Copy, FileSpreadsheet, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Rows3, Search, SlidersHorizontal, Trash2, Wallet, X,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, FileSpreadsheet,
+  MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Wallet, X,
 } from "lucide-react";
 import { honorariumCategories, honorariumTotals, newHonorarium, type Honorarium, type HonorariumInput } from "@/lib/honorarium";
 import type { Employee } from "@/lib/employees";
 import { exportHonorariums } from "@/lib/honorarium-export";
-import { entryDateText, entryFilterPhrase, matchesEntry, money, type EntryFilter } from "@/lib/model";
-import EntryPeriodFilter from "./entry-period-filter";
+import {
+  entryDateText, entryFilterLabel, entryFilterOptions, entryFilterPhrase, isEntryDay, matchesEntry, money, parseEntryFilter,
+  type EntryFilter,
+} from "@/lib/model";
 import { api, Empty, ErrorMessage } from "./fields";
 import HonorariumForm from "./honorarium-form";
 import { Button } from "./ui/button";
@@ -23,10 +25,9 @@ import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 type Category = Honorarium["category"];
-/* Rel jenis mengikuti lima tabel Lampiran 3; nama pendek agar muat dalam sel rel. */
+/* Jenis mengikuti lima tabel Lampiran 3; nama pendek agar muat di pilihan. */
 const kinds: { key: Category; short: string }[] = [
   { key: "finance", short: "Pengelola keuangan" },
   { key: "procurement", short: "Pengadaan barang/jasa" },
@@ -36,13 +37,20 @@ const kinds: { key: Category; short: string }[] = [
 ];
 const columnLabels: Record<string, string> = {
   recipient: "Penerima honor",
-  sk: "Dasar SK",
+  period: "Periode",
   calc: "Perhitungan",
   gross: "Bruto",
   tax: "Pajak",
   net: "Netto",
-  actions: "Aksi",
 };
+const sortOptions = [
+  ["recipient:asc", "Nama A–Z"],
+  ["recipient:desc", "Nama Z–A"],
+  ["net:desc", "Netto tertinggi"],
+  ["net:asc", "Netto terendah"],
+  ["gross:desc", "Bruto tertinggi"],
+  ["gross:asc", "Bruto terendah"],
+] as const;
 const skKey = (record: Honorarium) => record.skNumber || record.skName;
 const recipientKey = (record: Honorarium) => record.recipient.trim().toLocaleLowerCase("id");
 const searchable = (record: Honorarium) => [
@@ -55,9 +63,27 @@ function sumTotals(records: Honorarium[]) {
     return { gross: sum.gross + value.gross, tax: sum.tax + value.tax, net: sum.net + value.net };
   }, { gross: 0, tax: 0, net: 0 });
 }
+const percent = (part: number, whole: number) => whole ? Math.round(part / whole * 1000) / 10 : 0;
 const Figure = ({ value }: { value: number }) => <><small>Rp</small>{value.toLocaleString("id-ID")}</>;
 const updatedText = (record: Honorarium) =>
   new Date(record.updatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+
+/* Pemeriksaan sebelum Lampiran 3 dicetak: tarif pajak, nama SK yang tidak seragam, dan periode yang kosong. */
+function honorChecks(records: Honorarium[]) {
+  const rates = [...new Set(records.map(record => percent(honorariumTotals(record).tax, honorariumTotals(record).gross)))].sort((a, b) => a - b);
+  const names = new Map<string, Set<string>>();
+  for (const record of records) {
+    if (!record.skNumber) continue;
+    const set = names.get(record.skNumber) ?? new Set<string>();
+    if (record.skName.trim()) set.add(record.skName.trim());
+    names.set(record.skNumber, set);
+  }
+  return {
+    rates,
+    mixedNames: [...names].filter(([, set]) => set.size > 1).map(([number, set]) => ({ number, count: set.size })),
+    withoutPeriod: records.filter(record => !record.notes.trim()).length,
+  };
+}
 
 export default function HonorariumWorkspace({ initialRecords, employees, onToast, initialEntry = "all", today }: {
   initialRecords: Honorarium[]; employees: Employee[]; onToast: (message: string) => void;
@@ -75,6 +101,9 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   const [removing, setRemoving] = useState<Honorarium | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([{ id: "recipient", desc: false }]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [density, setDensity] = useState("comfortable");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (year !== "all" && !years.includes(year)) setYear(years[0] ?? "all"); }, [years, year]);
@@ -88,22 +117,20 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   }, []);
 
   const activeCount = records.filter(record => !record.deletedAt).length;
+  const deletedCount = records.length - activeCount;
   const todayCount = records.filter(record => !record.deletedAt && matchesEntry(record.createdAt, "today", today)).length;
   const yearCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const record of records) if (!record.deletedAt) counts.set(String(record.year), (counts.get(String(record.year)) ?? 0) + 1);
     return counts;
   }, [records]);
-  /* Kumpulan sesuai tahun dan daftar (aktif/terhapus): dasar rel jenis dan pita ringkasan. */
+  /* Kumpulan sesuai tahun, daftar (aktif/terhapus), dan waktu dicatat: dasar pilihan jenis dan ringkasan. */
   const pool = useMemo(() => records.filter(record => Boolean(record.deletedAt) === deleted && (year === "all" || String(record.year) === year)
     && matchesEntry(record.createdAt, entry, today)), [records, deleted, year, entry, today]);
-  const kindFacts = useMemo(() => {
-    const facts = new Map<Category, { count: number; net: number }>();
-    for (const record of pool) {
-      const current = facts.get(record.category) ?? { count: 0, net: 0 };
-      facts.set(record.category, { count: current.count + 1, net: current.net + honorariumTotals(record).net });
-    }
-    return facts;
+  const kindCounts = useMemo(() => {
+    const counts = new Map<Category, number>();
+    for (const record of pool) counts.set(record.category, (counts.get(record.category) ?? 0) + 1);
+    return counts;
   }, [pool]);
   const scoped = useMemo(() => pool.filter(record => category === "all" || record.category === category), [pool, category]);
   const skOptions = useMemo(() => [...new Set(scoped.map(skKey))].sort((a, b) => a.localeCompare(b, "id")), [scoped]);
@@ -117,13 +144,14 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
     ...foot, count: visible.length,
     recipients: new Set(visible.map(recipientKey)).size, decrees: new Set(visible.map(skKey)).size,
   }), [visible, foot]);
+  const checks = useMemo(() => honorChecks(visible), [visible]);
   const kindLabel = category === "all" ? "semua jenis" : kinds.find(kind => kind.key === category)?.short ?? "";
-  const entryLabel = entryFilterPhrase(entry);
-  const scopeLabel = `${kindLabel}, ${year === "all" ? "seluruh tahun" : `tahun ${year}`}${entry !== "all" ? ` · ditambahkan ${entryLabel}` : ""}`;
-  const filtered = query.trim() !== "" || sk !== "all" || entry !== "all";
-  const taxShare = summary.gross ? Math.round(summary.tax / summary.gross * 1000) / 10 : 0;
+  const scopeLabel = `${kindLabel}, ${year === "all" ? "seluruh tahun" : `tahun ${year}`}${entry !== "all" ? ` · ditambahkan ${entryFilterPhrase(entry)}` : ""}`;
+  const filtered = query.trim() !== "" || sk !== "all" || entry !== "all" || category !== "all";
+  const taxShare = percent(summary.tax, summary.gross);
+  const sortValue = sorting[0] ? `${sorting[0].id}:${sorting[0].desc ? "desc" : "asc"}` : "recipient:asc";
 
-  function reset() { setQuery(""); setSk("all"); setEntry("all"); }
+  function reset() { setQuery(""); setSk("all"); setEntry("all"); setCategory("all"); }
   function chooseYear(next: string) { setYear(next); setSk("all"); }
   const update = useCallback((record: Honorarium) => {
     setRecords(current => current.some(r => r.id === record.id) ? current.map(r => r.id === record.id ? record : r) : [record, ...current]);
@@ -135,7 +163,7 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   }
   async function exportRows() {
     setBusy(true); setError("");
-    try { await exportHonorariums(visible, { year, category, deleted }); onToast(`${visible.length} rekap honorarium diekspor ke Excel.`); }
+    try { await exportHonorariums(visible, { year, category, deleted }); onToast(`${visible.length} rekap honorarium diekspor ke Lampiran 3.`); }
     catch { setError("Ekspor belum berhasil. Silakan coba lagi."); } finally { setBusy(false); }
   }
   const open = useCallback(async (record: Honorarium, action: "edit" | "delete" | "copy") => {
@@ -159,33 +187,15 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
       setRemoving(null); onToast(restore ? "Honorarium dipulihkan." : "Honorarium dipindahkan ke daftar Terhapus.");
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }, [update, onToast]);
-  const menu = useCallback((record: Honorarium) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="honor-menu" disabled={busy} aria-label={`Aksi honorarium ${record.recipient}`}><MoreHorizontal size={17} /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {record.deletedAt ? (
-          <DropdownMenuItem onSelect={() => change(record, true)}><RotateCcw size={15} />Pulihkan honorarium</DropdownMenuItem>
-        ) : (<>
-          <DropdownMenuItem onSelect={() => open(record, "edit")}><Pencil size={15} />Edit honorarium</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => open(record, "copy")}><Copy size={15} />Tambah penerima dengan SK ini</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => open(record, "delete")}><Trash2 size={15} />Hapus honorarium</DropdownMenuItem>
-        </>)}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ), [busy, open, change]);
 
   return (
     <div className="honor-page">
       <header className="ledger-head">
         <div>
           <h1>Honorarium</h1>
-          <p>Buku honor penerima menurut SK dan tahun anggaran, dengan bruto, potongan pajak, dan netto sesuai Lampiran 3.</p>
         </div>
-        <div className="ledger-head-actions">
-          <Button variant="outline" disabled={busy || !visible.length} onClick={exportRows}><FileSpreadsheet /> Ekspor Excel</Button>
+        <div className="ledger-head-actions honor-head-actions">
+          <Button variant="outline" disabled={busy || !visible.length} onClick={exportRows}><FileSpreadsheet /> Ekspor Lampiran 3</Button>
           <Button disabled={busy} onClick={() => { setError(""); setEditor(newHonorarium()); }}><Plus /> Tambah honorarium</Button>
         </div>
       </header>
@@ -200,89 +210,125 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
         </button>
       </nav>
       <section className="ledger-sheet honor-sheet" aria-label="Buku honorarium">
-        <EntryPeriodFilter value={entry} todayCount={todayCount} onChange={setEntry}
-          onToday={() => { reset(); setYear("all"); setCategory("all"); setDeleted(false); setEntry("today"); }} />
-        <div className="honor-index" role="group" aria-label="Jenis honorarium">
-          <button type="button" className="honor-index-all" aria-pressed={category === "all"} onClick={() => setCategory("all")}>
-            <strong>Semua jenis</strong><span>{pool.length} rekap</span>
-          </button>
-          <div className="honor-kinds">
-            {kinds.map(kind => {
-              const facts = kindFacts.get(kind.key);
-              return (
-                <button type="button" key={kind.key} className="honor-kind" aria-pressed={category === kind.key} disabled={!facts}
-                  aria-label={`${honorariumCategories[kind.key]}, ${facts?.count ?? 0} rekap`}
-                  onClick={() => setCategory(category === kind.key ? "all" : kind.key)}>
-                  <span>{kind.short}</span>
-                  <strong>{facts ? facts.count : "–"}</strong>
-                  <small>{facts ? money(facts.net) : "Belum ada rekap"}</small>
-                </button>
-              );
-            })}
+        <div className="honor-tools">
+          <CustomSelect aria-label="Jenis honorarium" className="honor-pill" value={category}
+            onValueChange={value => setCategory(value as "all" | Category)} data-active={category !== "all"}>
+            <SelectOption value="all">Semua jenis</SelectOption>
+            {kinds.map(kind => <SelectOption key={kind.key} value={kind.key} disabled={!kindCounts.has(kind.key)}>
+              {kind.short}{kindCounts.has(kind.key) ? "" : " · belum ada"}
+            </SelectOption>)}
+          </CustomSelect>
+          <CustomSelect aria-label="Dasar SK" className="honor-pill honor-pill-sk" value={sk} onValueChange={setSk} data-active={sk !== "all"}>
+            <SelectOption value="all">Semua SK</SelectOption>
+            {skOptions.map(value => <SelectOption key={value} value={value}>{value}</SelectOption>)}
+          </CustomSelect>
+          {entry !== "all" && (
+            <button type="button" className="honor-chip" onClick={() => setEntry("all")} aria-label={`Hapus saringan ditambahkan ${entryFilterPhrase(entry)}`}>
+              Ditambahkan {entryFilterPhrase(entry)} <X aria-hidden="true" />
+            </button>
+          )}
+          {deleted && (
+            <button type="button" className="honor-chip" onClick={() => setDeleted(false)} aria-label="Kembali ke daftar aktif">
+              Daftar terhapus <X aria-hidden="true" />
+            </button>
+          )}
+          {filtered && <Button variant="ghost" size="sm" className="honor-reset" onClick={reset}><RotateCcw /> Bersihkan filter</Button>}
+          <div className="honor-search">
+            <Search size={16} aria-hidden="true" />
+            <input id="honor-search" ref={searchRef} aria-label="Cari honorarium" aria-keyshortcuts="/"
+              placeholder="Cari penerima, nomor SK, atau kegiatan" value={query} onChange={event => setQuery(event.target.value)} />
+            {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-sm" className="honor-more" aria-label="Pengaturan daftar"><MoreHorizontal /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="honor-menu-panel">
+              <DropdownMenuLabel>Urutkan</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sortValue} onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
+                {sortOptions.map(([value, label]) => <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>)}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Waktu ditambahkan</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={entry} onValueChange={value => setEntry(parseEntryFilter(value))}>
+                {entryFilterOptions.map(([key, label]) => (
+                  <DropdownMenuRadioItem key={key} value={key}>{label}{key === "today" ? ` · ${todayCount} rekap` : ""}</DropdownMenuRadioItem>
+                ))}
+                {isEntryDay(entry) && <DropdownMenuRadioItem value={entry}>Tanggal {entryFilterLabel(entry)}</DropdownMenuRadioItem>}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Daftar</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={deleted ? "deleted" : "active"} onValueChange={value => setDeleted(value === "deleted")}>
+                <DropdownMenuRadioItem value="active">Aktif · {activeCount}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="deleted">Terhapus · {deletedCount}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Kolom</DropdownMenuLabel>
+              {["period", "calc", "gross", "tax"].map(id => (
+                <DropdownMenuCheckboxItem key={id} checked={columnVisibility[id] !== false} onSelect={event => event.preventDefault()}
+                  onCheckedChange={checked => setColumnVisibility(current => ({ ...current, [id]: checked }))}>{columnLabels[id]}</DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Kepadatan</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={density} onValueChange={setDensity}>
+                <DropdownMenuRadioItem value="comfortable">Nyaman</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="compact">Ringkas</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={busy} onSelect={reload}><RotateCcw size={15} />Muat ulang daftar</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="ledger-summary honor-summary" role="group" aria-label={`Ringkasan ${scopeLabel}`}>
+
+        <section className="honor-hero" aria-label={`Ringkasan ${scopeLabel}`}>
           <div>
-            <span className="ledger-summary-label">{deleted ? "Honor netto pada daftar Terhapus" : "Honor netto dibayarkan"}, {scopeLabel}</span>
-            {summary.count ? <p className="ledger-figure"><Figure value={summary.net} /></p> : <p className="ledger-figure is-empty">Belum ada rekap</p>}
-            <div className="ledger-summary-facts">
+            <p className="honor-hero-label">{deleted ? "Honor netto pada daftar Terhapus" : "Honor netto dibayarkan"}, {scopeLabel}</p>
+            {summary.count ? <strong className="honor-figure"><Figure value={summary.net} /></strong> : <strong className="honor-figure is-empty">Belum ada rekap</strong>}
+            <div className="honor-facts-line">
               <span><strong>{summary.count}</strong> rekap</span>
               <span><strong>{summary.recipients}</strong> penerima</span>
               <span><strong>{summary.decrees}</strong> SK</span>
             </div>
           </div>
-          <div>
-            <div className="ledger-summary-row"><span>Honor bruto</span><strong>{money(summary.gross)}</strong></div>
-            <div className={`honor-bar ${summary.gross ? "" : "is-empty"}`} role="img" aria-label={`Netto ${100 - taxShare} persen, pajak ${taxShare} persen dari bruto`}>
-              {summary.gross > 0 && <span style={{ width: `${100 - taxShare}%` }} />}
-            </div>
-            <div className="ledger-legend honor-legend">
-              <span><i /><strong>{money(summary.net)}</strong> netto</span>
-              <span><i className="tax" /><strong>{money(summary.tax)}</strong> pajak{summary.gross ? ` (${taxShare.toLocaleString("id-ID")}%)` : ""}</span>
-            </div>
-          </div>
-        </div>
+          {summary.count > 0 && (
+            <dl className="honor-slip" aria-label="Perhitungan netto">
+              <div><dt>Honor bruto</dt><dd>{money(summary.gross)}</dd></div>
+              <div className="is-minus"><dt>Pajak{summary.gross ? ` (${taxShare.toLocaleString("id-ID")}%)` : ""}</dt><dd>− {money(summary.tax)}</dd></div>
+              <div className="is-total"><dt>Netto diterima</dt><dd>{money(summary.net)}</dd></div>
+            </dl>
+          )}
+        </section>
+
+        {error && !removing && <p role="alert" className="error-message honor-error">{error}</p>}
         <HonorRegister
-          records={visible} foot={foot} scope={scopeLabel} filtered={filtered} hasAny={pool.length > 0} deleted={deleted}
-          busy={busy} showYear={year === "all"} showKind={category === "all"} error={removing ? "" : error} menu={menu}
-          filterCount={(sk !== "all" ? 1 : 0) + (category !== "all" ? 1 : 0)}
+          records={visible} filtered={filtered} hasAny={pool.length > 0} deleted={deleted} busy={busy}
+          showYear={year === "all"} showKind={category === "all"} sorting={sorting} onSortingChange={setSorting}
+          columnVisibility={columnVisibility} density={density}
           onReset={reset} onEdit={record => open(record, "edit")} onCopy={record => open(record, "copy")}
-          onRemove={record => open(record, "delete")} onRestore={record => change(record, true)} onReload={reload}
+          onRemove={record => open(record, "delete")} onRestore={record => change(record, true)}
           onAdd={() => { setError(""); setEditor(newHonorarium()); }}
-          status={
-            <div className="ledger-status" role="group" aria-label="Daftar honorarium">
-              <button type="button" aria-pressed={!deleted} onClick={() => setDeleted(false)}>Aktif <b>{records.filter(r => !r.deletedAt).length}</b></button>
-              <button type="button" aria-pressed={deleted} onClick={() => setDeleted(true)}>Terhapus <b>{records.filter(r => r.deletedAt).length}</b></button>
-            </div>
-          }
-          filters={<>
-            <div className="ledger-search">
-              <Search size={17} aria-hidden="true" />
-              <input id="honor-search" ref={searchRef} aria-label="Cari honorarium" aria-keyshortcuts="/"
-                placeholder="Cari nama penerima, nomor SK, jabatan, atau kegiatan" value={query} onChange={event => setQuery(event.target.value)} />
-              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
-            </div>
-            <div className="ledger-filter-group">
-              {/* Di layar HP rel jenis disembunyikan; pilihan jenis pindah ke panel Filter ini. */}
-              <CustomSelect aria-label="Jenis honorarium" className="ledger-select honor-kind-select" value={category}
-                onValueChange={value => setCategory(value as "all" | Category)} data-active={category !== "all"}>
-                <SelectOption value="all">Semua jenis</SelectOption>
-                {kinds.map(kind => <SelectOption key={kind.key} value={kind.key} disabled={!kindFacts.has(kind.key)}>{kind.short}</SelectOption>)}
-              </CustomSelect>
-              <CustomSelect aria-label="Dasar SK" className="ledger-select honor-sk-select" value={sk} onValueChange={setSk} data-active={sk !== "all"}>
-                <SelectOption value="all">Semua SK</SelectOption>
-                {skOptions.map(value => <SelectOption key={value} value={value}>{value}</SelectOption>)}
-              </CustomSelect>
-              {filtered && <Button variant="ghost" size="sm" className="ledger-reset" onClick={reset}>Bersihkan filter</Button>}
-            </div>
-          </>}
         />
+
+        {!deleted && visible.length > 0 && (
+          <footer className="honor-checks">
+            <p data-state="ok"><span>{checks.rates.length === 1
+              ? <>Pajak {checks.rates[0].toLocaleString("id-ID")}% dari bruto pada semua {visible.length} rekap.</>
+              : <>Pajak {checks.rates[0].toLocaleString("id-ID")}–{checks.rates[checks.rates.length - 1].toLocaleString("id-ID")}% dari bruto, mengikuti dokumen tiap rekap.</>}</span></p>
+            {checks.mixedNames.map(item => (
+              <p key={item.number} data-state="gap">
+                <span>SK <strong>{item.number}</strong> tercatat dengan <strong>{item.count} nama SK berbeda</strong>; Lampiran 3 menuliskannya apa adanya.</span>
+                {sk !== item.number && <button type="button" className="honor-check-link" onClick={() => setSk(item.number)}>Lihat rekapnya</button>}
+              </p>
+            ))}
+            {checks.withoutPeriod > 0 && (
+              <p data-state="gap"><span><strong>{checks.withoutPeriod} rekap</strong> belum mencantumkan periode di Keterangan.</span></p>
+            )}
+            <p className="honor-checks-note">Bruto adalah honor per bulan dikali jumlah bulan; netto adalah yang diterima penerima.</p>
+          </footer>
+        )}
       </section>
-      <p className="honor-footnote">
-        Bruto adalah honor per bulan dikali jumlah bulan. Pajak mengikuti nominal atau persentase yang tercantum pada dokumen; netto adalah yang diterima penerima honor.
-      </p>
       {editor && <HonorariumForm initial={editor} employees={employees} onClose={() => setEditor(null)}
-        onSaved={record => { update(record); setEditor(null); setDeleted(false); setYear(String(record.year)); setCategory("all"); reset(); onToast("Honorarium tersimpan."); }} />}
+        onSaved={record => { update(record); setEditor(null); setDeleted(false); setYear(String(record.year)); reset(); onToast("Honorarium tersimpan."); }} />}
       <Dialog open={Boolean(removing)} onOpenChange={value => { if (!value && !busy) { setRemoving(null); setError(""); } }}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>
@@ -300,294 +346,226 @@ export default function HonorariumWorkspace({ initialRecords, employees, onToast
   );
 }
 
-function HonorRegister({ records, foot, scope, filtered, hasAny, deleted, busy, showYear, showKind, filterCount, error, menu, status, filters,
-  onReset, onEdit, onCopy, onRemove, onRestore, onReload, onAdd }: {
-  records: Honorarium[]; foot: { gross: number; tax: number; net: number }; scope: string; filtered: boolean; hasAny: boolean;
-  deleted: boolean; busy: boolean; showYear: boolean; showKind: boolean; filterCount: number; error: string; menu: (record: Honorarium) => ReactNode;
-  status: ReactNode; filters: ReactNode; onReset: () => void; onEdit: (record: Honorarium) => void;
-  onCopy: (record: Honorarium) => void; onRemove: (record: Honorarium) => void; onRestore: (record: Honorarium) => void;
-  onReload: () => void; onAdd: () => void;
+/* Daftar dikelompokkan per SK. Urutan dan halaman dari tabel; kelompok mengikuti baris pertamanya pada urutan itu. */
+function HonorRegister({ records, filtered, hasAny, deleted, busy, showYear, showKind, sorting, onSortingChange,
+  columnVisibility, density, onReset, onEdit, onCopy, onRemove, onRestore, onAdd }: {
+  records: Honorarium[]; filtered: boolean; hasAny: boolean; deleted: boolean; busy: boolean;
+  showYear: boolean; showKind: boolean; sorting: SortingState; onSortingChange: (value: SortingState) => void;
+  columnVisibility: VisibilityState; density: string;
+  onReset: () => void; onEdit: (record: Honorarium) => void; onCopy: (record: Honorarium) => void;
+  onRemove: (record: Honorarium) => void; onRestore: (record: Honorarium) => void; onAdd: () => void;
 }) {
   const registerRef = useRef<HTMLDivElement>(null);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "recipient", desc: false }]);
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [density, setDensity] = useState("comfortable");
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersShown = filtersOpen || filterCount > 0;
   const columns = useMemo<ColumnDef<Honorarium>[]>(() => [
-    { id: "recipient", accessorKey: "recipient", header: "Penerima honor", size: 270, enableHiding: false,
-      cell: ({ row }) => (
-        <div className="honor-who">
-          <button type="button" className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()}
-            aria-controls={`honor-detail-${row.id}`}>{row.original.recipient}</button>
-          <span>{row.original.skPosition}</span>
-        </div>
-      ) },
-    { id: "sk", accessorFn: skKey, header: "Dasar SK", size: 260,
-      cell: ({ row }) => (
-        <div className="honor-sk">
-          <span className={`ledger-ref honor-ref ${row.original.skNumber ? "" : "is-name"}`}>{skKey(row.original)}</span>
-          <small>{honorariumCategories[row.original.category]}{showYear ? `, ${row.original.year}` : ""}</small>
-        </div>
-      ) },
-    { id: "calc", accessorKey: "monthlyAmount", header: "Perhitungan", size: 190,
-      cell: ({ row }) => <span className="honor-calc-cell">{money(row.original.monthlyAmount)} <b>×</b> {row.original.months} bln</span> },
-    { id: "gross", accessorFn: record => honorariumTotals(record).gross, header: "Bruto", size: 150,
-      cell: ({ row }) => <span className="honor-amount">{money(honorariumTotals(row.original).gross)}</span> },
-    { id: "tax", accessorFn: record => honorariumTotals(record).tax, header: "Pajak", size: 140,
-      cell: ({ row }) => (
-        <span className="honor-amount is-tax">{money(honorariumTotals(row.original).tax)}
-          {row.original.taxMode === "percent" && <small>{row.original.taxRate.toLocaleString("id-ID")}%</small>}
-        </span>
-      ) },
-    { id: "net", accessorFn: record => honorariumTotals(record).net, header: "Netto", size: 160,
-      cell: ({ row }) => <strong className="honor-amount is-net">{money(honorariumTotals(row.original).net)}</strong> },
-    { id: "actions", header: () => <span className="sr-only">Aksi</span>, size: 92, enableHiding: false, enableSorting: false,
-      cell: ({ row }) => (
-        <div className="honor-row-tools">
-          {menu(row.original)}
-          <Button variant="ghost" size="icon-sm" className="ledger-expand" aria-expanded={row.getIsExpanded()}
-            aria-controls={`honor-detail-${row.id}`} aria-label={`${row.getIsExpanded() ? "Tutup" : "Buka"} rincian ${row.original.recipient}`}
-            onClick={() => row.toggleExpanded()}><ChevronDown /></Button>
-        </div>
-      ) },
-  ], [menu, showYear]);
+    { id: "recipient", accessorKey: "recipient" },
+    { id: "period", accessorKey: "notes" },
+    { id: "calc", accessorKey: "monthlyAmount" },
+    { id: "gross", accessorFn: record => honorariumTotals(record).gross },
+    { id: "tax", accessorFn: record => honorariumTotals(record).tax },
+    { id: "net", accessorFn: record => honorariumTotals(record).net },
+  ], []);
   const table = useReactTable({
     data: records, columns, getRowId: record => record.id,
     getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageIndex: 0, pageSize: 10 } },
     state: { sorting, expanded, columnVisibility },
-    onSortingChange: setSorting, onExpandedChange: setExpanded, onColumnVisibilityChange: setColumnVisibility,
-    getRowCanExpand: () => true, enableMultiSort: false, enableSortingRemoval: false,
+    onSortingChange: updater => onSortingChange(typeof updater === "function" ? updater(sorting) : updater),
+    onExpandedChange: setExpanded, getRowCanExpand: () => true, enableMultiSort: false, enableSortingRemoval: false,
   });
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = Math.max(1, table.getPageCount());
   const rows = table.getRowModel().rows;
-  const sorted = sorting[0];
-  const sortValue = sorted ? `${sorted.id}:${sorted.desc ? "desc" : "asc"}` : "recipient:asc";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: gulir ke atas setiap halaman, urutan, atau data berubah
-  useEffect(() => {
-    registerRef.current?.querySelector('[data-slot="table-container"]')?.scrollTo({ top: 0 });
-  }, [pageIndex, pageSize, sorting, records]);
+  const shown = (id: string) => columnVisibility[id] !== false;
+  const span = 3 + ["period", "calc", "gross", "tax"].filter(shown).length;
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof rows>();
+    for (const row of rows) map.set(skKey(row.original), [...(map.get(skKey(row.original)) ?? []), row]);
+    return [...map].map(([key, members]) => {
+      const all = records.filter(record => skKey(record) === key);
+      const first = members[0].original;
+      return {
+        key, members, count: all.length, net: sumTotals(all).net, named: Boolean(first.skNumber),
+        meta: [showKind ? honorariumCategories[first.category] : "", showYear ? [...new Set(all.map(record => record.year))].join(", ") : ""].filter(Boolean).join(" · "),
+      };
+    });
+  }, [rows, records, showKind, showYear]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: kembali ke halaman pertama saat data atau urutan berubah
+  useEffect(() => { table.setPageIndex(0); }, [records, sorting]);
   function go(page: number) {
     table.setPageIndex(page);
-    if (window.matchMedia("(max-width: 760px)").matches) registerRef.current?.scrollIntoView({ block: "start" });
+    registerRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
-  const footCell = (id: string) => {
-    if (id === "recipient") return <span className="honor-foot-label">Jumlah <strong>{records.length}</strong> rekap{records.length > pageSize ? ", seluruh halaman" : ""}</span>;
-    if (id === "gross") return money(foot.gross);
-    if (id === "tax") return money(foot.tax);
-    if (id === "net") return money(foot.net);
-    return null;
-  };
   const detail = (record: Honorarium) => (
     <HonorDetail record={record} busy={busy} onEdit={() => onEdit(record)} onCopy={() => onCopy(record)}
       onRemove={() => onRemove(record)} onRestore={() => onRestore(record)} />
   );
+
+  if (!records.length) return (
+    <Empty icon={<Wallet />}
+      heading={filtered ? "Honorarium tidak ditemukan" : deleted ? "Belum ada honorarium terhapus" : hasAny ? "Belum ada rekap untuk jenis ini" : "Mulai buku honorarium"}
+      description={filtered ? "Coba nama penerima, nomor SK lain, atau bersihkan filter." : deleted ? "Honorarium yang dihapus akan berada di sini dan dapat dipulihkan." : hasAny ? "Pilih jenis lain, atau tambahkan penerima untuk jenis ini." : "Tambahkan penerima pertama. Bruto dan netto dihitung dari honor per bulan, jumlah bulan, dan pajak yang diisi."}
+      action={filtered ? <Button variant="outline" onClick={onReset}>Bersihkan filter</Button> : deleted ? undefined : <Button onClick={onAdd}><Plus /> Tambah honorarium</Button>} />
+  );
+
   return (
-    <div className="ledger-register honor-register" data-density={density} ref={registerRef}>
-      <div className="ledger-register-head">
-        <div className="ledger-register-title">
-          <h2>Daftar honorarium</h2>
-          <span>{records.length} rekap, {scope}</span>
-        </div>
-        {status}
-        <div className="ledger-register-tools">
-          <CustomSelect aria-label="Urutkan honorarium" className="ledger-select honor-sort" value={sortValue}
-            onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
-            <SelectOption value="recipient:asc">Nama A–Z</SelectOption>
-            <SelectOption value="recipient:desc">Nama Z–A</SelectOption>
-            <SelectOption value="sk:asc">Nomor SK A–Z</SelectOption>
-            <SelectOption value="sk:desc">Nomor SK Z–A</SelectOption>
-            <SelectOption value="net:desc">Netto tertinggi</SelectOption>
-            <SelectOption value="net:asc">Netto terendah</SelectOption>
-            <SelectOption value="gross:desc">Bruto tertinggi</SelectOption>
-            <SelectOption value="gross:asc">Bruto terendah</SelectOption>
-          </CustomSelect>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="ledger-tool ledger-desktop"><Columns3 /> Kolom</Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Tampilkan kolom</DropdownMenuLabel><DropdownMenuSeparator />
-              {table.getAllLeafColumns().filter(column => column.getCanHide()).map(column => (
-                <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onSelect={event => event.preventDefault()}
-                  onCheckedChange={checked => column.toggleVisibility(checked)}>{columnLabels[column.id]}</DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="ledger-tool ledger-desktop" aria-label="Kepadatan tabel"><Rows3 /><span>Tampilan</span></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Kepadatan tabel</DropdownMenuLabel><DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value={density} onValueChange={setDensity}>
-                <DropdownMenuRadioItem value="comfortable">Nyaman</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="compact">Ringkas</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="icon-sm" className="ledger-tool honor-reload" disabled={busy} aria-label="Muat ulang daftar" onClick={onReload}>
-            {busy ? <LoaderCircle className="animate-spin" /> : <RotateCcw />}
-          </Button>
-        </div>
-      </div>
-      <div className="ledger-filters" data-open={filtersShown}>
-        {filters}
-        <button type="button" className="ledger-filter-toggle" aria-expanded={filtersShown} aria-controls="honor-filter-more"
-          onClick={() => setFiltersOpen(open => !open)}>
-          <SlidersHorizontal size={15} aria-hidden="true" />Filter{filterCount > 0 && <b>{filterCount}</b>}
-        </button>
-        <div className="ledger-filters-end" id="honor-filter-more">
-          <CustomSelect aria-label="Urutkan honorarium" className="ledger-select ledger-sort-select" value={sortValue}
-            onValueChange={value => { const [id, direction] = value.split(":"); setSorting([{ id, desc: direction === "desc" }]); }}>
-            <SelectOption value="recipient:asc">Nama A–Z</SelectOption>
-            <SelectOption value="recipient:desc">Nama Z–A</SelectOption>
-            <SelectOption value="sk:asc">Nomor SK A–Z</SelectOption>
-            <SelectOption value="net:desc">Netto tertinggi</SelectOption>
-            <SelectOption value="net:asc">Netto terendah</SelectOption>
-          </CustomSelect>
-        </div>
-      </div>
-      {error && <p role="alert" className="error-message honor-error">{error}</p>}
-      {records.length ? (<>
-        <div className="ledger-table-wrap">
-          <Table className="ledger-table honor-table" style={{ minWidth: table.getTotalSize() }} aria-label="Daftar honorarium">
-            <TableHeader>
-              {table.getHeaderGroups().map(group => (
-                <TableRow key={group.id}>
-                  {group.headers.map(header => (
-                    <TableHead key={header.id} data-column={header.column.id}
-                      aria-sort={header.column.getCanSort() ? header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none" : undefined}>
-                      {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                        <button type="button" className="ledger-sort" onClick={header.column.getToggleSortingHandler()} aria-label={`Urutkan ${columnLabels[header.column.id]}`}>
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === "asc" ? <ArrowUp size={13} /> : header.column.getIsSorted() === "desc" ? <ArrowDown size={13} /> : <ChevronsUpDown size={13} />}
-                        </button>
-                      ) : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {rows.map(row => (
+    <div className="honor-register" data-density={density} ref={registerRef}>
+      <table className="honor-table" aria-label="Daftar honorarium">
+        <thead>
+          <tr>
+            <th scope="col">Penerima</th>
+            {shown("period") && <th scope="col">Periode</th>}
+            {shown("calc") && <th scope="col" className="is-number">Perhitungan</th>}
+            {shown("gross") && <th scope="col" className="is-number">Bruto</th>}
+            {shown("tax") && <th scope="col" className="is-number">Pajak</th>}
+            <th scope="col" className="is-number">Netto</th>
+            <th scope="col"><span className="sr-only">Rincian</span></th>
+          </tr>
+        </thead>
+        {groups.map(group => (
+          <tbody key={group.key}>
+            <tr className="honor-group">
+              <th scope="colgroup" colSpan={span - 2}>
+                <span className={group.named ? "honor-group-sk" : "honor-group-sk is-name"}>{group.key}</span>
+                <span className="honor-group-meta">{[group.meta, `${group.count} rekap`].filter(Boolean).join(" · ")}</span>
+              </th>
+              <td className="is-number">{group.net.toLocaleString("id-ID")}</td>
+              <td />
+            </tr>
+            {group.members.map(row => {
+              const record = row.original; const totals = honorariumTotals(record); const open = row.getIsExpanded();
+              return (
                 <Fragment key={row.id}>
-                  <TableRow data-expanded={row.getIsExpanded()}>
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id} data-column={cell.column.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                  {row.getIsExpanded() && (
-                    <TableRow className="ledger-detail-row">
-                      <TableCell colSpan={row.getVisibleCells().length}><div id={`honor-detail-${row.id}`}>{detail(row.original)}</div></TableCell>
-                    </TableRow>
+                  <tr className="honor-row" data-expanded={open || undefined} onClick={() => row.toggleExpanded()}>
+                    <th scope="row">
+                      <button type="button" className="honor-name" aria-expanded={open} aria-controls={`honor-detail-${row.id}`}
+                        onClick={event => { event.stopPropagation(); row.toggleExpanded(); }}>{record.recipient}</button>
+                      <span className="honor-role">{record.skPosition}</span>
+                    </th>
+                    {shown("period") && <td className="honor-period">{record.notes.trim() || <span className="honor-empty">Belum dicatat</span>}</td>}
+                    {shown("calc") && <td className="is-number honor-muted">{money(record.monthlyAmount)} × {record.months} bln</td>}
+                    {shown("gross") && <td className="is-number">{totals.gross.toLocaleString("id-ID")}</td>}
+                    {shown("tax") && <td className="is-number honor-muted">
+                      {totals.tax.toLocaleString("id-ID")}
+                      {record.taxMode === "percent" && <small>{record.taxRate.toLocaleString("id-ID")}%</small>}
+                    </td>}
+                    <td className="is-number honor-net">{totals.net.toLocaleString("id-ID")}</td>
+                    <td className="honor-toggle"><ChevronDown aria-hidden="true" /></td>
+                  </tr>
+                  {open && (
+                    <tr className="honor-detail-row">
+                      <td colSpan={span}><div id={`honor-detail-${row.id}`}>{detail(record)}</div></td>
+                    </tr>
                   )}
                 </Fragment>
-              ))}
-            </TableBody>
-            <tfoot className="honor-foot">
-              <tr>{table.getVisibleLeafColumns().map(column => <td key={column.id} data-column={column.id}>{footCell(column.id)}</td>)}</tr>
-            </tfoot>
-          </Table>
-        </div>
-        <div className="ledger-mobile">
-          {rows.map(row => {
-            const record = row.original; const totals = honorariumTotals(record);
-            return (
-              <article className="ledger-card honor-card" key={row.id} data-expanded={row.getIsExpanded()}>
-                <div className="ledger-card-top">
-                  <div className="honor-who">
-                    <button type="button" className="honor-name" onClick={() => row.toggleExpanded()} aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`}>{record.recipient}</button>
-                    <span>{record.skPosition}</span>
-                  </div>
+              );
+            })}
+          </tbody>
+        ))}
+        <tfoot>
+          <tr>
+            <th scope="row">Jumlah {records.length} rekap</th>
+            {shown("period") && <td />}
+            {shown("calc") && <td />}
+            {shown("gross") && <td className="is-number">{sumTotals(records).gross.toLocaleString("id-ID")}</td>}
+            {shown("tax") && <td className="is-number">{sumTotals(records).tax.toLocaleString("id-ID")}</td>}
+            <td className="is-number">{money(sumTotals(records).net)}</td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+
+      <div className="honor-list">
+        {groups.map(group => (
+          <section key={group.key} aria-label={`SK ${group.key}`}>
+            <h3 className="honor-list-group">
+              <span className={group.named ? "honor-group-sk" : "honor-group-sk is-name"}>{group.key}</span>
+              <span className="honor-group-meta">{[group.meta, money(group.net)].filter(Boolean).join(" · ")}</span>
+            </h3>
+            {group.members.map(row => {
+              const record = row.original; const totals = honorariumTotals(record); const open = row.getIsExpanded();
+              return (
+                <div key={row.id} className="honor-list-item" data-expanded={open || undefined}>
+                  <button type="button" className="honor-list-row" aria-expanded={open} aria-controls={`honor-mobile-${row.id}`} onClick={() => row.toggleExpanded()}>
+                    <span className="honor-period">{record.notes.trim() || "Periode belum dicatat"}</span>
+                    <strong className="honor-net">{money(totals.net)}</strong>
+                    <small>{record.recipient} · {money(record.monthlyAmount)} × {record.months} bln · pajak {money(totals.tax)}</small>
+                  </button>
+                  {open && <div id={`honor-mobile-${row.id}`} className="honor-list-detail">{detail(record)}</div>}
                 </div>
-                <div className="honor-sk">
-                  <span className={`ledger-ref honor-ref ${record.skNumber ? "" : "is-name"}`}>{skKey(record)}</span>
-                  {(showKind || showYear) && <small>{[showKind ? honorariumCategories[record.category] : "", showYear ? String(record.year) : ""].filter(Boolean).join(", ")}</small>}
-                </div>
-                <div className="ledger-card-meta">
-                  <span>{money(record.monthlyAmount)} × {record.months} bln</span>
-                  <span>Pajak {money(totals.tax)}</span>
-                </div>
-                <div className="ledger-card-bottom">
-                  <div className="honor-card-net"><strong>{money(totals.net)}</strong><span>netto</span></div>
-                  <Button variant="outline" size="sm" aria-expanded={row.getIsExpanded()} aria-controls={`honor-mobile-${row.id}`} onClick={() => row.toggleExpanded()}>
-                    {row.getIsExpanded() ? "Tutup rincian" : "Lihat rincian"}<ChevronDown className={row.getIsExpanded() ? "rotate-180" : undefined} />
-                  </Button>
-                </div>
-                {row.getIsExpanded() && <div className="ledger-card-detail" id={`honor-mobile-${row.id}`}>{detail(record)}</div>}
-              </article>
-            );
-          })}
-          <div className="honor-mobile-foot">
-            <span>Jumlah {records.length} rekap</span>
-            <dl><div><dt>Bruto</dt><dd>{money(foot.gross)}</dd></div><div><dt>Pajak</dt><dd>{money(foot.tax)}</dd></div><div><dt>Netto</dt><dd>{money(foot.net)}</dd></div></dl>
-          </div>
-        </div>
-      </>) : (
-        <Empty icon={<Wallet />}
-          heading={filtered ? "Honorarium tidak ditemukan" : deleted ? "Belum ada honorarium terhapus" : hasAny ? "Belum ada rekap untuk jenis ini" : "Mulai buku honorarium"}
-          description={filtered ? "Coba nama penerima, nomor SK lain, atau bersihkan filter." : deleted ? "Honorarium yang dihapus akan berada di sini dan dapat dipulihkan." : hasAny ? "Pilih jenis lain pada rel di atas, atau tambahkan penerima untuk jenis ini." : "Tambahkan penerima pertama. Bruto dan netto dihitung dari honor per bulan, jumlah bulan, dan pajak yang diisi."}
-          action={filtered ? <Button variant="outline" onClick={onReset}>Bersihkan filter</Button> : deleted ? undefined : <Button onClick={onAdd}><Plus /> Tambah honorarium</Button>} />
-      )}
-      <div className="ledger-pagination">
-        <p role="status">Menampilkan <strong>{records.length ? pageIndex * pageSize + 1 : 0}–{Math.min((pageIndex + 1) * pageSize, records.length)}</strong> dari <strong>{records.length}</strong> rekap</p>
-        <div className="ledger-page-size">
-          <label htmlFor="honor-page-size">Baris per halaman</label>
-          <CustomSelect id="honor-page-size" value={String(pageSize)} onValueChange={value => table.setPageSize(Number(value))}>
-            {[10, 25, 50].map(size => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
-          </CustomSelect>
-        </div>
-        <nav aria-label="Halaman daftar honorarium">
-          <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={!table.getCanPreviousPage()} onClick={() => go(0)}><ChevronsLeft /></Button>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={!table.getCanPreviousPage()} onClick={() => go(pageIndex - 1)}><ChevronLeft /></Button>
-          <span><strong>{pageIndex + 1}</strong> / {pageCount}</span>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={!table.getCanNextPage()} onClick={() => go(pageIndex + 1)}><ChevronRight /></Button>
-          <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={!table.getCanNextPage()} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
-        </nav>
+              );
+            })}
+          </section>
+        ))}
+        <p className="honor-list-total"><span>Jumlah {records.length} rekap</span><strong>{money(sumTotals(records).net)}</strong></p>
       </div>
+
+      {records.length > 10 && (
+        <div className="ledger-pagination">
+          <p role="status">Menampilkan <strong>{pageIndex * pageSize + 1}–{Math.min((pageIndex + 1) * pageSize, records.length)}</strong> dari <strong>{records.length}</strong> rekap</p>
+          <div className="ledger-page-size">
+            <label htmlFor="honor-page-size">Baris per halaman</label>
+            <CustomSelect id="honor-page-size" value={String(pageSize)} onValueChange={value => table.setPageSize(Number(value))}>
+              {[10, 25, 50].map(size => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
+            </CustomSelect>
+          </div>
+          <nav aria-label="Halaman daftar honorarium">
+            <Button variant="outline" size="icon-sm" aria-label="Halaman pertama" disabled={!table.getCanPreviousPage()} onClick={() => go(0)}><ChevronsLeft /></Button>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman sebelumnya" disabled={!table.getCanPreviousPage()} onClick={() => go(pageIndex - 1)}><ChevronLeft /></Button>
+            <span><strong>{pageIndex + 1}</strong> / {pageCount}</span>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman berikutnya" disabled={!table.getCanNextPage()} onClick={() => go(pageIndex + 1)}><ChevronRight /></Button>
+            <Button variant="outline" size="icon-sm" aria-label="Halaman terakhir" disabled={!table.getCanNextPage()} onClick={() => go(pageCount - 1)}><ChevronsRight /></Button>
+          </nav>
+        </div>
+      )}
     </div>
   );
 }
 
-/* Rincian yang terbuka di dalam baris: dasar SK, penerima, dan perhitungan honor. */
+/* Rincian yang terbuka di dalam baris: keterangan SK dan penerima di kiri, slip perhitungan di kanan.
+   Nomor SK sudah ada di kepala kelompok dan periode di baris, jadi tidak diulang. */
 function HonorDetail({ record, busy, onEdit, onCopy, onRemove, onRestore }: {
   record: Honorarium; busy: boolean; onEdit: () => void; onCopy: () => void; onRemove: () => void; onRestore: () => void;
 }) {
   const totals = honorariumTotals(record);
-  const value = (text: string | null | undefined) => text ? text : <span className="honor-empty">Belum dicatat</span>;
   const finance = record.category === "finance";
+  const fact = (label: string, text: string | null | undefined, wide = false) => (
+    <div className={wide ? "is-wide" : undefined}>
+      <dt>{label}</dt>
+      <dd>{text ? text : <span className="honor-empty">Belum dicatat</span>}</dd>
+    </div>
+  );
   return (
-    <section className="ledger-detail honor-detail" aria-label={`Rincian honorarium ${record.recipient}`}>
-      <div className="honor-detail-grid">
-        <dl className="honor-facts">
-          <div className="honor-facts-title">Dasar SK</div>
-          <div><dt>Nomor SK</dt><dd>{value(record.skNumber)}</dd></div>
-          <div><dt>Nama SK</dt><dd>{value(record.skName)}</dd></div>
-          <div><dt>Unit kerja dalam SK</dt><dd>{value(record.department)}</dd></div>
-          {finance && <div><dt>Program</dt><dd>{value(record.program)}</dd></div>}
-          <div><dt>Kegiatan</dt><dd>{value(record.activity)}</dd></div>
-          {finance && <div><dt>Subkegiatan</dt><dd>{value(record.subActivity)}</dd></div>}
-          {finance && <div><dt>Pagu dana dikelola</dt><dd>{record.budget === null ? value("") : money(record.budget)}</dd></div>}
-        </dl>
-        <dl className="honor-facts">
-          <div className="honor-facts-title">Penerima</div>
-          <div><dt>Jabatan dalam SK</dt><dd>{value(record.skPosition)}</dd></div>
-          <div><dt>Jabatan struktural/fungsional</dt><dd>{value(record.position)}</dd></div>
-          <div><dt>Unit kerja penerima</dt><dd>{value(record.recipientDepartment)}</dd></div>
-          <div><dt>Eselon</dt><dd>{value(record.echelon)}</dd></div>
-          {record.notes && <div><dt>Keterangan</dt><dd>{record.notes}</dd></div>}
-        </dl>
-        <div className="honor-ledger">
-          <div className="honor-ledger-head">Perhitungan honor</div>
-          <div><span>Honor per bulan</span><b>{money(record.monthlyAmount)}</b></div>
-          <div><span>Jumlah bulan</span><b>{record.months} bulan</b></div>
-          <div><span>Honor bruto</span><b>{money(totals.gross)}</b></div>
-          <div><span>Pajak{record.taxMode === "percent" ? ` ${record.taxRate.toLocaleString("id-ID")}% dari bruto` : " sesuai nominal"}</span><b>− {money(totals.tax)}</b></div>
-          <div className="honor-ledger-total"><span>Honor netto</span><strong>{money(totals.net)}</strong></div>
+    <section className="honor-detail" aria-label={`Rincian honorarium ${record.recipient}`}>
+      <div className="honor-detail-body">
+        <div className="honor-detail-facts">
+          <h4>Dasar SK</h4>
+          <dl>
+            {fact("Nama SK", record.skName, true)}
+            {finance && fact("Program", record.program, true)}
+            {fact("Kegiatan", record.activity, true)}
+            {finance && fact("Subkegiatan", record.subActivity, true)}
+            {fact("Unit kerja dalam SK", record.department)}
+            {finance && fact("Pagu dana dikelola", record.budget === null ? "" : money(record.budget))}
+          </dl>
+          <h4>Penerima</h4>
+          <dl>
+            {fact("Jabatan dalam SK", record.skPosition)}
+            {fact("Jabatan struktural/fungsional", record.position)}
+            {fact("Unit kerja", record.recipientDepartment)}
+            {fact("Eselon", record.echelon)}
+          </dl>
         </div>
+        <dl className="honor-slip honor-detail-slip" aria-label="Perhitungan honor">
+          <div><dt>Honor per bulan</dt><dd>{money(record.monthlyAmount)}</dd></div>
+          <div><dt>Jumlah bulan</dt><dd>× {record.months}</dd></div>
+          <div><dt>Honor bruto</dt><dd>{money(totals.gross)}</dd></div>
+          <div className="is-minus"><dt>Pajak{record.taxMode === "percent" ? ` (${record.taxRate.toLocaleString("id-ID")}%)` : ""}</dt><dd>− {money(totals.tax)}</dd></div>
+          <div className="is-total"><dt>Netto diterima</dt><dd>{money(totals.net)}</dd></div>
+        </dl>
       </div>
       <div className="honor-detail-foot">
-        <span>Ditambahkan {entryDateText(record.createdAt)} · Versi {record.version}, diperbarui {updatedText(record)}</span>
+        <span>Ditambahkan {entryDateText(record.createdAt)} · diperbarui {updatedText(record)}</span>
         <div className="honor-detail-actions">
           {record.deletedAt ? (
             <Button variant="outline" size="sm" disabled={busy} onClick={onRestore}><RotateCcw /> Pulihkan honorarium</Button>

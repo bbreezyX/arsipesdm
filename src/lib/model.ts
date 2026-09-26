@@ -237,6 +237,9 @@ export function missingDocs(t: Pick<Trip, "requiredDocs" | "documents">) {
     (type) => !t.documents.some((d) => d.type === type),
   );
 }
+export function missingSppd(t: Pick<TripInput, "sppdNo">) {
+  return !t.sppdNo.trim();
+}
 export function isComplete(t: Pick<Trip, "costs">) {
   // Core trip fields are validated on save/import; supporting documents are optional.
   return totalCost(t) !== null;
@@ -387,7 +390,9 @@ export function filterTrips(trips: Trip[], f: Filters, today = jakartaDay()) {
             ? isComplete(t)
             : f.status === "incomplete"
               ? !isComplete(t)
-              : paymentLabel(t) !== "Lunas")) &&
+              : f.status === "no-sppd"
+                ? missingSppd(t)
+                : paymentLabel(t) !== "Lunas")) &&
         [
           t.title,
           t.sptNo,

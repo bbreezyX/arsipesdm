@@ -1,5 +1,6 @@
 import { jambiRegions } from "./destinations";
 import type { Trip } from "./model";
+import type { Budget } from "./budgets";
 import { tripDestinations } from "./destinations";
 
 type Option = { value: string; description?: string };
@@ -9,6 +10,8 @@ export type TripSuggestions = {
   destinations: Option[];
   letters: Option[];
   purposes: Option[];
+  /** Paket program & anggaran dari Pengaturan. */
+  budgets: Budget[];
 };
 
 
@@ -24,7 +27,7 @@ function uniqueOptions(options: Option[]) {
 }
 
 /** Use the full active archive, independent of the visible year and search filters. */
-export function buildTripSuggestions(trips: Trip[]): TripSuggestions {
+export function buildTripSuggestions(trips: Trip[], budgets: Budget[] = []): TripSuggestions {
   const active = trips.filter(trip => !trip.deletedAt)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const regions = jambiRegions.map(value => ({ value }));
@@ -34,5 +37,6 @@ export function buildTripSuggestions(trips: Trip[]): TripSuggestions {
     destinations: uniqueOptions([...regions, ...active.flatMap(trip => tripDestinations(trip).map(value => ({value})))]),
     letters: uniqueOptions(active.map(trip => ({ value: trip.sptNo, description: trip.title }))),
     purposes: uniqueOptions(active.map(trip => ({ value: trip.title, description: [trip.sptNo, trip.destination].filter(Boolean).join(" · ") }))),
+    budgets,
   };
 }

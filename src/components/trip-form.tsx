@@ -283,6 +283,7 @@ function GeneralTripForm({
                 </Field>
                 <Field label="Tanggal berangkat" required>
                   <ArchiveDateInput
+                    range={{ from: form.startDate, to: form.endDate }}
                     required
                     value={form.startDate}
                     onChange={(v) =>
@@ -298,6 +299,7 @@ function GeneralTripForm({
                 </Field>
                 <Field label="Tanggal pulang" required>
                   <ArchiveDateInput
+                    range={{ from: form.startDate, to: form.endDate }}
                     required
                     value={form.endDate}
                     onChange={(v) => patch({ endDate: v })}

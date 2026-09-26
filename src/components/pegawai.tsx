@@ -206,7 +206,6 @@ export default function Pegawai({ trips, people, departments, onChange, notify, 
       <header className="pegawai-head">
         <div>
           <h1>Pegawai</h1>
-          <p>Direktori pegawai yang menjadi rujukan saat mengisi arsip. Buka berkas seseorang untuk melihat identitas dan seluruh perjalanan dinasnya.</p>
         </div>
         <Button className="pegawai-add" disabled={busy} onClick={startAdd}><Plus /> Tambah pegawai</Button>
       </header>

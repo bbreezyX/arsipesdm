@@ -1,18 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import { BarChart3, Download, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowRight, BarChart3, Download, LoaderCircle, RotateCcw } from "lucide-react";
 import {
   defaultFilters,
   filterTrips,
   isComplete,
+  missingSppd,
   money,
   shortMoney,
   totalCost,
   type Filters,
   type Trip,
 } from "@/lib/model";
-import { filterArchiveGroups, type ArchiveGroup } from "@/lib/archive-groups";
+import { costMix, filterArchiveGroups, type ArchiveGroup } from "@/lib/archive-groups";
 import { Button } from "./ui/button";
 import { CustomSelect, SelectOption } from "./ui/select";
 import { Empty } from "./fields";
@@ -21,7 +22,6 @@ const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
-const monthShort = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const monthValue = (index: number) => String(index + 1).padStart(2, "0");
 
 function peopleCount(trips: Trip[]) {
@@ -39,8 +39,16 @@ function summarize(trips: Trip[], groups: ArchiveGroup[]) {
   };
 }
 
+/** Tiga komponen terbesar tampil apa adanya; sisanya digabung agar bilah tetap terbaca. */
+function mixRows(trips: Trip[]) {
+  const mix = costMix(trips);
+  if (mix.length <= 3) return mix.map(share => ({ label: share.category, amount: share.amount }));
+  const rest = mix.slice(2).reduce((sum, share) => sum + share.amount, 0);
+  return [...mix.slice(0, 2).map(share => ({ label: share.category, amount: share.amount })), { label: "Lainnya", amount: rest }];
+}
+
 export default function Laporan({
-  trips, groups, years, yearCounts, departments, filters, onFilter, busy, onExport, canExport = true,
+  trips, groups, years, yearCounts, departments, filters, onFilter, busy, onExport, onReview, canExport = true,
 }: {
   trips: Trip[];
   groups: ArchiveGroup[];
@@ -51,6 +59,8 @@ export default function Laporan({
   onFilter: (patch: Partial<Filters>) => void;
   busy: boolean;
   onExport: (rows: Trip[]) => void;
+  /** Membuka Arsip perjalanan dengan lingkup laporan yang sama ditambah saringan status. */
+  onReview: (scope: Partial<Filters>) => void;
   canExport?: boolean;
 }) {
   const { year, month, department } = filters;
@@ -59,6 +69,7 @@ export default function Laporan({
   const scoped = useMemo(() => filterTrips(trips, scope), [trips, scope]);
   const scopedGroups = useMemo(() => filterArchiveGroups(groups, scope), [groups, scope]);
   const summary = useMemo(() => summarize(scoped, scopedGroups), [scoped, scopedGroups]);
+  const mix = useMemo(() => mixRows(scoped), [scoped]);
 
   // Setiap rincian mengabaikan filternya sendiri agar pilihan selalu terlihat di antara pembandingnya.
   const monthly = useMemo(() => {
@@ -66,7 +77,7 @@ export default function Laporan({
     return monthNames.map((name, index) => {
       const items = base.filter(t => t.startDate.slice(5, 7) === monthValue(index));
       return {
-        name, short: monthShort[index], value: monthValue(index),
+        name, value: monthValue(index),
         ...summarize(items, filterArchiveGroups(groups, { ...scope, month: monthValue(index) })),
       };
     });
@@ -86,34 +97,36 @@ export default function Laporan({
   const monthMax = Math.max(1, ...monthly.map(row => row.total));
   const departmentTotal = byDepartment.reduce((sum, row) => sum + row.total, 0);
   const monthlyShown = monthly.filter(row => row.trips);
-  const emptyMonths = year === "all" ? [] : monthly.filter(row => !row.trips).map(row => row.name);
+  const emptyMonths = monthly.filter(row => !row.trips).map(row => row.name);
   const monthlyTotal = summarize(
     filterTrips(trips, { ...scope, month: "all" }),
     filterArchiveGroups(groups, { ...scope, month: "all" }),
   );
-  const departmentAll = summarize(
-    filterTrips(trips, { ...scope, department: "all" }),
-    filterArchiveGroups(groups, { ...scope, department: "all" }),
-  );
+  // Akumulasi hanya bermakna di dalam satu tahun anggaran.
+  const cumulative = year !== "all";
+  let running = 0;
 
-  const scopeParts = [
-    year === "all" ? "seluruh tahun" : `tahun ${year}`,
-    department !== "all" ? `bidang ${department}` : "",
-    month !== "all" ? `bulan ${monthNames[Number(month) - 1]}` : "",
-  ].filter(Boolean);
-  const scopeText = scopeParts.join(", ");
+  // Rentang bulan hanya ditulis dalam satu tahun; gabungan seluruh tahun cukup disebut begitu.
+  const periodText = year === "all"
+    ? (month !== "all" ? `${monthNames[Number(month) - 1]}, seluruh tahun` : "seluruh tahun")
+    : month !== "all"
+      ? `${monthNames[Number(month) - 1]} ${year}`
+      : monthlyShown.length > 1
+        ? `${monthlyShown[0].name}–${monthlyShown[monthlyShown.length - 1].name} ${year}`
+        : monthlyShown.length ? `${monthlyShown[0].name} ${year}` : `tahun ${year}`;
+  const scopeText = [periodText, department !== "all" ? `bidang ${department}` : ""].filter(Boolean).join(", ");
   const filterCount = (department !== "all" ? 1 : 0) + (month !== "all" ? 1 : 0);
-  const ratio = summary.trips ? summary.complete / summary.trips : 0;
+  const withoutSppd = scoped.filter(missingSppd).length;
   const hasArchive = trips.length > 0;
+  const known = summary.trips - summary.unknown;
 
   return (
     <div className="laporan-page">
       <header className="ledger-head">
         <div>
           <h1>Rekap &amp; laporan</h1>
-          <p>Laporan realisasi biaya perjalanan dinas per tahun, dirinci menurut bulan keberangkatan dan bidang{canExport ? ", siap diekspor ke Excel." : "."}</p>
         </div>
-        {canExport && <div className="ledger-head-actions">
+        {canExport && <div className="ledger-head-actions laporan-export">
           <Button onClick={() => onExport(scoped)} disabled={busy || !scoped.length}>
             {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor laporan
           </Button>
@@ -135,7 +148,6 @@ export default function Laporan({
 
       <section className="ledger-sheet laporan-sheet" aria-label="Laporan realisasi">
         <div className="laporan-scope">
-          <span className="laporan-scope-label">Lingkup laporan</span>
           <CustomSelect aria-label="Bidang" className="laporan-select" data-active={department !== "all"}
             value={department} onValueChange={value => onFilter({ department: value })}>
             <SelectOption value="all">Semua bidang</SelectOption>
@@ -147,11 +159,10 @@ export default function Laporan({
             {monthNames.map((name, index) => <SelectOption key={name} value={monthValue(index)}>{name}</SelectOption>)}
           </CustomSelect>
           {filterCount > 0 && (
-            <Button className="ledger-reset" variant="ghost" size="sm" onClick={() => onFilter({ department: "all", month: "all" })}>
+            <Button className="laporan-reset" variant="ghost" size="sm" onClick={() => onFilter({ department: "all", month: "all" })}>
               <RotateCcw /> Hapus filter ({filterCount})
             </Button>
           )}
-          <span className="laporan-scope-note">Berdasarkan tanggal keberangkatan</span>
         </div>
 
         {!hasArchive ? (
@@ -159,190 +170,165 @@ export default function Laporan({
             description="Laporan tersusun otomatis begitu arsip perjalanan pertama ditambahkan atau diimpor." />
         ) : (
           <>
-            <section className="ledger-summary" aria-label={`Ringkasan ${scopeText}`}>
+            <section className="laporan-hero" aria-label={`Ringkasan ${scopeText}`}>
               <div>
-                <span className="ledger-summary-label">Realisasi biaya perjalanan dinas {scopeText}</span>
-                {summary.trips - summary.unknown > 0 ? (
-                  <strong className="ledger-figure"><small>Rp</small>{summary.total.toLocaleString("id-ID")}</strong>
+                <p className="laporan-hero-label">Realisasi biaya perjalanan dinas, {scopeText}</p>
+                {known > 0 ? (
+                  <strong className="laporan-figure"><small>Rp</small>{summary.total.toLocaleString("id-ID")}</strong>
                 ) : (
-                  <strong className="ledger-figure is-empty">
+                  <strong className="laporan-figure is-empty">
                     {summary.trips ? "Belum ada nominal tercatat" : "Tidak ada perjalanan"}
                   </strong>
                 )}
-                <div className="ledger-summary-facts">
+                <div className="laporan-facts">
                   <span><strong>{summary.journeys}</strong> perjalanan</span>
                   <span><strong>{summary.trips}</strong> rekap</span>
                   <span><strong>{summary.people}</strong> pegawai</span>
-                  {summary.unknown > 0 && <span className="is-warning"><strong>{summary.unknown}</strong> rekap belum bernominal</span>}
                 </div>
               </div>
-              <div>
-                <div className="ledger-summary-row">
-                  <span>Rekap bernominal</span>
-                  <strong>{summary.complete} dari {summary.trips}</strong>
+              {summary.total > 0 && (
+                <div className="laporan-mix">
+                  <div className="laporan-mix-bar" role="img"
+                    aria-label={mix.map(row => `${row.label} ${Math.round((row.amount / summary.total) * 100)}%`).join(", ")}>
+                    {mix.map((row, index) => (
+                      <span key={row.label} data-tone={index} style={{ flexBasis: `${(row.amount / summary.total) * 100}%` }} />
+                    ))}
+                  </div>
+                  <dl>
+                    {mix.map((row, index) => (
+                      <div key={row.label}>
+                        <dt><i data-tone={index} aria-hidden="true" />{row.label}</dt>
+                        <dd>{shortMoney(row.amount)}</dd>
+                        <dd className="laporan-mix-share">{Math.round((row.amount / summary.total) * 100)}%</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
-                <div className={`ledger-bar ${summary.trips ? "" : "is-empty"}`} role="img"
-                  aria-label={`${summary.complete} rekap bernominal, ${summary.unknown} belum`}>
-                  <span key={`${scopeText}-${summary.trips}`} style={{ width: `${ratio * 100}%` }} />
-                </div>
-                <div className="ledger-legend">
-                  <span><i aria-hidden="true" /><strong>{summary.complete}</strong> bernominal</span>
-                  <span><i className="draft" aria-hidden="true" /><strong>{summary.unknown}</strong> belum dicatat</span>
-                </div>
-              </div>
-            </section>
-
-            <section className="laporan-months" aria-label="Realisasi per bulan">
-              <div className="laporan-section-head">
-                <h2>Realisasi per bulan</h2>
-                <p>
-                  {year === "all" ? "Gabungan bulan yang sama dari seluruh tahun. " : ""}
-                  Pilih satu bulan untuk memfokuskan laporan.
-                </p>
-              </div>
-              <div className="laporan-chart" role="group" aria-label="Bulan keberangkatan">
-                {monthly.map(row => (
-                  <button type="button" key={row.value} className="laporan-month" aria-pressed={month === row.value}
-                    disabled={!row.trips} onClick={() => onFilter({ month: month === row.value ? "all" : row.value })}
-                    title={`${row.name}: ${row.trips} rekap, ${money(row.trips - row.unknown > 0 ? row.total : null)}`}>
-                    <span className="laporan-month-value">{row.total > 0 ? shortMoney(row.total) : row.trips ? "Rp 0" : ""}</span>
-                    <span className="laporan-month-track">
-                      <span className="laporan-month-bar" style={{ height: `${(row.total / monthMax) * 100}%` }} />
-                    </span>
-                    <strong>{row.short}</strong>
-                    <small>{row.trips ? `${row.trips} rekap` : "kosong"}</small>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="laporan-register" aria-label="Realisasi per bidang">
-              <div className="laporan-section-head">
-                <h2>Realisasi per bidang</h2>
-                <p>Porsi dihitung dari seluruh bidang pada {month !== "all" ? `bulan ${monthNames[Number(month) - 1]} ` : ""}{year === "all" ? "seluruh tahun" : `tahun ${year}`}. Pilih bidang untuk memfokuskan laporan.</p>
-              </div>
-              {byDepartment.length ? (
-                <div className="table-scroll">
-                  <table className="laporan-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Bidang</th>
-                        <th scope="col" className="is-number">Perjalanan</th>
-                        <th scope="col" className="is-number">Rekap</th>
-                        <th scope="col" className="is-number">Pegawai</th>
-                        <th scope="col" className="is-number">Bernominal</th>
-                        <th scope="col" className="is-number">Realisasi</th>
-                        <th scope="col" className="laporan-share-head">Porsi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {byDepartment.map(row => (
-                        <tr key={row.name} data-active={department === row.name || undefined}>
-                          <th scope="row">
-                            <button type="button" className="laporan-pick" aria-pressed={department === row.name}
-                              onClick={() => onFilter({ department: department === row.name ? "all" : row.name })}>
-                              {row.name}
-                            </button>
-                          </th>
-                          <td className="is-number">{row.journeys}</td>
-                          <td className="is-number">{row.trips}</td>
-                          <td className="is-number">{row.people}</td>
-                          <td className="is-number">
-                            {row.complete} dari {row.trips}
-                            {row.unknown > 0 && <small className="is-warning">{row.unknown} belum dicatat</small>}
-                          </td>
-                          <td className="is-number is-money">{money(row.trips - row.unknown > 0 ? row.total : null)}</td>
-                          <td>
-                            <span className="laporan-share">
-                              <span className="laporan-share-track"><span style={{ width: `${departmentTotal ? (row.total / departmentTotal) * 100 : 0}%` }} /></span>
-                              <b>{departmentTotal ? Math.round((row.total / departmentTotal) * 100) : 0}%</b>
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="laporan-foot">
-                        <th scope="row"><span className="laporan-foot-label">Jumlah <strong>{byDepartment.length} bidang</strong></span></th>
-                        <td className="is-number">{departmentAll.journeys}</td>
-                        <td className="is-number">{departmentAll.trips}</td>
-                        <td className="is-number">{departmentAll.people}</td>
-                        <td className="is-number">{departmentAll.complete} dari {departmentAll.trips}</td>
-                        <td className="is-number is-money">{money(departmentAll.trips - departmentAll.unknown > 0 ? departmentAll.total : null)}</td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <Empty icon={<BarChart3 size={28} />} heading="Tidak ada perjalanan pada lingkup ini"
-                  description="Pilih bulan atau tahun lain, atau hapus filter yang aktif." />
               )}
             </section>
 
-            <section className="laporan-register" aria-label="Rekap bulanan">
-              <div className="laporan-section-head">
-                <h2>Rekap bulanan</h2>
-                <p>
-                  {year === "all" ? "Gabungan bulan yang sama dari seluruh tahun" : `Perjalanan yang berangkat pada tahun ${year}`}
-                  {department !== "all" ? ` untuk bidang ${department}.` : "."}
-                </p>
-              </div>
-              {monthlyShown.length ? (
-                <div className="table-scroll">
-                  <table className="laporan-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Bulan</th>
-                        <th scope="col" className="is-number">Perjalanan</th>
-                        <th scope="col" className="is-number">Rekap</th>
-                        <th scope="col" className="is-number">Pegawai</th>
-                        <th scope="col" className="is-number">Bernominal</th>
-                        <th scope="col" className="is-number">Realisasi</th>
+            {byDepartment.length > 1 && (
+              <section className="laporan-register" aria-label="Realisasi per bidang">
+                <h2 className="laporan-caption">Per bidang</h2>
+                <table className="laporan-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Bidang</th>
+                      <th scope="col" className="is-number is-wide">Perjalanan</th>
+                      <th scope="col" className="is-number is-wide">Pegawai</th>
+                      <th scope="col" className="is-number laporan-real-head">Realisasi</th>
+                      <th scope="col" className="is-number is-wide">Porsi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byDepartment.map(row => (
+                      <tr key={row.name} data-active={department === row.name || undefined}
+                        onClick={() => onFilter({ department: department === row.name ? "all" : row.name })}>
+                        <th scope="row">
+                          <button type="button" className="laporan-pick" aria-pressed={department === row.name}
+                            onClick={event => { event.stopPropagation(); onFilter({ department: department === row.name ? "all" : row.name }); }}>
+                            {row.name}
+                          </button>
+                          <small className="laporan-row-meta">{row.journeys} perjalanan · {row.people} pegawai</small>
+                        </th>
+                        <td className="is-number is-wide">{row.journeys}</td>
+                        <td className="is-number is-wide">{row.people}</td>
+                        <td>
+                          <span className="laporan-real">
+                            <span className="laporan-track"><span style={{ width: `${departmentTotal ? (row.total / departmentTotal) * 100 : 0}%` }} /></span>
+                            <b>{money(row.trips - row.unknown > 0 ? row.total : null)}</b>
+                          </span>
+                        </td>
+                        <td className="is-number is-wide laporan-muted">{departmentTotal ? Math.round((row.total / departmentTotal) * 100) : 0}%</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {monthlyShown.map(row => (
-                        <tr key={row.value} data-active={month === row.value || undefined}>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            <section className="laporan-register" aria-label="Realisasi per bulan">
+              {byDepartment.length > 1 && <h2 className="laporan-caption">Per bulan</h2>}
+              {monthlyShown.length ? (
+                <table className="laporan-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Bulan keberangkatan</th>
+                      <th scope="col" className="is-number is-wide">Perjalanan</th>
+                      <th scope="col" className="is-number is-wide">Pegawai</th>
+                      <th scope="col" className="is-number laporan-real-head">Realisasi</th>
+                      {cumulative && <th scope="col" className="is-number is-wide">Sampai bulan ini</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyShown.map(row => {
+                      running += row.total;
+                      return (
+                        <tr key={row.value} data-active={month === row.value || undefined}
+                          onClick={() => onFilter({ month: month === row.value ? "all" : row.value })}>
                           <th scope="row">
                             <button type="button" className="laporan-pick" aria-pressed={month === row.value}
-                              onClick={() => onFilter({ month: month === row.value ? "all" : row.value })}>
+                              onClick={event => { event.stopPropagation(); onFilter({ month: month === row.value ? "all" : row.value }); }}>
                               {row.name}
                             </button>
+                            <small className="laporan-row-meta">{row.journeys} perjalanan · {row.people} pegawai</small>
+                            {row.unknown > 0 && <small className="is-warning">{row.unknown} rekap belum bernominal</small>}
                           </th>
-                          <td className="is-number">{row.journeys}</td>
-                          <td className="is-number">{row.trips}</td>
-                          <td className="is-number">{row.people}</td>
-                          <td className="is-number">
-                            {row.complete} dari {row.trips}
-                            {row.unknown > 0 && <small className="is-warning">{row.unknown} belum dicatat</small>}
+                          <td className="is-number is-wide">{row.journeys}</td>
+                          <td className="is-number is-wide">{row.people}</td>
+                          <td>
+                            <span className="laporan-real">
+                              <span className="laporan-track"><span style={{ width: `${(row.total / monthMax) * 100}%` }} /></span>
+                              <b>{money(row.trips - row.unknown > 0 ? row.total : null)}</b>
+                            </span>
                           </td>
-                          <td className="is-number is-money">{money(row.trips - row.unknown > 0 ? row.total : null)}</td>
+                          {cumulative && <td className="is-number is-wide laporan-muted">{running.toLocaleString("id-ID")}</td>}
                         </tr>
-                      ))}
-                      {emptyMonths.length > 0 && (
-                        <tr className="laporan-empty-months">
-                          <td colSpan={6}>Tidak ada perjalanan yang berangkat pada {emptyMonths.join(", ")}.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                    <tfoot>
-                      <tr className="laporan-foot">
-                        <th scope="row"><span className="laporan-foot-label">Jumlah <strong>{monthly.filter(row => row.trips).length} bulan</strong></span></th>
-                        <td className="is-number">{monthlyTotal.journeys}</td>
-                        <td className="is-number">{monthlyTotal.trips}</td>
-                        <td className="is-number">{monthlyTotal.people}</td>
-                        <td className="is-number">{monthlyTotal.complete} dari {monthlyTotal.trips}</td>
-                        <td className="is-number is-money">{money(monthlyTotal.trips - monthlyTotal.unknown > 0 ? monthlyTotal.total : null)}</td>
+                      );
+                    })}
+                    {emptyMonths.length > 0 && (
+                      <tr className="laporan-quiet">
+                        <td colSpan={cumulative ? 5 : 4}>{emptyMonths.join(", ")} · belum ada perjalanan</td>
                       </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th scope="row">Jumlah</th>
+                      <td className="is-number is-wide">{monthlyTotal.journeys}</td>
+                      <td className="is-number is-wide">{monthlyTotal.people}</td>
+                      <td className="is-number">{money(monthlyTotal.trips - monthlyTotal.unknown > 0 ? monthlyTotal.total : null)}</td>
+                      {cumulative && <td className="is-wide" />}
+                    </tr>
+                  </tfoot>
+                </table>
               ) : (
                 <Empty icon={<BarChart3 size={28} />} heading="Tidak ada perjalanan pada lingkup ini"
                   description="Pilih bidang atau tahun lain, atau hapus filter yang aktif." />
               )}
             </section>
+
+            {summary.trips > 0 && (
+              <footer className="laporan-checks">
+                <p data-state={summary.unknown ? "gap" : "ok"}>
+                  <span>{summary.unknown
+                    ? <><strong>{summary.unknown} dari {summary.trips} rekap</strong> belum bernominal dan tidak ikut dijumlahkan.</>
+                    : <>Semua {summary.trips} rekap sudah bernominal.</>}</span>
+                </p>
+                <p data-state={withoutSppd ? "gap" : "ok"}>
+                  <span>{withoutSppd
+                    ? <><strong>{withoutSppd} dari {summary.trips} rekap</strong> belum bernomor SPPD, kolomnya akan kosong di berkas ekspor.</>
+                    : <>Semua {summary.trips} rekap sudah bernomor SPPD.</>}</span>
+                  {withoutSppd > 0 && (
+                    <button type="button" className="laporan-check-link"
+                      onClick={() => onReview({ year, month, department, status: "no-sppd" })}>
+                      Lengkapi di Arsip perjalanan <ArrowRight aria-hidden="true" />
+                    </button>
+                  )}
+                </p>
+                <p className="laporan-checks-note">Dikelompokkan menurut tanggal keberangkatan.</p>
+              </footer>
+            )}
           </>
         )}
       </section>
