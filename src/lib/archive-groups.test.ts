@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { archivesForExport, filterArchiveGroups, groupArchives } from "./archive-groups";
+import { amountsByColumn, archivesForExport, costColumns, costMix, filterArchiveGroups, groupArchives, recordGaps } from "./archive-groups";
 import { defaultFilters, tripSchema, type Trip } from "./model";
 
 function trip(id: string, amount: number | null, changes: Partial<Trip> = {}): Trip {
@@ -109,4 +109,37 @@ test("equivalent descriptions appear once while source titles, ledgers and genui
   assert.deepEqual(records, originals);
   assert.deepEqual(archivesForExport([group]), originals);
   assert.deepEqual(groupArchives(records.slice(0, 3))[0].titles, [originals[0].title]);
+});
+
+type Category = Trip["costs"][number]["category"];
+const cost = (id: string, category: Category, amount: number) => ({ id, category, label: category, participantId: "shared", amount });
+
+test("costMix sums each component across rekap, largest first, counting rekap per component", () => {
+  const records = [
+    trip("a", null, { costs: [cost("1", "Uang harian", 370), cost("2", "Transportasi", 644)] }),
+    trip("b", null, { costs: [cost("3", "Uang harian", 370)] }),
+    trip("c", null),
+  ];
+  assert.deepEqual(costMix(records), [
+    { category: "Uang harian", amount: 740, trips: 2 },
+    { category: "Transportasi", amount: 644, trips: 1 },
+  ]);
+});
+
+test("costColumns keeps every component up to the limit, then rolls the rest into Lainnya", () => {
+  const names: Category[] = ["Transportasi", "Uang harian", "Penginapan", "Representasi"];
+  const mix = names.map((category, i) => ({ category, amount: 40 - i * 10, trips: 1 }));
+  assert.deepEqual(costColumns(mix.slice(0, 3)), { named: ["Transportasi", "Uang harian", "Penginapan"], other: false });
+  assert.deepEqual(costColumns(mix), { named: ["Transportasi", "Uang harian"], other: true });
+  const record = trip("a", null, { costs: [cost("1", "Transportasi", 40), cost("2", "Penginapan", 20), cost("3", "Representasi", 10)] });
+  assert.deepEqual(amountsByColumn(record, costColumns(mix)), [40, null, 30]);
+});
+
+test("recordGaps lists only fields that some rekap has not recorded", () => {
+  const done = trip("a", 100, { sppdNo: "PD/1", account: "5.1.02", documents: [{ id: "d", type: "spt", kind: "file", name: "a.pdf", location: "", size: 1, createdAt: "" }] });
+  const gaps = recordGaps([done, trip("b", null, { sppdNo: "", account: " " })]);
+  assert.deepEqual(gaps.map(gap => [gap.field, gap.trips.map(t => t.id)]), [
+    ["costs", ["b"]], ["sppd", ["b"]], ["documents", ["b"]], ["account", ["b"]],
+  ]);
+  assert.deepEqual(recordGaps([done]), []);
 });

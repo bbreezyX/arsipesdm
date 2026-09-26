@@ -51,10 +51,10 @@ export default function ArchiveGuide({ onClose, onError }: { onClose: () => void
           { element: '[data-tour="archive-search"]', popover: { title: "Cari arsip yang diperlukan", description: "Ketik nomor surat, tujuan, atau nama pegawai. Gunakan filter bidang dan bulan untuk mempersempit hasil." } },
           record ? {
             element: () => visibleTarget("archive-record") ?? visibleTarget("archive-results")!,
-            popover: { title: "Baca rincian perjalanan", description: "Klik nomor Surat Tugas untuk membuka daftar rekap pegawai. Pilih Detail pada rekap untuk melihat perjalanan dan rincian biayanya." },
+            popover: { title: "Baca rincian perjalanan", description: "Pilih Surat Tugas di daftar untuk membuka rekap tiap pegawai di sebelahnya. Pilih Detail pada rekap untuk melihat perjalanan dan rincian biayanya." },
           } : {
             element: '[data-tour="archive-results"]',
-            popover: { title: "Hasil pencarian muncul di sini", description: "Belum ada perjalanan yang cocok. Coba tahun atau kata kunci lain. Saat arsip tersedia, klik nomor Surat Tugas untuk melihat rekap tiap pegawai." },
+            popover: { title: "Hasil pencarian muncul di sini", description: "Belum ada perjalanan yang cocok. Coba tahun atau kata kunci lain. Saat arsip tersedia, pilih Surat Tugas di daftar untuk melihat rekap tiap pegawai." },
           },
           { element: '[data-tour="help"]', popover: { align: "end", title: "Panduan selalu tersedia", description: "Buka tombol bantuan ini kapan saja untuk membaca petunjuk atau mengulangi panduan. Anda siap menelusuri arsip." } },
         ];

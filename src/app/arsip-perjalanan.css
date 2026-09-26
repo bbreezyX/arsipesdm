@@ -1,0 +1,760 @@
+/*
+  Arsip perjalanan: lidah tahun menempel pada lembar register (arsip.css), dan lembar itu
+  terbelah dua seperti halaman Dokumen: daftar Surat Tugas di kiri, rinciannya di kanan.
+  Warna, tipe, dan kelas ledger-* tetap sama dengan Surat Tugas dan Dokumen.
+*/
+.perjalanan-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Paling tidak setinggi layar; rincian panjang memanjangkan halaman, bukan bergulir sendiri. */
+  min-height: calc(100dvh - var(--shell-header-height) - 98px);
+}
+/* Halaman ini memakai lebar layar penuh: daftar dan rincian sama-sama butuh ruang. */
+.workspace-main.workspace-archives {
+  max-width: 1880px;
+}
+/* ----- Judul: fakta cakupan di bawah judul, tindakan di kanan ----- */
+.ledger-head.perjalanan-head {
+  margin-bottom: 14px;
+}
+.ledger-head .perjalanan-head-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  max-width: none;
+  font-size: var(--type-label);
+  line-height: 1.5;
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-head-facts > span + span::before {
+  content: "·";
+  margin: 0 6px;
+  color: #a3b0bd;
+}
+.perjalanan-head-facts b {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.perjalanan-head-facts .is-warning {
+  color: var(--ledger-amber);
+}
+
+/* ----- Lembar terbelah ----- */
+.perjalanan-split {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  flex: 1;
+}
+.perjalanan-split[data-empty] > .empty-state {
+  align-self: center;
+}
+
+/* ----- Daftar ----- */
+/* Daftar menempel di bawah bilah atas. Tingginya menyisakan jarak atas dan footer supaya
+   tetap bisa menempel walau rinciannya pendek. */
+.perjalanan-list {
+  position: sticky;
+  top: calc(var(--shell-header-height) + 12px);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: calc(100dvh - var(--shell-header-height) - 88px);
+  min-height: 480px;
+}
+.perjalanan-list-tools {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.perjalanan-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #cfd8e2;
+  border-radius: 9px;
+  background: var(--ledger-surface);
+  color: var(--ledger-muted);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.perjalanan-search:focus-within {
+  border-color: var(--ledger-action);
+  box-shadow: 0 0 0 3px var(--ledger-action-soft);
+}
+.perjalanan-list .perjalanan-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  font-size: var(--type-data);
+  color: var(--ledger-ink);
+}
+.perjalanan-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.perjalanan-search kbd {
+  font: inherit;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 5px;
+  background: var(--ledger-tint);
+  color: var(--ledger-muted);
+}
+.perjalanan-search > button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--ledger-muted);
+}
+.perjalanan-search > button:hover {
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+}
+.perjalanan-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--ledger-line-soft);
+}
+.perjalanan-status > button {
+  height: 28px;
+  border-radius: 6px;
+  font-size: var(--type-meta);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.perjalanan-status > button b {
+  margin-left: 3px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.perjalanan-status > button:hover {
+  color: var(--ledger-ink);
+}
+.perjalanan-status > button[aria-pressed="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  box-shadow: 0 1px 2px rgba(20, 39, 63, 0.14);
+}
+.perjalanan-selects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.perjalanan-selects .custom-select.perjalanan-select {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 28px 0 10px;
+  border-radius: 9px;
+  border-color: #d3dbe4;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-text);
+}
+/* Waktu pencatatan memakai satu baris penuh: labelnya lebih panjang dari bulan dan bidang. */
+.perjalanan-selects .custom-select.perjalanan-select:last-child {
+  grid-column: 1 / -1;
+}
+.perjalanan-selects .custom-select.perjalanan-select[data-active="true"] {
+  border-color: var(--ledger-navy);
+  background: var(--ledger-action-soft);
+  color: var(--ledger-ink);
+}
+.perjalanan-list-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.perjalanan-list-count p {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perjalanan-list-count > :not(p) {
+  flex-shrink: 0;
+}
+.perjalanan-list-count strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-clear {
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.perjalanan-clear:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.perjalanan-list-count .custom-select.perjalanan-sort {
+  width: auto;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 26px 0 8px;
+  border-color: transparent;
+  border-radius: 7px;
+  background-color: transparent;
+  box-shadow: none;
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: var(--ledger-text);
+}
+.perjalanan-list-count .custom-select.perjalanan-sort:hover {
+  background-color: var(--ledger-tint);
+}
+.perjalanan-items {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #b6c5d3 transparent;
+}
+.perjalanan-items > li {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ledger-line-soft);
+}
+.perjalanan-items > li > [data-slot="checkbox"] {
+  flex-shrink: 0;
+  margin-left: 14px;
+}
+.perjalanan-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px 9px 12px;
+  line-height: 1.35;
+  text-align: left;
+  transition: background 0.15s;
+}
+.perjalanan-items > li:not(:has([data-slot="checkbox"])) > .perjalanan-item {
+  padding-left: 14px;
+}
+.perjalanan-items > li:hover {
+  background: #f8fafc;
+}
+.perjalanan-items > li:has(.perjalanan-item[aria-current="true"]) {
+  background: var(--ledger-action-soft);
+}
+.perjalanan-item:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: -2px;
+}
+.perjalanan-item-ref,
+.perjalanan-item-sub {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perjalanan-item-ref {
+  font-size: var(--type-label);
+  font-weight: 600;
+  font-stretch: 92%;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-item-amount {
+  justify-self: end;
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.perjalanan-item-sub {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.perjalanan-item-state {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+  font-size: var(--type-micro);
+  color: var(--ledger-amber);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-item-state[data-complete] {
+  color: var(--ledger-muted);
+}
+.perjalanan-item-state i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ledger-amber);
+}
+.perjalanan-item-state[data-complete] i {
+  background: var(--ledger-success);
+  box-shadow: none;
+}
+.perjalanan-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--ledger-line);
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.perjalanan-pagination p {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.perjalanan-pagination strong {
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.perjalanan-pagination .custom-select.perjalanan-page-size {
+  width: 70px;
+  height: 28px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: var(--type-micro);
+}
+.perjalanan-pagination nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.perjalanan-pagination nav > span {
+  min-width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-pagination nav [data-slot="button"],
+.perjalanan-detail-nav [data-slot="button"] {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border-color: #d3dbe4;
+  box-shadow: none;
+  color: var(--ledger-text);
+}
+
+/* ----- Rincian ----- */
+.perjalanan-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid var(--ledger-line);
+}
+.perjalanan-detail-head {
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid var(--ledger-line);
+}
+.perjalanan-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 4px 6px 4px 0;
+  border-radius: 6px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-action);
+}
+.perjalanan-detail-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.perjalanan-detail-top h2 {
+  min-width: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+}
+.perjalanan-detail-top h2:focus {
+  outline: none;
+}
+.perjalanan-detail-top h2:focus-visible {
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 2px;
+}
+.perjalanan-detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.perjalanan-purpose {
+  margin-top: 6px;
+  max-width: 72ch;
+  font-size: var(--type-label);
+  line-height: 1.55;
+  color: var(--ledger-text);
+}
+.perjalanan-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 32px;
+  margin-top: 16px;
+}
+.perjalanan-facts > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.perjalanan-facts dt {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.perjalanan-facts dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-facts dd small {
+  font-size: var(--type-micro);
+  font-weight: 400;
+  color: var(--ledger-muted);
+}
+.perjalanan-facts .perjalanan-total {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  font-stretch: var(--ledger-condensed);
+}
+.perjalanan-detail-body {
+  padding: 16px 24px 24px;
+}
+/* Panel Surat Tugas: komposisi biaya, tabel per pegawai, dan data yang belum dicatat. */
+.perjalanan-detail-body > section + section {
+  margin-top: 22px;
+}
+.perjalanan-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.perjalanan-section-head h3,
+.perjalanan-section-title {
+  font-size: var(--type-data);
+  font-weight: 650;
+  color: var(--ledger-ink);
+}
+.perjalanan-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.perjalanan-section-title span {
+  font-size: var(--type-micro);
+  font-weight: 400;
+  color: var(--ledger-muted);
+}
+.perjalanan-section-head .perjalanan-export {
+  height: 30px;
+  border-color: #d3dbe4;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: var(--type-label);
+  color: var(--ledger-ink);
+}
+.perjalanan-mix-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin: 12px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ledger-line-soft);
+}
+.perjalanan-mix-bar i {
+  min-width: 3px;
+}
+.perjalanan-mix-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.perjalanan-mix-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 8px;
+  font-size: var(--type-label);
+  color: var(--ledger-text);
+}
+.perjalanan-mix-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.perjalanan-mix-legend b {
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-mix-legend small {
+  grid-column: 2 / -1;
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-mix-empty {
+  margin-top: 8px;
+  font-size: var(--type-label);
+  color: var(--ledger-muted);
+}
+.perjalanan-people-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+}
+.perjalanan-people {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.perjalanan-people th {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ledger-line);
+  background: var(--ledger-tint);
+  font-size: var(--type-micro);
+  font-weight: 500;
+  color: var(--ledger-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.perjalanan-people td {
+  padding: 10px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  font-size: var(--type-label);
+  color: var(--ledger-text);
+  vertical-align: middle;
+}
+.perjalanan-people .r {
+  text-align: right;
+  white-space: nowrap;
+}
+.perjalanan-people tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.perjalanan-people tbody tr:hover td {
+  background: #f8fafc;
+}
+.perjalanan-people-who {
+  display: grid;
+  gap: 1px;
+  min-width: 120px;
+  text-align: left;
+}
+.perjalanan-people-who:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--ledger-action);
+  outline-offset: 3px;
+}
+.perjalanan-people-who strong {
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.perjalanan-people-who small {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+}
+.perjalanan-people td.perjalanan-people-total {
+  font-size: var(--type-data);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.perjalanan-people td.perjalanan-people-total.is-unknown {
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--ledger-amber);
+}
+.perjalanan-people-go {
+  width: 32px;
+  padding-left: 0 !important;
+  color: #9aa8b6;
+}
+.perjalanan-people tbody tr:hover .perjalanan-people-go {
+  color: var(--ledger-action);
+}
+.perjalanan-dash {
+  color: #b3bfcb;
+}
+.perjalanan-people tfoot td {
+  border-bottom: 0;
+  background: var(--ledger-tint);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+.perjalanan-people tfoot td.r {
+  font-size: var(--type-label);
+  color: var(--ledger-ink);
+}
+.perjalanan-people tfoot td.r:nth-last-child(2) {
+  font-size: var(--type-data);
+  font-weight: 650;
+}
+.perjalanan-gaps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.perjalanan-gaps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 10px;
+  font-size: var(--type-label);
+}
+.perjalanan-gaps svg {
+  flex-shrink: 0;
+  color: var(--ledger-amber);
+}
+.perjalanan-gaps b {
+  flex: 1;
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.perjalanan-gaps small {
+  font-size: var(--type-micro);
+  color: var(--ledger-muted);
+  text-align: right;
+}
+
+@media (max-width: 1250px) {
+  .perjalanan-split {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+  .perjalanan-detail-head,
+  .perjalanan-detail-body {
+    padding-inline: 20px;
+  }
+}
+@media (max-width: 900px) {
+  .perjalanan-page {
+    min-height: 0;
+  }
+  .perjalanan-split {
+    grid-template-columns: minmax(0, 1fr);
+    scroll-margin-top: calc(var(--shell-header-height) + 12px);
+  }
+  .perjalanan-list {
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+  .perjalanan-detail {
+    border-left: 0;
+  }
+  .perjalanan-items {
+    overflow: visible;
+  }
+  .perjalanan-split[data-empty] > .perjalanan-list {
+    border-bottom: 1px solid var(--ledger-line);
+  }
+  .ledger-head.perjalanan-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}
+@media (max-width: 760px) {
+  .perjalanan-head .ledger-head-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .perjalanan-head .ledger-head-actions [data-variant="default"] {
+    order: -1;
+    flex-basis: 100%;
+  }
+  .perjalanan-detail-head,
+  .perjalanan-detail-body {
+    padding-inline: 16px;
+  }
+  .perjalanan-detail-top {
+    flex-wrap: wrap;
+  }
+  .perjalanan-section-head {
+    flex-wrap: wrap;
+  }
+  /* Rincian per komponen sudah tampil di legenda komposisi; tabel ponsel cukup pegawai dan total. */
+  .perjalanan-people .is-component {
+    display: none;
+  }
+  .perjalanan-gaps li {
+    flex-wrap: wrap;
+  }
+  .perjalanan-gaps small {
+    flex-basis: 100%;
+    padding-left: 25px;
+    text-align: left;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .perjalanan-item,
+  .perjalanan-status > button,
+  .perjalanan-search,
+  .perjalanan-people tbody tr {
+    transition: none;
+  }
+}

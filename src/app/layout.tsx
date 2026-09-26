@@ -5,6 +5,7 @@ import "./globals.css";
 import "./arsip.css";
 import "./beranda.css";
 import "./surat-tugas.css";
+import "./arsip-perjalanan.css";
 import "./honorarium.css";
 import "./arsip-rincian.css";
 import "./laporan.css";

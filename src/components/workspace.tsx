@@ -1,6 +1,5 @@
 "use client";
 import { NavbarClock } from "./navbar-clock";
-import EntryPeriodFilter from "./entry-period-filter";
 import { useJakartaDay } from "./use-jakarta-day";
 import Dokumen from "./dokumen";
 import { buildTripSuggestions } from "@/lib/trip-suggestions";
@@ -46,7 +45,6 @@ import {
   Building2,
   Wallet,
   LockKeyhole,
-  Pencil,
   Eye,
   EyeOff,
   LayoutDashboard,
@@ -72,6 +70,11 @@ import {
   type Filters,
   defaultFilters,
   entryFilterPhrase,
+  entryFilterLabel,
+  entryFilterOptions,
+  isEntryDay,
+  parseEntryFilter,
+  money,
   matchesEntry,
   type EntryFilter,
   filterTrips,
@@ -80,12 +83,12 @@ import {
 } from "@/lib/model";
 import type { Employee } from "@/lib/employees";
 import { employeeDirectoryChannel, notifyEmployeeDirectoryChanged } from "@/lib/employee-directory-events";
-import ArchiveGroups from "./archive-groups";
+import ArchiveSplit from "./archive-split";
 import Beranda from "./beranda";
 const Pegawai = dynamic(() => import("./pegawai"));
 import type { Honorarium } from "@/lib/honorarium";
 const HonorariumWorkspace = dynamic(() => import("./honorarium-workspace"));
-import { groupArchives, filterArchiveGroups, archiveGroupsForYear, archivesForExport, type ArchiveGroup } from "@/lib/archive-groups";
+import { groupArchives, filterArchiveGroups, archiveGroupsForYear, archivesForExport } from "@/lib/archive-groups";
 import { downloadTemplate } from "@/lib/export";
 const TaskLetters = dynamic(() => import("./task-letters"));
 const Laporan = dynamic(() => import("./laporan"));
@@ -228,6 +231,7 @@ export default function Workspace({
   const selectedGroups = filteredGroups.filter(group => selected.has(group.key));
   const statusGroups = useMemo(() => filterArchiveGroups(archiveGroups, { ...filters, status: "all" }, today), [archiveGroups, filters, today]);
   const total = archiveExportRows.reduce((s, t) => s + (totalCost(t) ?? 0), 0);
+  const archivePeople = useMemo(() => new Set(archiveExportRows.flatMap(t => t.participants.map(p => p.nip || p.name.toLowerCase()))).size, [archiveExportRows]);
   const unknown = archiveExportRows.filter((t) => totalCost(t) === null).length;
   const people = useMemo(() => employees.filter(p => !p.deletedAt), [employees]);
   useEffect(() => {
@@ -533,22 +537,7 @@ export default function Workspace({
         </header>
         <main className={`workspace-main ${section === "archives" ? "workspace-archives" : section === "taskLetters" ? "workspace-letters" : section === "honorarium" ? "workspace-honorarium" : section === "reports" ? "workspace-laporan" : section === "people" ? "workspace-pegawai" : section === "documents" ? "workspace-dokumen" : section === "home" ? "workspace-beranda" : ""}`}>
           <OnboardingNotice />
-          {section === "archives" ? (
-            <header className="ledger-head" data-tour="archive-heading">
-              <div>
-                <h1>Arsip perjalanan</h1>
-                <p>Register perjalanan dinas yang sudah dilaksanakan, dikelompokkan per Surat Tugas beserta rekap dan dokumen setiap pegawai.</p>
-              </div>
-              {editable && <div className="ledger-head-actions">
-                <Button variant="outline" onClick={() => setImporting(true)}>
-                  <Upload /> Impor Excel
-                </Button>
-                <Button onClick={() => setEditor("new")}>
-                  <Plus /> Tambah arsip
-                </Button>
-              </div>}
-            </header>
-          ) : section === "home" || section === "taskLetters" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
+          {section === "archives" || section === "home" || section === "taskLetters" || section === "honorarium" || section === "reports" || section === "people" || section === "documents" ? null : (
           <div className="page-heading">
             <div>
               <h1>{sectionNames[section]}</h1>
@@ -561,7 +550,33 @@ export default function Workspace({
           </div>
           )}
           {section === "archives" && (
-            <>
+            <div className="perjalanan-page">
+              <header className="ledger-head perjalanan-head" data-tour="archive-heading">
+                <div>
+                  <h1>Arsip perjalanan</h1>
+                  <p className="perjalanan-head-facts">
+                    <span><b>{filteredGroups.length}</b> perjalanan</span>
+                    <span><b>{archiveExportRows.length}</b> rekap</span>
+                    <span><b>{archivePeople}</b> pegawai</span>
+                    <span>{archiveExportRows.length > unknown ? <>realisasi <b>{money(total)}</b></> : "belum ada nominal tercatat"}</span>
+                    {unknown > 0 && archiveExportRows.length > unknown && <span className="is-warning">{unknown} rekap belum bernominal</span>}
+                    {filters.entry !== "all" && <span>ditambahkan {entryFilterPhrase(filters.entry)}</span>}
+                  </p>
+                </div>
+                <div className="ledger-head-actions">
+                  {exportable && <Button variant="outline" disabled={busy || !filteredGroups.length} onClick={() => exportRows()}>
+                    {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
+                  </Button>}
+                  {editable && <>
+                    <Button variant="outline" onClick={() => setImporting(true)}>
+                      <Upload /> Impor Excel
+                    </Button>
+                    <Button onClick={() => setEditor("new")}>
+                      <Plus /> Tambah arsip
+                    </Button>
+                  </>}
+                </div>
+              </header>
               <nav className="ledger-years" aria-label="Tahun pelaksanaan" data-tour="archive-years">
                 {years.map((year) => (
                   <button type="button"
@@ -583,95 +598,91 @@ export default function Workspace({
                   <span>{archiveGroups.length} perjalanan</span>
                 </button>
               </nav>
-              <section className="ledger-sheet">
-                <EntryPeriodFilter value={filters.entry} todayCount={todayRecaps}
-                  onChange={entry => patchFilters({ entry })}
-                  onToday={() => patchFilters({ ...defaultFilters, entry: "today" })} />
-                <YearSummary
-                  year={filters.year}
-                  groups={filteredGroups}
-                  trips={archiveExportRows}
-                  total={total}
-                  unknown={unknown}
-                  entry={filters.entry}
-                  filtered={filterCount > 0}
-                />
-                <ArchiveGroups
-                  groups={filteredGroups}
-                  selected={selected}
-                  onSelectionChange={setSelected}
-                  selectionEnabled={exportable}
-                  renderActions={trip => <ArchiveActions trip={trip} editable={editable} onAction={action => openArchive(trip.id, action)} />}
-                  status={
-                    <div className="ledger-status" role="group" aria-label="Filter kelengkapan">
+              <ArchiveSplit
+                groups={filteredGroups}
+                scope={JSON.stringify(filters)}
+                sort={filters.sort}
+                onSort={sort => patchFilters({ sort })}
+                filtered={filterCount > 0}
+                onClear={() => patchFilters({ ...defaultFilters, year: filters.year })}
+                selected={selected}
+                onSelectionChange={setSelected}
+                selectionEnabled={exportable}
+                onOpenTrip={trip => openArchive(trip.id)}
+                onExport={exportable ? group => exportRows(group.trips) : undefined}
+                exporting={busy}
+                tools={
+                  <>
+                    <div className="perjalanan-search" data-tour="archive-search">
+                      <Search size={16} aria-hidden="true" />
+                      <input id="archive-search" ref={searchRef} type="search" autoComplete="off" aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
+                        placeholder="Cari nomor surat, tujuan, atau pegawai" value={filters.search}
+                        onChange={event => patchFilters({ search: event.target.value })} />
+                      {filters.search ? <button type="button" onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
+                    </div>
+                    <div className="perjalanan-status" role="group" aria-label="Filter kelengkapan">
                       <button type="button" aria-pressed={filters.status === "all"} onClick={() => patchFilters({ status: "all" })}>
                         Semua <b>{statusGroups.length}</b>
                       </button>
                       <button type="button" aria-pressed={filters.status === "incomplete"} onClick={() => patchFilters({ status: "incomplete" })}>
-                        <i aria-hidden="true" /> Draft <b>{statusGroups.filter(group => !group.complete).length}</b>
+                        Draft <b>{statusGroups.filter(group => !group.complete).length}</b>
                       </button>
                       <button type="button" aria-pressed={filters.status === "complete"} onClick={() => patchFilters({ status: "complete" })}>
-                        <i className="complete" aria-hidden="true" /> Lengkap <b>{statusGroups.filter(group => group.complete).length}</b>
+                        Lengkap <b>{statusGroups.filter(group => group.complete).length}</b>
                       </button>
                     </div>
-                  }
-                  tools={exportable && (
-                    <Button variant="outline" size="sm" className="ledger-tool" disabled={busy || !filteredGroups.length} onClick={() => exportRows()}>
-                      {busy ? <LoaderCircle className="animate-spin" /> : <Download />} Ekspor Excel
-                    </Button>
-                  )}
-                  filterCount={[filters.department !== "all", filters.month !== "all"].filter(Boolean).length}
-                  filters={
-                    <>
-                      <div className="ledger-search" data-tour="archive-search">
-                        <Search size={17} aria-hidden="true" />
-                        <input id="archive-search" ref={searchRef} aria-label="Cari arsip perjalanan" aria-keyshortcuts="/"
-                          placeholder="Cari nomor surat, tujuan, atau nama pegawai" value={filters.search}
-                          onChange={event => patchFilters({ search: event.target.value })} />
-                        {filters.search ? <button type="button" onClick={() => patchFilters({ search: "" })} aria-label="Hapus pencarian"><X size={15} /></button> : <span aria-hidden="true"><kbd>/</kbd></span>}
-                      </div>
-                      <div className="ledger-filter-group">
-                      <CustomSelect aria-label="Bidang" className="ledger-select" data-active={filters.department !== "all"}
-                        value={filters.department} onValueChange={value => patchFilters({ department: value })}>
-                        <SelectOption value="all">Semua bidang</SelectOption>
-                        {allDepartments.map(department => <SelectOption key={department}>{department}</SelectOption>)}
-                      </CustomSelect>
-                      <CustomSelect aria-label="Bulan perjalanan" className="ledger-select" data-active={filters.month !== "all"}
+                    <div className="perjalanan-selects">
+                      <CustomSelect aria-label="Bulan perjalanan" className="perjalanan-select" data-active={filters.month !== "all"}
                         value={filters.month} onValueChange={value => patchFilters({ month: value })}>
                         <SelectOption value="all">Semua bulan</SelectOption>
                         {monthNames.map((month, index) => <SelectOption key={month} value={String(index + 1).padStart(2, "0")}>{month}</SelectOption>)}
                       </CustomSelect>
-                      {filterCount > 0 && <Button className="ledger-reset" variant="ghost" size="sm" onClick={() => patchFilters({ ...defaultFilters, year: filters.year })}>
-                        <RotateCcw /> Hapus filter ({filterCount})
-                      </Button>}
-                      </div>
-                    </>
-                  }
-                  emptyState={
-                    <Empty
-                      icon={<FolderOpen size={30} />}
-                      heading={active.length ? "Tidak ada perjalanan yang cocok" : editable ? "Mulai rapikan arsip perjalanan" : "Belum ada arsip perjalanan"}
-                      description={active.length
-                        ? "Coba kata kunci lain, pilih tahun berbeda, atau hapus filter yang aktif."
-                        : editable ? "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu." : "Arsip akan tampil setelah dicatat oleh operator."}
-                      action={active.length ? (
-                        <Button variant="outline" onClick={() => patchFilters(defaultFilters)}>
-                          Tampilkan semua perjalanan
+                      <CustomSelect aria-label="Bidang" className="perjalanan-select" data-active={filters.department !== "all"}
+                        value={filters.department} onValueChange={value => patchFilters({ department: value })}>
+                        <SelectOption value="all">Semua bidang</SelectOption>
+                        {allDepartments.map(department => <SelectOption key={department}>{department}</SelectOption>)}
+                      </CustomSelect>
+                      <CustomSelect aria-label="Waktu ditambahkan" className="perjalanan-select" data-active={filters.entry !== "all"}
+                        value={filters.entry}
+                        onValueChange={value => {
+                          // "Hari ini" mencari rekap yang dicatat hari ini dari semua tahun, seperti pintasan lamanya.
+                          if (value === "today") patchFilters({ ...defaultFilters, entry: "today" });
+                          else patchFilters({ entry: parseEntryFilter(value) });
+                        }}>
+                        {entryFilterOptions.map(([key, label]) => (
+                          <SelectOption key={key} value={key}>
+                            {key === "all" ? "Kapan saja dicatat" : key === "today" ? `Dicatat hari ini · ${todayRecaps}` : `Dicatat ${label.toLowerCase()}`}
+                          </SelectOption>
+                        ))}
+                        {isEntryDay(filters.entry) && <SelectOption value={filters.entry}>{`Dicatat ${entryFilterLabel(filters.entry)}`}</SelectOption>}
+                      </CustomSelect>
+                    </div>
+                  </>
+                }
+                emptyState={
+                  <Empty
+                    icon={<FolderOpen size={30} />}
+                    heading={active.length ? "Tidak ada perjalanan yang cocok" : editable ? "Mulai rapikan arsip perjalanan" : "Belum ada arsip perjalanan"}
+                    description={active.length
+                      ? "Coba kata kunci lain, pilih tahun berbeda, atau hapus filter yang aktif."
+                      : editable ? "Impor rekap Excel yang sudah ada, atau tambahkan perjalanan lama satu per satu." : "Arsip akan tampil setelah dicatat oleh operator."}
+                    action={active.length ? (
+                      <Button variant="outline" onClick={() => patchFilters(defaultFilters)}>
+                        Tampilkan semua perjalanan
+                      </Button>
+                    ) : editable ? (
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setImporting(true)}>
+                          <Upload /> Impor Excel
                         </Button>
-                      ) : editable ? (
-                        <div className="flex gap-2">
-                          <Button variant="outline" onClick={() => setImporting(true)}>
-                            <Upload /> Impor Excel
-                          </Button>
-                          <Button onClick={() => setEditor("new")}>
-                            <Plus /> Tambah arsip
-                          </Button>
-                        </div>
-                      ) : undefined}
-                    />
-                  }
-                />
-              </section>
+                        <Button onClick={() => setEditor("new")}>
+                          <Plus /> Tambah arsip
+                        </Button>
+                      </div>
+                    ) : undefined}
+                  />
+                }
+              />
               {exportable && selectedGroups.length > 0 && (
                 <div className="ledger-dock" role="region" aria-label="Arsip yang dipilih">
                   <span role="status">
@@ -689,7 +700,7 @@ export default function Workspace({
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
           {section === "home" && (
             <Beranda
@@ -975,51 +986,6 @@ export default function Workspace({
         onError={() => { setGuideOpen(false); setToast("Panduan belum bisa dibuka. Coba lagi melalui tombol bantuan."); }}
       />}
     </div>
-  );
-}
-
-function YearSummary({ year, groups, trips, total, unknown, entry, filtered }: {
-  year: string; groups: ArchiveGroup[]; trips: Trip[]; total: number; unknown: number;
-  entry: EntryFilter; filtered: boolean;
-}) {
-  const complete = groups.filter(group => group.complete).length;
-  const draft = groups.length - complete;
-  const people = new Set(trips.flatMap(t => t.participants.map(p => p.nip || p.name.toLowerCase()))).size;
-  const known = trips.length - unknown;
-  const scope = year === "all" ? "seluruh tahun" : `tahun ${year}`;
-  const ratio = groups.length ? complete / groups.length : 0;
-  return (
-    <section className="ledger-summary" aria-label={`Ringkasan ${scope}`}>
-      <div>
-        <span className="ledger-summary-label">{filtered ? "Realisasi biaya hasil filter" : "Realisasi biaya perjalanan"} · {scope}</span>
-        {entry !== "all" && <span className="entry-summary-note">Ditambahkan {entryFilterPhrase(entry)} · hanya rekap pada periode ini</span>}
-        {known ? (
-          <strong className="ledger-figure"><small>Rp</small>{total.toLocaleString("id-ID")}</strong>
-        ) : (
-          <strong className="ledger-figure is-empty">Belum ada nominal tercatat</strong>
-        )}
-        <div className="ledger-summary-facts">
-          <span><strong>{groups.length}</strong> perjalanan</span>
-          <span className="entry-recap-count"><strong>{trips.length}</strong> rekap</span>
-          <span><strong>{people}</strong> pegawai</span>
-          {unknown > 0 && <span className="is-warning"><strong>{unknown}</strong> rekap belum bernominal</span>}
-        </div>
-      </div>
-      <div>
-        <div className="ledger-summary-row">
-          <span>Perjalanan lengkap</span>
-          <strong>{complete} dari {groups.length}</strong>
-        </div>
-        <div className={`ledger-bar ${groups.length ? "" : "is-empty"}`} role="img"
-          aria-label={`${complete} perjalanan lengkap, ${draft} masih draft`}>
-          <span key={`${year}-${groups.length}`} style={{ width: `${ratio * 100}%` }} />
-        </div>
-        <div className="ledger-legend">
-          <span><i aria-hidden="true" /><strong>{complete}</strong> lengkap</span>
-          <span><i className="draft" aria-hidden="true" /><strong>{draft}</strong> draft</span>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -1383,58 +1349,5 @@ function Login({ forced, onClose, standalone = false }: { forced: boolean; onClo
         <LoginForm />
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ArchiveActions({
-  trip,
-  onAction,
-  editable,
-}: {
-  trip: Trip;
-  editable: boolean;
-  onAction: (action: "detail" | "edit" | "delete") => void;
-}) {
-  const label = trip.lampiran6 ? trip.participants[0].name : trip.title;
-  return (
-    <div
-      className="archive-actions"
-      role="group"
-      aria-label={`Tindakan ${label}`}
-    >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        title="Lihat detail"
-        aria-label={`Detail ${label}`}
-        onClick={() => onAction("detail")}
-      >
-        <Eye size={16} />
-        <span>Detail</span>
-      </Button>
-      {editable && <>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        title="Edit arsip"
-        aria-label={`Edit ${label}`}
-        onClick={() => onAction("edit")}
-      >
-        <Pencil size={16} />
-        <span>Edit</span>
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="text-destructive"
-        title="Hapus arsip"
-        aria-label={`Hapus ${label}`}
-        onClick={() => onAction("delete")}
-      >
-        <Trash2 size={16} />
-        <span>Hapus</span>
-      </Button>
-      </>}
-    </div>
   );
 }

@@ -898,9 +898,6 @@ table td {
   .grouped-mobile-archive .trip-link { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
   .archive-group-member { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; }
   .archive-group-member-cost { flex-direction: row; align-items: center; flex-wrap: wrap; justify-content: space-between; }
-  .archive-group-member .archive-actions { justify-content: flex-end; }
-  .archive-group-member .archive-actions > button { width: auto; padding-inline: 8px; gap: 4px; font-size: var(--type-button); }
-  .archive-group-member .archive-actions > button > span { display: inline; }
   .archive-group-detail-heading { align-items: flex-start; flex-direction: column; gap: 4px; padding: 14px; }
   .archive-group-detail-total { padding: 14px; }
   .archive-group-mobile-details { margin-top: 10px; }
@@ -1733,66 +1730,6 @@ table td {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-.archive-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-self: end;
-  width: max-content;
-  gap: 0;
-  padding: 2px;
-  border: 1px solid #cbd8e4;
-  border-radius: 999px;
-  background: #f1f5f9;
-}
-.archive-actions > button {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--primary);
-  box-shadow: none;
-}
-.archive-actions > button > svg {
-  width: 14px;
-  height: 14px;
-}
-.archive-actions > button:first-child {
-  border-radius: 999px 0 0 999px;
-}
-.archive-actions > button:last-child {
-  border-radius: 0 999px 999px 0;
-}
-.archive-actions > button + button::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 1px;
-  height: 12px;
-  transform: translateY(-50%);
-  background: #cbd8e4;
-}
-.archive-actions > button:hover {
-  background: #e1ebf3;
-  color: #183e5d;
-}
-.archive-actions > button.text-destructive {
-  color: var(--status-danger);
-}
-.archive-actions > button.text-destructive:hover {
-  background: #fbe9e7;
-  color: #8e302a;
-}
-.archive-actions > button > span {
-  display: none;
-}
-.archive-actions > button:focus-visible {
-  outline: 1px solid var(--primary);
-  outline-offset: -1px;
-  z-index: 1;
 }
 .subheading {
   font-size: var(--type-data);
@@ -2995,21 +2932,6 @@ table td {
     text-align: left;
     font-size: var(--type-data);
     line-height: 1.7;
-  }
-  .mobile-archive > .archive-actions {
-    justify-content: flex-start;
-    gap: 0;
-    margin-top: 4px;
-  }
-  .mobile-archive .archive-actions > button {
-    width: auto;
-    min-height: 28px;
-    padding: 0 8px;
-    gap: 4px;
-    border: 0;
-  }
-  .mobile-archive .archive-actions > button > span {
-    display: inline;
   }
   .mobile-archive > span {
     display: flex;
@@ -4839,7 +4761,6 @@ input.select-validation { position: absolute; width: 1px !important; height: 1px
 .register-detail-purpose p { font-size: var(--type-body); color: #314b64; line-height: 1.85; margin-top: 5px; max-width: 85ch; overflow-wrap: anywhere; }
 .archive-register .archive-group-details { border-color: #dce5ee; border-radius: 6px; }
 .archive-register .archive-group-member { padding: 15px 18px; }
-.archive-register .archive-actions > button { min-width: 28px; min-height: 28px; }
 .archive-register .archive-group-detail-total { background: #f6f9fb; font-variant-numeric: tabular-nums; }
 .archive-register[data-density="compact"] .register-table td { padding-top: 11px; padding-bottom: 11px; }
 .archive-register[data-density="compact"] .register-description { -webkit-line-clamp: 1; margin-block: 3px; }
