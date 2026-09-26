@@ -1,0 +1,864 @@
+/* =====================================================================
+   Formulir rekap tanpa rel. Dasar tenang, satu aksen biru laut.
+   .step-dialog: langkah sebagai teks di atas, satu langkah per layar.
+   Satu pegawai memakai kolom tengah selebar bacaan; beberapa pegawai
+   (.step-wide) memakai lebar penuh untuk dua kolom dan tabel biaya.
+   Isian (field, select, tanggal) tetap memakai gaya .lampiran-dialog.
+   ===================================================================== */
+
+.rekap-form.lampiran-dialog[data-slot="dialog-content"] {
+  --form-inset: 28px;
+  --rekap-accent: var(--ledger-action);
+  width: calc(100% - 40px);
+  max-width: 1040px;
+  height: min(860px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  border-radius: 18px;
+  background: var(--ledger-surface);
+}
+.step-wide.rekap-form.lampiran-dialog[data-slot="dialog-content"] {
+  max-width: 1280px;
+}
+
+/* ----- Kepala ----- */
+.rekap-form .step-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 72px 14px var(--form-inset);
+  border-bottom: 1px solid var(--ledger-line-soft);
+  background: var(--ledger-surface);
+  flex-shrink: 0;
+}
+.rekap-form .step-title {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin-right: auto;
+}
+.rekap-form .step-kicker {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+/* Rincian dibuka dari rekap beberapa pegawai; bingkainya tetap selebar induknya. */
+.rincian-dialog.rekap-form.lampiran-dialog[data-slot="dialog-content"] {
+  max-width: 1280px;
+}
+.rincian-dialog .step-top {
+  padding-right: var(--form-inset);
+}
+/* Jalan pulang ke rekap bersama: tombol bergaris di samping Terapkan rincian. */
+.rekap-form.lampiran-dialog .form-action-buttons .rincian-back {
+  border-color: var(--rekap-accent);
+  color: var(--rekap-accent);
+  font-weight: 600;
+}
+.rekap-form.lampiran-dialog .form-action-buttons .rincian-back:hover {
+  background: var(--ledger-action-soft);
+}
+.rekap-form.lampiran-dialog [data-slot="dialog-title"] {
+  font-size: var(--type-section) !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0;
+  color: var(--ledger-ink);
+  overflow-wrap: anywhere;
+}
+.rekap-form.lampiran-dialog .step-note[data-slot="dialog-description"] {
+  color: var(--ledger-muted) !important;
+  font-size: var(--type-meta) !important;
+  line-height: 1.5 !important;
+}
+.rekap-form.lampiran-dialog [data-slot="dialog-close"] {
+  top: 17px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--ledger-muted);
+  background: transparent;
+}
+.rekap-form.lampiran-dialog [data-slot="dialog-close"]:hover {
+  color: var(--ledger-ink);
+  background: var(--ledger-tint);
+}
+.rekap-form .step-modes {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Cara mengisi: segmen dua pilihan. */
+.rekap-form.lampiran-dialog .recap-entry-mode {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 11px;
+  background: #eef1f4;
+}
+.rekap-form.lampiran-dialog .recap-entry-mode label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--ledger-muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.rekap-form.lampiran-dialog .recap-entry-mode label:hover {
+  color: var(--ledger-ink);
+}
+.rekap-form.lampiran-dialog .recap-entry-mode label[data-selected="true"] {
+  background: var(--ledger-surface);
+  color: var(--ledger-ink);
+  box-shadow: 0 1px 2px rgba(12, 26, 47, 0.14);
+}
+/* Klik tidak meninggalkan cincin; hanya fokus keyboard yang ditandai. */
+.rekap-form.lampiran-dialog .recap-entry-mode label:focus-within {
+  outline: none;
+}
+.rekap-form.lampiran-dialog .recap-entry-mode label:has(:focus-visible) {
+  outline: 2px solid var(--rekap-accent);
+  outline-offset: 2px;
+}
+.rekap-form .recap-entry-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.rekap-form .step-switch {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--rekap-accent);
+  font-size: var(--type-label);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(31, 75, 117, 0.3);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.rekap-form .step-switch:hover {
+  text-decoration-color: var(--rekap-accent);
+}
+
+/* ----- Satu pegawai: langkah sebagai teks ----- */
+.step-dialog .step-nav {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  /* Ruang bawah agar cincin langkah aktif tidak terpotong oleh overflow-x. */
+  padding: 12px var(--form-inset) 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.step-dialog .step-nav::-webkit-scrollbar {
+  display: none;
+}
+.step-dialog .step-nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ledger-muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.step-dialog .step-nav button:hover {
+  color: var(--ledger-ink);
+}
+.step-dialog .step-nav i {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.step-dialog .step-nav [data-status="done"] i {
+  background: var(--ledger-text);
+  border-color: var(--ledger-text);
+  color: #fff;
+}
+.step-dialog .step-nav [data-status="error"] {
+  color: var(--ledger-danger);
+}
+.step-dialog .step-nav [aria-current="step"] {
+  color: var(--ledger-ink);
+  background: var(--ledger-surface);
+  box-shadow: 0 0 0 1px var(--ledger-line);
+}
+.step-dialog .step-nav [aria-current="step"] i {
+  background: var(--rekap-accent);
+  border-color: var(--rekap-accent);
+  color: #fff;
+}
+.step-dialog .step-progress {
+  display: none;
+}
+
+/* ----- Badan: kolom tengah selebar bacaan ----- */
+.rekap-form .step-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.step-dialog .step-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: #b6c5d3 transparent;
+}
+.step-dialog .step-body {
+  padding: 40px var(--form-inset) 56px;
+}
+.step-dialog .step-column {
+  max-width: 640px;
+  margin: 0 auto;
+  animation: rekap-enter 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes rekap-enter {
+  from { opacity: 0; transform: translateY(6px); }
+}
+.rekap-form .step-head {
+  margin-bottom: 28px;
+}
+.rekap-form .step-head h3 {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--ledger-ink);
+}
+.rekap-form .step-head h3:focus {
+  outline: none;
+}
+.rekap-form .step-head p {
+  margin: 8px 0 0;
+  max-width: 54ch;
+  color: var(--ledger-muted);
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+.step-dialog .step-column > .form-section:first-of-type,
+.step-dialog .step-column > .onboarding-hint + .form-section {
+  padding-top: 0;
+  border-top: 0;
+}
+.rekap-form .form-section h3 {
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-muted);
+  letter-spacing: 0;
+}
+
+/* Kartu identitas pegawai yang dipilih dari daftar. */
+.step-dialog .identity-card {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 14px;
+  background: var(--ledger-surface);
+  animation: rekap-enter 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.step-dialog .identity-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.step-dialog .identity-card-head > div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.step-dialog .identity-card-head strong {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.step-dialog .identity-card-head span {
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+  font-variant-numeric: tabular-nums;
+}
+.step-dialog .identity-avatar {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ledger-action-soft);
+  color: var(--rekap-accent) !important;
+  font-size: 0.9375rem !important;
+  font-weight: 700;
+}
+.step-dialog .identity-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--ledger-line-soft);
+}
+.step-dialog .identity-card dt {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+.step-dialog .identity-card dd {
+  margin: 2px 0 0;
+  color: var(--ledger-ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.step-dialog .identity-card p {
+  margin: 0;
+  font-size: var(--type-meta);
+  color: var(--ledger-muted);
+}
+.rekap-form .identity-edit {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--rekap-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(31, 75, 117, 0.3);
+  text-underline-offset: 3px;
+}
+
+/* ----- Kaki: status, total, lalu tindakan ----- */
+.rekap-form.lampiran-dialog .step-foot {
+  padding: 12px var(--form-inset);
+  flex-shrink: 0;
+}
+.rekap-form .footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rekap-form.lampiran-dialog .footer-actions > .step-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rekap-form .step-status {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--ledger-amber-soft);
+  color: var(--ledger-amber);
+  font-size: var(--type-micro);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.rekap-form .step-status[data-complete] {
+  background: var(--ledger-success-soft);
+  color: var(--ledger-success);
+}
+.rekap-form .step-total {
+  font-size: var(--type-body);
+  white-space: nowrap;
+}
+.rekap-form .step-meta-note {
+  color: var(--ledger-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rekap-form .form-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.rekap-form [data-slot="button"]:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* ----- Beberapa pegawai: lebar penuh ----- */
+.step-wide .step-column {
+  max-width: 1220px;
+}
+.step-wide .batch-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.step-wide .shared-journey-editor,
+.step-wide .journey-people-picker {
+  padding: 0;
+  border: 0;
+}
+.step-wide .journey-entry-section:first-of-type {
+  padding-top: 4px;
+}
+.step-wide .journey-entry-section h4 {
+  font-size: var(--type-label);
+  color: var(--ledger-muted);
+}
+.step-wide .journey-budget-fields {
+  margin-top: 18px;
+}
+/* Langkah pertama dua kolom: Surat Tugas di kiri, peserta dicentang di sampingnya. */
+.step-wide .journey-people-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 32px;
+  align-items: start;
+}
+.step-wide .journey-people-side {
+  position: sticky;
+  top: 0;
+  padding: 18px;
+  border: 1px solid var(--ledger-line);
+  border-radius: 14px;
+  background: var(--ledger-tint);
+}
+.step-wide .journey-people-side > h4 {
+  margin: 0 0 12px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--ledger-muted);
+}
+.step-wide .journey-people-side .journey-people-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.step-wide .journey-people-list {
+  max-height: min(440px, calc(100dvh - 420px));
+  min-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+  background: var(--ledger-surface);
+}
+
+/* Tabel biaya: satu baris per orang, Enter turun ke baris berikutnya. */
+.batch-cost-grid .grid-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--ledger-line);
+  border-radius: 12px;
+}
+.batch-cost-grid table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--type-data);
+}
+.batch-cost-grid thead th {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--ledger-line);
+  background: var(--ledger-tint);
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.batch-cost-grid thead th:first-child,
+.batch-cost-grid thead th.grid-text-col {
+  text-align: left;
+}
+.batch-cost-grid thead th small,
+.batch-cost-grid thead th button {
+  display: block;
+  margin: 3px 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+.batch-cost-grid thead th small {
+  color: var(--ledger-muted);
+  font-weight: 500;
+}
+.batch-cost-grid thead th button {
+  color: var(--rekap-accent);
+}
+.batch-cost-grid thead th button:hover {
+  text-decoration: underline;
+}
+.batch-cost-grid tbody th,
+.batch-cost-grid tbody td,
+.batch-cost-grid tfoot th,
+.batch-cost-grid tfoot td {
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--ledger-line-soft);
+  vertical-align: middle;
+}
+.batch-cost-grid tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.batch-cost-grid :is(tbody, tfoot) th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 148px;
+  max-width: 200px;
+  padding: 8px 12px;
+  background: var(--ledger-surface);
+  text-align: left;
+  font-weight: 400;
+}
+.batch-cost-grid thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.batch-cost-grid tbody th strong {
+  display: block;
+  color: var(--ledger-ink);
+  font-weight: 600;
+}
+.batch-cost-grid tbody th small {
+  display: block;
+  color: var(--ledger-muted);
+  font-size: var(--type-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.batch-cost-grid tbody tr[data-error] th {
+  box-shadow: inset 3px 0 0 var(--ledger-danger);
+}
+.batch-cost-grid tfoot > tr > * {
+  border-top: 1px solid var(--ledger-line);
+  border-bottom: 0;
+  background: var(--ledger-tint);
+  font-weight: 600;
+  color: var(--ledger-ink);
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input.grid-amount,
+.rekap-form.lampiran-dialog .batch-cost-grid input.grid-text {
+  width: 100%;
+  min-width: 90px;
+  height: 38px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--ledger-tint);
+  color: var(--ledger-ink);
+  font-size: var(--type-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  box-shadow: none;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input.grid-text {
+  min-width: 116px;
+  text-align: left;
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input:hover {
+  border-color: var(--ledger-line);
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input:focus {
+  outline: none;
+  border-color: var(--rekap-accent);
+  background: var(--ledger-surface);
+  box-shadow: 0 0 0 3px rgba(31, 75, 117, 0.14);
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input[readonly] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ledger-muted);
+  cursor: default;
+}
+.rekap-form.lampiran-dialog .batch-cost-grid input[data-varied] {
+  border-bottom: 2px dotted var(--ledger-gold);
+}
+.batch-cost-grid input::placeholder {
+  color: #aab5c1;
+}
+.batch-cost-grid .grid-total {
+  padding-right: 12px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--ledger-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.batch-cost-grid .grid-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--rekap-accent);
+  font-size: var(--type-meta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.batch-cost-grid .grid-details:hover {
+  background: var(--ledger-action-soft);
+}
+.batch-cost-grid .grid-details span {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ledger-action-soft);
+  font-size: var(--type-micro);
+  text-align: center;
+}
+.batch-cost-grid .recap-row-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.batch-cost-grid > .field-hint {
+  margin-top: 12px;
+}
+.batch-cost-grid .grid-cards {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .rekap-form .step-meta-note {
+    display: none;
+  }
+}
+
+/* ----- Ponsel: layar penuh, langkah jadi bilah kemajuan ----- */
+@media (max-width: 760px) {
+  .rekap-form.lampiran-dialog[data-slot="dialog-content"],
+  .step-wide.rekap-form.lampiran-dialog[data-slot="dialog-content"] {
+    --form-inset: 16px;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .rekap-form .step-top {
+    padding: 10px 60px 10px var(--form-inset);
+  }
+  .rekap-form .step-title {
+    display: none;
+  }
+  .rekap-form .step-modes {
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+  }
+  .rekap-form.lampiran-dialog .recap-entry-mode label {
+    padding: 0 10px;
+  }
+  .rekap-form .step-switch {
+    display: none;
+  }
+  .rekap-form.lampiran-dialog [data-slot="dialog-close"] {
+    top: 12px;
+    right: 10px;
+  }
+  .step-dialog .step-nav {
+    display: none;
+  }
+  .step-dialog .step-progress {
+    display: block;
+    padding: 12px var(--form-inset) 0;
+    flex-shrink: 0;
+  }
+  .step-dialog .step-progress span {
+    font-size: var(--type-meta);
+    font-weight: 600;
+    color: var(--ledger-muted);
+  }
+  .step-dialog .step-progress div {
+    height: 3px;
+    margin-top: 8px;
+    border-radius: 3px;
+    background: var(--ledger-line);
+    overflow: hidden;
+  }
+  .step-dialog .step-progress i {
+    display: block;
+    height: 100%;
+    background: var(--rekap-accent);
+    transition: width 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .step-dialog .step-body {
+    padding: 22px var(--form-inset) 32px;
+  }
+  .rekap-form .step-head h3 {
+    font-size: 1.75rem;
+  }
+  .rekap-form .step-head {
+    margin-bottom: 22px;
+  }
+  .step-dialog .identity-card dl {
+    grid-template-columns: 1fr;
+  }
+  .rekap-form.lampiran-dialog .step-foot {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  /* Kaki dua baris: status dan total di atas, tombol selebar layar di bawah. */
+  .rekap-form.lampiran-dialog .footer-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0;
+  }
+  .rekap-form.lampiran-dialog .footer-actions > .form-action-buttons {
+    flex: 1 1 100%;
+    width: 100%;
+    margin: 0;
+    gap: 8px;
+  }
+  .rekap-form.lampiran-dialog .form-action-buttons [data-slot="button"] {
+    display: inline-flex;
+    flex: 1 1 0;
+    width: auto;
+    height: 46px;
+    min-height: 46px;
+    padding-inline: 14px;
+  }
+  .rekap-form.lampiran-dialog .form-action-buttons [data-variant="ghost"] {
+    flex: 0 0 auto;
+    min-width: 46px;
+  }
+  .rekap-form.lampiran-dialog .form-action-buttons [data-variant="ghost"] svg {
+    display: inline-block;
+  }
+  .rekap-form.lampiran-dialog .form-step-meta > .step-status {
+    display: inline-flex;
+  }
+  .batch-cost-grid .grid-scroll {
+    display: none;
+  }
+  .batch-cost-grid .grid-cards {
+    display: grid;
+    gap: 10px;
+  }
+  .batch-cost-grid .grid-card {
+    padding: 14px;
+    border: 1px solid var(--ledger-line);
+    border-radius: 12px;
+  }
+  .batch-cost-grid .grid-card[data-error] {
+    border-color: var(--ledger-danger);
+  }
+  .batch-cost-grid .grid-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .batch-cost-grid .grid-card header strong:first-child {
+    display: block;
+    color: var(--ledger-ink);
+  }
+  .batch-cost-grid .grid-card header small {
+    display: block;
+    color: var(--ledger-muted);
+    font-size: var(--type-micro);
+  }
+  .batch-cost-grid .grid-card-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .batch-cost-grid .grid-card-fields label {
+    display: grid;
+    gap: 4px;
+    font-size: var(--type-micro);
+    font-weight: 600;
+    color: var(--ledger-muted);
+  }
+  .batch-cost-grid .grid-card-wide {
+    grid-column: 1 / -1;
+  }
+  .rekap-form.lampiran-dialog .batch-cost-grid input.grid-amount,
+  .rekap-form.lampiran-dialog .batch-cost-grid input.grid-text {
+    min-width: 0;
+    height: 44px;
+    font-size: 16px;
+    border-color: var(--ledger-line);
+    background: var(--ledger-surface);
+  }
+  .batch-cost-grid .grid-card .grid-details {
+    margin-top: 8px;
+    padding: 0;
+  }
+}
+
+/* Layar sempit: peserta turun ke bawah data perjalanan. */
+@media (max-width: 900px) {
+  .step-wide .journey-people-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .step-wide .journey-people-side {
+    position: static;
+    padding: 14px;
+  }
+  .step-wide .journey-people-list {
+    max-height: 380px;
+  }
+}
+
+/* Di ponsel judul disembunyikan untuk memberi ruang; Rincian tetap butuh jalan pulang dan nama peserta. */
+@media (max-width: 760px) {
+  .rincian-dialog .step-title {
+    display: grid;
+  }
+  .rincian-dialog .step-top {
+    padding-right: var(--form-inset);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rekap-form .step-column,
+  .rekap-form .identity-card {
+    animation: none;
+  }
+}
+
+/* Samakan hanya tampil bila ada yang bisa disalin; penahan tempat menjaga tinggi kepala tabel. */
+.batch-cost-grid thead th small.grid-fill-empty {
+  visibility: hidden;
+}
+.batch-cost-grid .grid-notice {
+  margin: 12px 0 0;
+  color: var(--ledger-success);
+  font-size: var(--type-meta);
+  font-weight: 600;
+}

@@ -15,6 +15,7 @@ import "./auth.css";
 import "driver.js/dist/driver.css";
 import "./onboarding.css";
 import "./form-rail.css";
+import "./rekap-form.css";
 export const metadata: Metadata = {
   title: "Arsip Perjalanan | Dinas ESDM Jambi",
   description:

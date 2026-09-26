@@ -28,14 +28,14 @@ import {
   ArrowRight,
   ArrowLeft,
   Info,
+  Check,
 } from "lucide-react";
 import { recapSectionStates } from "@/lib/recap-visual-state";
-import { Dialog, DialogContent } from "./ui/dialog";
-import { FormRail, RailSlip, RailStepHead, RailStepLabel, type RailStatus } from "./form-rail";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
+import type { RailStatus } from "./form-rail";
 import { useDiscardConfirm } from "./discard-confirm";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
-import { Field, ErrorMessage, api } from "./fields";
+import { Field, ErrorMessage, advanceOnEnter, api } from "./fields";
 import ArchiveDateInput from "./archive-date-input";
 import {
   tripSchema,
@@ -60,11 +60,11 @@ import {
 
 // Urutan mengikuti tumpukan dokumen yang disalin operator, sama dengan mode beberapa pegawai.
 const steps = [
-  ["person", "Pegawai", "Siapa yang melakukan perjalanan?", "Pilih dari daftar pegawai. NIP, jabatan, golongan, dan bidang terisi otomatis."],
-  ["journey", "Perjalanan", "Ke mana dan kapan perjalanannya?", "Salin dari Surat Tugas: nomor, kegiatan, tanggal, dan tujuan."],
-  ["costs", "SPPD & biaya", "Berapa biaya perjalanannya?", "Salin dari SPPD dan kuitansi. Kosongkan yang belum diketahui, isi 0 jika memang tidak ada."],
-  ["evidence", "Rincian bukti", "Ada bukti hotel, kendaraan, atau tiket?", "Opsional. Catat detail sesuai bukti pendukung, atau lewati langkah ini."],
-  ["review", "Periksa & simpan", "Sudah sesuai dengan dokumen?", "Periksa ringkasan rekap, tambahkan keterangan bila perlu, lalu simpan."],
+  ["person", "Pegawai", "Siapa yang berangkat?", "Cari namanya. NIP, golongan, jabatan, dan bidang ikut terisi dari daftar pegawai."],
+  ["journey", "Perjalanan", "Ke mana, dan kapan?", "Salin dari Surat Tugas. Uang harian dihitung dari tujuan dan jumlah hari di sini."],
+  ["costs", "Biaya", "Berapa yang dibayarkan?", "Salin dari SPPD dan kuitansi. Kosongkan yang belum diketahui; tulis 0 bila memang tidak ada."],
+  ["evidence", "Bukti", "Ada bukti hotel, kendaraan, atau tiket?", "Tidak wajib. Rekap tetap bisa disimpan tanpa rincian bukti."],
+  ["review", "Simpan", "Sudah cocok dengan berkasnya?", "Bandingkan sekali lagi dengan dokumen fisik, tambahkan keterangan bila perlu, lalu simpan."],
 ] as const;
 type Step = (typeof steps)[number][0];
 const personFields = new Set(["participants", "department", "rank"]);
@@ -95,6 +95,7 @@ export default function Lampiran6Form({
   initialStep = "person",
   onDraftSave,
   onMultiple,
+  backLabel = "Kembali",
 }: {
   trip: Trip | null;
   departments: string[];
@@ -107,6 +108,8 @@ export default function Lampiran6Form({
   initialStep?: Step;
   onDraftSave?: (input: TripInput) => void;
   onMultiple?: (input: TripInput) => void;
+  /** Rincian peserta: tujuan kembali ke rekap bersama, misalnya "Kembali ke Biaya". */
+  backLabel?: string;
 }) {
   const [form, setForm] = useState<TripInput>(() =>
     trip
@@ -165,7 +168,7 @@ export default function Lampiran6Form({
       ).find((field) => !field.closest("details:not([open])"));
       (
         firstField ??
-        bodyRef.current?.querySelector<HTMLElement>("[role='tabpanel']")
+        bodyRef.current?.querySelector<HTMLElement>(".step-head h3")
       )?.focus({ preventScroll: true });
     }
     return () => resize.disconnect();
@@ -174,7 +177,9 @@ export default function Lampiran6Form({
     focusStepRef.current = true;
     setStep(value);
   }
-  const [dirty, setDirty] = useState(Boolean(initialDraft)),
+  const [editIdentity, setEditIdentity] = useState(false);
+  // Draft dari mode lain belum tersimpan; rincian peserta baru berubah setelah diisi.
+  const [dirty, setDirty] = useState(Boolean(initialDraft) && !onDraftSave),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [errorStep, setErrorStep] = useState<Step>();
@@ -352,12 +357,16 @@ export default function Lampiran6Form({
       type="button"
       variant={advanceFirst ? "default" : "outline"}
       disabled={busy}
-      aria-label="Lanjut"
+      aria-label={`Lanjut ke ${steps[stepIndex + 1][1].toLowerCase()}`}
       onClick={() => goStep(next)}
     >
-      <span className="form-action-label">Lanjut</span> <ArrowRight />
+      <span>Lanjut<span className="form-action-label">: {steps[stepIndex + 1][1]}</span></span> <ArrowRight />
     </Button>
   );
+  const knownPerson = knownPeople.find((p) => p.name === person.name);
+  // Pegawai dari daftar tampil sebagai satu kartu; isian muncul bila ada yang perlu dikoreksi.
+  const showIdentityCard = Boolean(knownPerson) && !editIdentity && errorStep !== "person" && Boolean(form.department.trim());
+  const title = onDraftSave ? person.name : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Rekap baru";
   const saveButton = (
     <Button
       key="save"
@@ -382,71 +391,94 @@ export default function Lampiran6Form({
       }}
     >
       <DialogContent
-        className="form-dialog lampiran-dialog rail-dialog"
+        className={`form-dialog lampiran-dialog rekap-form step-dialog${onDraftSave ? " rincian-dialog" : ""}`}
+        showCloseButton={!onDraftSave}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <Tabs
-          value={step}
-          onValueChange={(value) => setStep(value as Step)}
-          orientation="vertical"
-          className="rail-layout"
-        >
-          {/* Rel kiri: judul, cara mengisi, langkah beserta statusnya, dan slip total yang menjelaskan draft atau lengkap. */}
-          <FormRail
-            kicker="Rekap perjalanan dinas"
-            title={onDraftSave ? `Rincian — ${person.name}` : trip ? (needsCorrectionReason ? "Edit rekap pegawai" : "Lengkapi draft") : "Tambah rekap pegawai"}
-            showDescription={Boolean(onDraftSave) || needsCorrectionReason}
-            description={onDraftSave ? "Perubahan berlaku untuk pegawai ini. Rekap disimpan bersama setelah ditinjau."
-              : needsCorrectionReason
-              ? "Perubahan pada arsip lengkap perlu disertai alasan."
-              : "Isi data perjalanan dan biaya pegawai ini. Dokumen pendukung opsional."}
-          >
-            {(onMultiple || onSwitch) && (
-              <div className="rail-modes">
-                {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
-                {onSwitch && (
-                  <button className="rail-switch" type="button" onClick={() => close(onSwitch)}>
-                    <span>Arsip gabungan</span><small>Satu arsip untuk seluruh peserta</small>
-                  </button>
-                )}
-              </div>
-            )}
-            <TabsList className="rail-steps" aria-label="Langkah isian rekap">
-              {steps.map(([key, label], index) => {
-                const [state, note] = stepStatus[key];
-                return (
-                  <TabsTrigger
-                    key={key}
-                    value={key}
-                    className="rail-step"
-                    data-status={state}
-                    ref={key === step ? activeTabRef : undefined}
-                  >
-                    <RailStepLabel index={index} status={state} label={label} note={note} />
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            <RailSlip label="Total biaya" value={money(total)} empty={total === null} complete={!savingDraft}>
-              <p>
-                <b>{savingDraft ? "Draft" : "Lengkap"}</b>
-                {savingDraft ? "Catat minimal satu biaya agar rekap lengkap." : "Rekap disimpan sebagai arsip lengkap."}
-              </p>
-            </RailSlip>
-          </FormRail>
-          <form className="editor-form rail-main" onSubmit={save} noValidate>
-            <RailStepHead
-              counter={`Langkah ${stepIndex + 1} dari ${steps.length}`}
-              question={question}
-              purpose={onDraftSave && step === "person" ? "Identitas mengikuti pegawai yang dipilih pada rekap bersama." : purpose}
-            />
-            <div
-              className="form-body lampiran-form-body"
-              key={step}
-              ref={bodyRef}
-            >
-              <TabsContent value="person">
+        {/* Kepala: judul, cara mengisi, lalu langkah sebagai teks. Satu pertanyaan per layar di bawahnya. */}
+        <header className="step-top">
+          <div className="step-title">
+            <span className="step-kicker">{onDraftSave ? "Rincian peserta · Beberapa pegawai" : "Rekap perjalanan dinas"}</span>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className={onDraftSave || needsCorrectionReason ? "step-note" : "sr-only"}>
+              {onDraftSave ? "Rincian satu peserta dalam rekap beberapa pegawai. Perubahan berlaku setelah Terapkan rincian."
+                : needsCorrectionReason
+                ? "Perubahan pada arsip lengkap perlu disertai alasan."
+                : "Isi data perjalanan dan biaya pegawai ini. Dokumen pendukung opsional."}
+            </DialogDescription>
+          </div>
+          {(onMultiple || onSwitch) && (
+            <div className="step-modes">
+              {onMultiple && <RecapEntryMode value="single" disabled={busy} onChange={value => { if (value === "multiple") onMultiple(form); }} />}
+              {onSwitch && (
+                <button className="step-switch" type="button" title="Satu arsip untuk seluruh peserta" onClick={() => close(onSwitch)}>
+                  Arsip gabungan
+                </button>
+              )}
+            </div>
+          )}
+        </header>
+        <nav className="step-nav" aria-label="Langkah isian rekap">
+          {steps.map(([key, label], index) => {
+            const [state, note] = stepStatus[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                data-status={state}
+                aria-current={key === step ? "step" : undefined}
+                ref={key === step ? activeTabRef : undefined}
+                disabled={busy}
+                onClick={() => setStep(key)}
+              >
+                <i aria-hidden="true">{state === "done" ? <Check size={11} strokeWidth={3.5} /> : state === "error" ? "!" : index + 1}</i>
+                {onDraftSave && key === "review" ? "Ringkasan" : label}
+                <span className="sr-only">, {note}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="step-progress" aria-hidden="true">
+          <span>Langkah {stepIndex + 1} dari {steps.length} · {steps[stepIndex][1]}</span>
+          <div><i style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} /></div>
+        </div>
+        <form className="editor-form step-main" onSubmit={save} onKeyDown={advanceOnEnter} noValidate>
+          <div className="step-body" ref={bodyRef}>
+            <div className="step-column" key={step}>
+              <header className="step-head">
+                <h3 tabIndex={-1}>{question}</h3>
+                <p>{onDraftSave && step === "person" ? "Identitas mengikuti pegawai yang dipilih pada rekap bersama." : purpose}</p>
+              </header>
+              {step === "person" && <>
                 {!trip && <OnboardingHint id="create-archive" />}
+                {showIdentityCard ? (
+                  <section className="identity-card" aria-label="Pegawai terpilih">
+                    <div className="identity-card-head">
+                      <span className="identity-avatar" aria-hidden="true">
+                        {person.name.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}
+                      </span>
+                      <div>
+                        <strong>{person.name}</strong>
+                        <span>{person.nip ? `NIP ${person.nip}` : "NIP belum dicatat"}</span>
+                      </div>
+                      {!onDraftSave && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => {
+                          patchPerson({ name: "", nip: "", position: "" });
+                          patchData({ rank: "" });
+                        }}>Ganti</Button>
+                      )}
+                    </div>
+                    <dl>
+                      <div><dt>Golongan</dt><dd>{data.rank || "Belum dicatat"}</dd></div>
+                      <div><dt>Jabatan</dt><dd>{person.position || "Belum dicatat"}</dd></div>
+                      <div><dt>Bidang / unit kerja</dt><dd>{form.department}</dd></div>
+                    </dl>
+                    <p>
+                      Ada yang berbeda di dokumen?{" "}
+                      <button type="button" className="identity-edit" onClick={() => setEditIdentity(true)}>Ubah untuk rekap ini</button>
+                    </p>
+                  </section>
+                ) : (
                 <section className="form-section">
                   <div className="form-grid">
                     <Field label="Nama pegawai" required className="span-2">
@@ -509,8 +541,9 @@ export default function Lampiran6Form({
                     </Field>
                   </div>
                 </section>
-              </TabsContent>
-              <TabsContent value="journey">
+                )}
+              </>}
+              {step === "journey" && <>
                 <section className="form-section">
                   <h3>Surat tugas</h3>
                   <div className="form-grid">
@@ -590,8 +623,8 @@ export default function Lampiran6Form({
                     </div>
                   </details>
                 </section>
-              </TabsContent>
-              <TabsContent value="costs">
+              </>}
+              {step === "costs" && <>
                 <section className="form-section">
                   <h3>SPPD dan anggaran</h3>
                   <div className="form-grid">
@@ -729,8 +762,8 @@ export default function Lampiran6Form({
                   </p>
                 </section>
                 <ReviewNotes notes={reviews} />
-              </TabsContent>
-              <TabsContent value="evidence">
+              </>}
+              {step === "evidence" && <>
                 <section className="form-section">
                   <div className="section-heading">
                     <div>
@@ -834,8 +867,8 @@ export default function Lampiran6Form({
                   ))}
                 </section>
                 <FlightCostFields data={data} onChange={patchData} />
-              </TabsContent>
-              <TabsContent value="review">
+              </>}
+              {step === "review" && <>
                 <RecapLedger
                   data={data}
                   total={total}
@@ -909,45 +942,60 @@ export default function Lampiran6Form({
                     <ReviewNotes notes={data.sourceIssues} />
                   </details>
                 )}
-              </TabsContent>
+              </>}
             </div>
-            <div className="form-footer">
+            </div>
+            <div className="form-footer step-foot">
               <ErrorMessage message={error} />
               <div className="footer-actions">
-                <div className="form-step-meta">
-                  <strong className="rail-footer-total">{money(total)}</strong>
-                  <span>
+                <div className="form-step-meta step-meta" aria-live="polite">
+                  <span className="step-status" data-complete={!savingDraft || undefined}>{savingDraft ? "Draft" : "Lengkap"}</span>
+                  <strong className="step-total">{money(total)}</strong>
+                  <span className="step-meta-note">
                     {dirty
                       ? "Perubahan belum disimpan"
-                      : "Kolom bertanda * wajib diisi"}
+                      : savingDraft
+                        ? "Lengkap setelah ada biaya tercatat"
+                        : "Kolom bertanda * wajib diisi"}
                   </span>
                 </div>
                 <div className="form-action-buttons">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => close()}
-                  >
-                    Batal
-                  </Button>
-                  {previous && (
+                  {onDraftSave ? (
+                    // Rincian peserta: jalan pulang ke rekap bersama berada di samping Terapkan, mudah terlihat.
                     <Button
                       type="button"
                       variant="outline"
+                      className="rincian-back"
                       disabled={busy}
-                      aria-label="Sebelumnya"
+                      onClick={() => close()}
+                    >
+                      <ArrowLeft /> {backLabel}
+                    </Button>
+                  ) : previous ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      aria-label="Kembali"
                       onClick={() => goStep(previous)}
                     >
-                      <ArrowLeft /> <span className="form-action-label">Sebelumnya</span>
+                      <ArrowLeft /> <span className="form-action-label">Kembali</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => close()}
+                    >
+                      Batal
                     </Button>
                   )}
-                  {advanceFirst ? [saveButton, nextButton] : [nextButton, saveButton]}
+                  {onDraftSave ? saveButton : advanceFirst ? [saveButton, nextButton] : [nextButton, saveButton]}
                 </div>
               </div>
             </div>
-          </form>
-        </Tabs>
+        </form>
       </DialogContent>
     </Dialog>
     {discard.dialog}
@@ -990,6 +1038,8 @@ export function NumberField({
         inputMode={step === "1" ? "numeric" : "decimal"}
         value={value ?? ""}
         placeholder="Belum dicatat"
+        // Roda tetikus tidak boleh diam-diam mengubah nominal yang sedang difokus.
+        onWheel={(e) => e.currentTarget.blur()}
         onChange={(e) => onChange(numberValue(e.target.value))}
       />
     </Field>
